@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import './App.css';
 
 const App = () => {
-  const [selectedDate, setSelectedDate] = useState(5);
+  const [selectedDate, setSelectedDate] = useState(null);
 
   // Данные календаря
   const calendarData = {
@@ -28,6 +28,9 @@ const App = () => {
     "Тарсир",
     "Гимнастика/холодный душ/прогулка",
     "Настрой на благополучный день"
+  ];
+  const bar_menu = [
+
   ];
 
   // Дополнительные задачи
@@ -91,9 +94,22 @@ const App = () => {
           </div>
         </div>
 
+
+        {/* Число 13 (как на изображении) */}
+        <div className="number-13">
+          13
+        </div>
+
+        {/* Модальное окно для выбранной даты */}
+        <div class="image-menu">
+            <img class="image-menu" src="/images/jurnaly.jpg" width = "100" height = "100" alt="Журнал" on/>
+            <img class="image-menu" src="/images/grafiki.jpg" width = "100" height = "100" alt="Графики!" />
+            <img class="image-menu" src="/images/setting.jpg" width = "100" height = "100" alt="Настройки" />
+        </div>
+
+
         {/* Дополнительные задачи */}
         <div className="additional-tasks">
-          <h3>Дополнительные задачи</h3>
           <div className="tasks-grid">
             {additionalTasks.map((task, index) => (
               <div key={index} className="task-item">
