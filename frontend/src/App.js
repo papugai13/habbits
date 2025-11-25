@@ -1,3 +1,4 @@
+// App.js
 import React, { useState } from 'react';
 import './App.css';
 
@@ -35,8 +36,10 @@ const App = () => {
   // Дополнительные задачи
   const additionalTasks = [
     "Журналы",
-    "Графики",
-    "Настройки"
+    "Графики", 
+    "Смелки",
+    "Испоминания",
+    "Настройка"
   ];
 
   return (
@@ -45,6 +48,7 @@ const App = () => {
         {/* Заголовок месяца */}
         <div className="month-header">
           <h2>{calendarData.month}</h2>
+          <progress value={selectedDate} max="30">Задача выполнена на 80%</progress>
         </div>
 
         {/* Календарь */}
@@ -60,7 +64,7 @@ const App = () => {
             <tbody>
               <tr>
                 {calendarData.days.map((day, index) => (
-                  <td
+                  <td 
                     key={index}
                     className={`calendar-cell ${day.value ? 'has-content' : ''}`}
                     onClick={() => setSelectedDate(day)}
@@ -114,6 +118,22 @@ const App = () => {
             ))}
           </div>
         </div>
+
+        {/* Число 13 (как на изображении) */}
+        <div className="number-13">
+          13
+        </div>
+
+        {/* Модальное окно для выбранной даты */}
+        {selectedDate && selectedDate.value && (
+          <div className="modal-overlay" onClick={() => setSelectedDate(null)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <h3>Детали дня</h3>
+              <p><strong>{selectedDate.day}:</strong> {selectedDate.value}</p>
+              <button onClick={() => setSelectedDate(null)}>Закрыть</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
