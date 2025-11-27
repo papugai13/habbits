@@ -4,7 +4,9 @@ import './App.css';
 
 const App = () => {
   const [selectedDate, setSelectedDate] = useState(null);
+  const [activeButtons, setActiveButtons] = useState({});
 
+  
   // Данные календаря
   const calendarData = {
     month: "30 июня-июля 2025г.",
@@ -41,6 +43,15 @@ const App = () => {
     "Испоминания",
     "Настройка"
   ];
+
+  // Функция для переключения состояния кнопки
+  const toggleButton = (habitIndex, buttonIndex) => {
+    const key = `${habitIndex}-${buttonIndex}`;
+    setActiveButtons(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
 
   return (
     <div className="app">
@@ -85,10 +96,20 @@ const App = () => {
         <div className="habits-section">
           <h3>Ежедневные привычки</h3>
           <div className="habits-list">
-            {habits.map((habit, index) => (
-              <div key={index} className="habit-item">
-                <input type="checkbox" id={`habit-${index}`} />
-                <label htmlFor={`habit-${index}`}>{habit}</label>
+            {habits.map((habit, habitIndex) => (
+              <div key={habitIndex} className="habit-item">
+                <p>
+                  <label>{habit}</label><br />
+                  {[0, 1, 2, 3, 4, 5, 6].map((buttonIndex) => (
+                    <button
+                      key={buttonIndex}
+                      className={activeButtons[`${habitIndex}-${buttonIndex}`] ? 'active' : ''}
+                      onClick={() => toggleButton(habitIndex, buttonIndex)}
+                    >
+                      ⠀⠀⠀⠀
+                    </button>
+                  ))}
+                </p>
               </div>
             ))}
           </div>
