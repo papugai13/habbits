@@ -30,9 +30,12 @@ class UserAll(models.Model):
 
 
 class Habit(models.Model):
-    """Model for goods category."""
 
-    user = models.ForeignKey
+    user = models.ForeignKey(
+        UserAll,
+        on_delete=models.CASCADE,
+        related_name="habit",
+        )
 
     habit_date = models.CharField(
         max_length=100,
@@ -58,8 +61,14 @@ class Habit(models.Model):
         verbose_name_plural = "Привычки"
 
 
-class Data(models.Model):
-    """Model for goods category."""
+class Date(models.Model):
+   
+    user = models.ForeignKey(
+        Habit,
+        UserAll,
+        on_delete=models.CASCADE,
+        related_name="date",
+    )
 
     name = models.CharField(
         max_length=100,
@@ -70,6 +79,10 @@ class Data(models.Model):
         unique=True,
         verbose_name="Слаг",
         max_length=100,
+    )
+
+    is_done = models.BooleanField(
+        verbose_name="Сделано"
     )
 
     def __str__(self) -> models.CharField:
