@@ -1,8 +1,13 @@
 from rest_framework import serializers
+from . models import Date, UserAll
 
-from .models import Habit
 
-class HabitSerializer(serializers.ModelSerializer):
+class UserAllSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Habit
+        model = UserAll
         fields = '__all__'
+
+class DateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Date
+        fields = '_all_'
