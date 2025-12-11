@@ -1,8 +1,9 @@
 from api import views
 from django.urls import path
-from . views import dates_list
+from . views import dates_list, userall_list
 
 urlpatterns = [
     path('', views.index),
     path('v1/dates/', views.dates_list),
+    path('v1/userall/', views.userall_list)
 ]
