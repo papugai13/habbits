@@ -1,10 +1,11 @@
+from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
 from rest_framework. response import Response
 from rest_framework import status
 
 
-from . models import Date
-from .serializers import DateSerializer
+from . models import Date, UserAll
+from .serializers import DateSerializer, UserAllSerializer
 
 
 @api_view(['GET', 'POST'])
@@ -29,6 +30,21 @@ def userall_list(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     usersall = UserAll.objects.all()
     serializer = UserAllSerializer(usersall, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+def api_userall_detail(request, pk):
+    post = get_object_or_404(UserAll, id=pk)
+    if request.method == 'PUT' or request.method == 'PATCH':
+        serializer = UserAllSerializer(post, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.error, status=status.HTTP_400_BAD_REQUEST)
+    elif request.method == 'DELETE':
+        post.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = UserAllSerializer(post)
     return Response(serializer.data)
 
 def index(request):
