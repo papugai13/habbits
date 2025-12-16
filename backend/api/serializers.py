@@ -10,4 +10,4 @@ class UserAllSerializer(serializers.ModelSerializer):
 class DateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Date
-        fields = '_all_'
+        fields = '__all__'
