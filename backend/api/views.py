@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view
 from django.shortcuts import get_object_or_404
 from rest_framework. response import Response
 from rest_framework import status
-
+from django.shortcuts import get_object_or_404
 
 from . models import Date, UserAll
 from .serializers import DateSerializer, UserAllSerializer
@@ -68,3 +68,17 @@ def api_userall_detail(request, pk):
 def index(request):
     return HttpResponse('Апи работает')
 
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+def api_posts_detail(request, pk):
+    post = get_object_or_404(Post, id=pk)
+    if request.method == 'PUT' or request.method == 'PATCH':
+        serializer = PostSerializer(post, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.error, status=status.HTTP_400_BAD_REQUEST)
+    elif request.method == 'DELETE':
+        post.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = PostSerializer(post)
+    return Response(serializer.data)
