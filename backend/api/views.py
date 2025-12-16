@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
+from django.shortcuts import get_object_or_404
 from rest_framework. response import Response
 from rest_framework import status
 
@@ -19,6 +20,23 @@ def dates_list(request):
     cats = Date.objects.all()
     serializer = DateSerializer(cats, many=True)
     return Response(serializer.data)
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+def api_dates_detail(request, pk):
+    post = get_object_or_404(Date, id=pk)
+    if request.method == 'PUT' or request.method == 'PATCH':
+        serializer = DateSerializer(post, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.error, status=status.HTTP_400_BAD_REQUEST)
+    elif request.method == 'DELETE':
+        post.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = DateSerializer(post)
+    return Response(serializer.data)
+
 
 @api_view(['GET', 'POST'])
 def userall_list(request):

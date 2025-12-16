@@ -5,6 +5,7 @@ from . views import api_userall_detail, dates_list, userall_list
 urlpatterns = [
     path('', views.index),
     path('v1/dates/', views.dates_list),
+    path('api/v1/dates/<int:pk>/', views.api_dates_detail),
     path('v1/userall/', views.userall_list),
     path('v1/userall/<int:pk>/', views.api_userall_detail)
 ]
