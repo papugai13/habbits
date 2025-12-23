@@ -1,5 +1,11 @@
 from rest_framework import serializers
-from . models import Date, UserAll
+from . models import Date, UserAll, Habit
+
+
+class HabitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Habit
+        fields = '__all__'
 
 
 class UserAllSerializer(serializers.ModelSerializer):

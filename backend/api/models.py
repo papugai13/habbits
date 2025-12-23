@@ -1,13 +1,8 @@
 from django.db import models
-
-# Create your models here.
-from django.db import models
 from django.contrib.auth.models import User
 
 
 class UserAll(models.Model):
-    """Model for goods category."""
-
     name = models.CharField(
         max_length=100,
         verbose_name="Название"
@@ -33,18 +28,11 @@ class UserAll(models.Model):
 
 
 class Habit(models.Model):
-
     user = models.ForeignKey(
         UserAll,
         on_delete=models.CASCADE,
         related_name="habit",
         )
-
-    habit_date = models.CharField(
-        max_length=100,
-        verbose_name="Дата привычки",
-    )
-
     name = models.CharField(
         max_length=100,
         verbose_name="Название",
@@ -55,7 +43,6 @@ class Habit(models.Model):
         verbose_name="Слаг",
         max_length=100,
     )
-
     def str(self) -> models.CharField:
         return self.name
 
@@ -65,7 +52,6 @@ class Habit(models.Model):
 
 
 class Date(models.Model):
-   
     user = models.ForeignKey(
         UserAll,
         on_delete=models.CASCADE,
@@ -76,7 +62,10 @@ class Date(models.Model):
         on_delete=models.CASCADE,
         related_name="date",
     )
-
+    habit_date = models.CharField(
+        max_length=100,
+        verbose_name="Дата привычки",
+    )
     name = models.CharField(
         max_length=100,
         verbose_name="Название",
