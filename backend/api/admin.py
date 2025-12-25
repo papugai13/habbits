@@ -17,3 +17,23 @@ class UserAllAdmin(admin.ModelAdmin):
 
 
 admin.site.register(UserAll, UserAllAdmin)
+    prepopulated_fields = {'slug': ('name',)}
+
+
+class DateAdmin(admin.ModelAdmin):
+    list_display = (
+        'name',
+    )
+    search_fields = (
+        'name',
+        'description',
+    )
+    empty_value_display = (
+        '-пусто-'
+    )
+
+    prepopulated_fields = {'slug': ('name',)}
+
+
+admin.site.register(Habit, HabitAdmin)
+admin.site.register(Date, DateAdmin)
