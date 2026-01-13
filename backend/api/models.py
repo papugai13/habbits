@@ -62,7 +62,7 @@ class Date(models.Model):
         on_delete=models.CASCADE,
         related_name="date",
     )
-    habit_date = models.CharField(
+    habit_date = models.DateTimeField(
         max_length=100,
         verbose_name="Дата привычки",
     )
@@ -87,3 +87,27 @@ class Date(models.Model):
     class Meta:
         verbose_name = "Дата"
         verbose_name_plural = "Даты"
+
+
+class Achievement(models.Model):
+    user = models.ManyToManyField(
+        UserAll,
+        related_name="achievement",
+        )
+    name = models.CharField(
+        max_length=100,
+        verbose_name="Название",
+    )
+
+    slug = models.SlugField(
+        unique=True,
+        verbose_name="Слаг",
+        max_length=100,
+    )
+    def __str__(self) -> models.CharField:
+        return self.name
+
+    class Meta:
+        verbose_name = "Ачивка"
+        verbose_name_plural = "Ачивки"
+        
