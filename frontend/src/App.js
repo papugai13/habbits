@@ -1,160 +1,134 @@
-// App.js
 import React, { useState } from 'react';
 import './App.css';
 
 const App = () => {
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [activeButtons, setActiveButtons] = useState({});
-
+  const [selectedDay, setSelectedDay] = useState('Вт'); // Вторник по умолчанию
+  const [selectedCategory, setSelectedCategory] = useState('Личное');
+  const [activeTab, setActiveTab] = useState('Журналы');
   
-  // Данные календаря
-  const calendarData = {
-    month: "30 июня-июля 2025г.",
-    days: [
-      { day: "Пн", value: "Душа" },
-      { day: "Вт", value: "Личное" },
-      { day: "Ср", value: "Работа" },
-      { day: "Чт", value: "" },
-      { day: "Пт", value: "50 Вчера" },
-      { day: "Сб", value: "" },
-      { day: "Вс", value: "35 Сегодня" }
-    ]
+  // Состояние для чекбоксов привычек (habit index -> day index -> checked)
+  const [habitChecks, setHabitChecks] = useState({
+    0: [true, false, true, true, true, true, true], // Пост
+    1: [true, false, true, true, true, false, false], // Техеджут
+    2: [true, false, false, false, false, false, false], // КК
+    3: [true, false, false, false, false, false, false], // Джевшен
+    4: [true, false, true, true, true, true, true], // Тафсир
+    5: [true, false, true, true, true, true, true], // Гимнастика
+    6: [true, false, true, true, true, true, true], // Настрой
+  });
+
+  const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const categories = ['Душа', 'Личное', 'Работа'];
+  
+  const habits = [
+    { name: 'Пост', count: 13 },
+    { name: 'Техеджут', count: 7 },
+    { name: 'КК', count: 4 },
+    { name: 'Джевшен', count: 0 },
+    { name: 'Тафсир', count: 10 },
+    { name: 'Гимнастика/холодный душ/прогулка', count: 15 },
+    { name: 'Настрой на благополучный день', count: 9 },
+  ];
+
+  const bottomTabs = [
+    { name: 'Журналы', icon: '✓', disabled: false },
+    { name: 'Графики', icon: '📊', disabled: false },
+    { name: 'Смелки', icon: '🎯', disabled: true },
+    { name: 'Напоминания', icon: '🔔', disabled: true },
+    { name: 'Настройка', icon: '⚙️', disabled: false },
+  ];
+
+  const toggleHabitCheck = (habitIndex, dayIndex) => {
+    setHabitChecks(prev => ({
+      ...prev,
+      [habitIndex]: prev[habitIndex].map((checked, i) => 
+        i === dayIndex ? !checked : checked
+      )
+    }));
   };
 
-  // Список привычек/задач
-  const habits = [
-    "Пост",
-    "Техеджут",
-    "КК",
-    "Джевшен",
-    "Тарсир",
-    "Гимнастика/холодный душ/прогулка",
-    "Настрой на благополучный день"
-  ];
-  const bar_menu = [
-
-  ];
-
-  // Дополнительные задачи
-  const additionalTasks = [
-    "Журналы",
-    "Графики", 
-    "Смелки",
-    "Испоминания",
-    "Настройка"
-  ];
-
-  // Функция для переключения состояния кнопки
-  const toggleButton = (habitIndex, buttonIndex) => {
-    const key = `${habitIndex}-${buttonIndex}`;
-    setActiveButtons(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+  const getHabitCount = (habitIndex) => {
+    return habitChecks[habitIndex]?.filter(Boolean).length || 0;
   };
 
   return (
     <div className="app">
-      <div className="container">
-        {/* Заголовок месяца */}
-        <div className="month-header">
-          <h2>{calendarData.month}</h2>
-          <progress value={selectedDate} max="30">Задача выполнена на 80%</progress>
-        </div>
-
-        {/* Календарь */}
-        <div className="calendar">
-          <table className="calendar-table">
-            <thead>
-              <tr>
-                {calendarData.days.map((day, index) => (
-                  <th key={index}>{day.day}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                {calendarData.days.map((day, index) => (
-                  <td 
-                    key={index}
-                    className={`calendar-cell ${day.value ? 'has-content' : ''}`}
-                    onClick={() => setSelectedDate(day)}
-                  >
-                    {day.value && (
-                      <div className="day-content">
-                        {day.value}
-                      </div>
-                    )}
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* Основные привычки */}
-        <div className="habits-section">
-          <h3>Ежедневные привычки</h3>
-          <div className="habits-list">
-            {habits.map((habit, habitIndex) => (
-              <div key={habitIndex} className="habit-item">
-                <p>
-                  <label>{habit}</label><br />
-                  {[0, 1, 2, 3, 4, 5, 6].map((buttonIndex) => (
-                    <button
-                      key={buttonIndex}
-                      className={activeButtons[`${habitIndex}-${buttonIndex}`] ? 'active' : ''}
-                      onClick={() => toggleButton(habitIndex, buttonIndex)}
-                    >
-                      ⠀⠀⠀⠀
-                    </button>
-                  ))}
-                </p>
-              </div>
-            ))}
+      {/* Верхняя панель */}
+      <div className="top-bar">
+        <button className="menu-btn">☰</button>
+        <div className="date-section">
+          <div className="date-text">30 июня-июля 2025г.</div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: '60%' }}></div>
           </div>
         </div>
+        <button className="add-btn">+</button>
+      </div>
 
+      {/* Навигация по дням */}
+      <div className="days-nav">
+        {days.map(day => (
+          <button
+            key={day}
+            className={`day-btn ${selectedDay === day ? 'active' : ''}`}
+            onClick={() => setSelectedDay(day)}
+          >
+            {day}
+          </button>
+        ))}
+      </div>
 
-        {/* Число 13 (как на изображении) */}
-        <div className="number-13">
-          13
+      {/* Фильтры категорий */}
+      <div className="categories-section">
+        <div className="categories-buttons">
+          {categories.map(category => (
+            <button
+              key={category}
+              className={`category-btn ${selectedCategory === category ? 'active' : ''}`}
+              onClick={() => setSelectedCategory(category)}
+            >
+              {category}
+            </button>
+          ))}
         </div>
-
-        {/* Модальное окно для выбранной даты */}
-        <div class="image-menu">
-            <img class="image-menu" src="/images/jurnaly.jpg" width = "100" height = "100" alt="Журнал" on/>
-            <img class="image-menu" src="/images/grafiki.jpg" width = "100" height = "100" alt="Графики!" />
-            <img class="image-menu" src="/images/setting.jpg" width = "100" height = "100" alt="Настройки" />
+        <div className="stats">
+          <div className="stat-item">50<br/>Вчера</div>
+          <div className="stat-item">35<br/>Сегодня</div>
         </div>
+      </div>
 
-
-        {/* Дополнительные задачи */}
-        <div className="additional-tasks">
-          <div className="tasks-grid">
-            {additionalTasks.map((task, index) => (
-              <div key={index} className="task-item">
-                {task}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Число 13 (как на изображении) */}
-        <div className="number-13">
-          13
-        </div>
-
-        {/* Модальное окно для выбранной даты */}
-        {selectedDate && selectedDate.value && (
-          <div className="modal-overlay" onClick={() => setSelectedDate(null)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h3>Детали дня</h3>
-              <p><strong>{selectedDate.day}:</strong> {selectedDate.value}</p>
-              <button onClick={() => setSelectedDate(null)}>Закрыть</button>
+      {/* Список привычек */}
+      <div className="habits-container">
+        {habits.map((habit, habitIndex) => (
+          <div key={habitIndex} className="habit-row">
+            <div className="habit-name">{habit.name}</div>
+            <div className="habit-checks">
+              {days.map((day, dayIndex) => (
+                <button
+                  key={dayIndex}
+                  className={`check-box ${habitChecks[habitIndex]?.[dayIndex] ? 'checked' : ''}`}
+                  onClick={() => toggleHabitCheck(habitIndex, dayIndex)}
+                >
+                </button>
+              ))}
             </div>
+            <div className="habit-count">{getHabitCount(habitIndex)}</div>
           </div>
-        )}
+        ))}
+      </div>
+
+      {/* Нижняя навигация */}
+      <div className="bottom-nav">
+        {bottomTabs.map((tab, index) => (
+          <button
+            key={index}
+            className={`nav-item ${activeTab === tab.name ? 'active' : ''} ${tab.disabled ? 'disabled' : ''}`}
+            onClick={() => !tab.disabled && setActiveTab(tab.name)}
+          >
+            <div className="nav-icon">{tab.icon}</div>
+            <div className="nav-label">{tab.name}</div>
+          </button>
+        ))}
       </div>
     </div>
   );

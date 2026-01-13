@@ -1,5 +1,7 @@
 from django.contrib import admin
+
 from api.models import Achievement, Date, Habit, UserAll
+
 
 class UserAllAdmin(admin.ModelAdmin):
     list_display = (
@@ -47,6 +49,7 @@ class HabitAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('name',)}
 
 
+
 class AchievementAdmin(admin.ModelAdmin):
     list_display = (
         'name',
@@ -59,7 +62,6 @@ class AchievementAdmin(admin.ModelAdmin):
         '-пусто-'
     )
     filter_vertical = ('user',)
-
 
     prepopulated_fields = {'slug': ('name',)}
 
