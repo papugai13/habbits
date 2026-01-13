@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from . models import Date, UserAll, Habit
+from . models import Achievement, Date, UserAll, Habit
 
 
 class HabitSerializer(serializers.ModelSerializer):
@@ -16,4 +16,9 @@ class UserAllSerializer(serializers.ModelSerializer):
 class DateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Date
+        fields = '__all__'
+
+class AchievementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Achievement
         fields = '__all__'

@@ -3,14 +3,17 @@ from rest_framework. response import Response
 from rest_framework import generics, status, viewsets
 from django.shortcuts import get_object_or_404
 
-from . models import Date, Habit, UserAll
-from .serializers import DateSerializer, HabitSerializer, UserAllSerializer
+from . models import Achievement, Date, Habit, UserAll
+from .serializers import AchievementSerializer, DateSerializer, HabitSerializer, UserAllSerializer
 
 
 class HabitViewSet(viewsets.ModelViewSet):
     queryset = Habit.objects.all()
     serializer_class = HabitSerializer
 
+class AchievementViewSet(viewsets.ModelViewSet):
+    queryset = Achievement.objects.all()
+    serializer_class = AchievementSerializer
 
 @api_view(['GET', 'POST'])
 def dates_list(request):

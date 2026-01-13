@@ -62,7 +62,7 @@ class Date(models.Model):
         on_delete=models.CASCADE,
         related_name="date",
     )
-    habit_date = models.DateTimeField(
+    habit_date = models.DateField(
         max_length=100,
         verbose_name="Дата привычки",
     )
