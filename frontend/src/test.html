@@ -6,9 +6,14 @@
     <title>Document</title>
 </head>
 <body>
-    <script>
-        const response = await fetch('http://127.0.0.1:8000/users/');
-        const users = await response.json();
-    </script>
+<script>
+  fetch('http://127.0.0.1:8000/api/v1/habits/')
+    .then(response => {
+      if (!response.ok) throw new Error('Network response was not ok');
+      return response.json();
+    })
+    .then(habit => console.log(habit))
+    .catch(error => console.error('Ошибка:', error));
+</script>
 </body>
 </html>

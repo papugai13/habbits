@@ -19,7 +19,7 @@ class UserAll(models.Model):
         max_length=100,
     )
 
-    def str(self) -> models.CharField:
+    def __str__(self) -> models.CharField:
         return self.name
 
     class Meta:
@@ -43,7 +43,7 @@ class Habit(models.Model):
         verbose_name="Слаг",
         max_length=100,
     )
-    def str(self) -> models.CharField:
+    def __str__(self) -> models.CharField:
         return self.name
 
     class Meta:
@@ -81,7 +81,7 @@ class Date(models.Model):
         verbose_name="Сделано"
     )
 
-    def str(self) -> models.CharField:
+    def __str__(self) -> models.CharField:
         return self.name
 
     class Meta:
