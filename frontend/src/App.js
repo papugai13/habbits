@@ -3,18 +3,17 @@ import './App.css';
 
 const App = () => {
   const [selectedDay, setSelectedDay] = useState('Вт'); // Вторник по умолчанию
-  const [selectedCategory, setSelectedCategory] = useState('Личное');
   const [activeTab, setActiveTab] = useState('Журналы');
   
   // Состояние для чекбоксов привычек (habit index -> day index -> checked)
   const [habitChecks, setHabitChecks] = useState({
-    0: [true, false, true, true, true, true, true], // Пост
-    1: [true, false, true, true, true, false, false], // Техеджут
-    2: [true, false, false, false, false, false, false], // КК
-    3: [true, false, false, false, false, false, false], // Джевшен
-    4: [true, false, true, true, true, true, true], // Тафсир
-    5: [true, false, true, true, true, true, true], // Гимнастика
-    6: [true, false, true, true, true, true, true], // Настрой
+    0: [false, false, false, false, false, false, false], // Пост
+    1: [false, false, false, false, false, false, false], // Техеджут
+    2: [false, false, false, false, false, false, false], // КК
+    3: [false, false, false, false, false, false, false], // Джевшен
+    4: [false, false, false, false, false, false, false], // Тафсир
+    5: [false, false, false, false, false, false, false], // Гимнастика
+    6: [false, false, false, false, false, false, false], // Настрой
   });
 
   const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -31,11 +30,11 @@ const App = () => {
   ];
 
   const bottomTabs = [
-    { name: 'Журналы', icon: '✓', disabled: false },
+    { name: 'Журналы', icon: '✔️', disabled: false },
     { name: 'Графики', icon: '📊', disabled: false },
-    { name: 'Смелки', icon: '🎯', disabled: true },
-    { name: 'Напоминания', icon: '🔔', disabled: true },
-    { name: 'Настройка', icon: '⚙️', disabled: false },
+    { name: 'Ачивки', icon: '🏆', disabled: false },
+    { name: 'Профиль', icon: '👤', disabled: false },
+    //{ name: 'Настройка', icon: '⚙️', disabled: false },
   ];
 
   const toggleHabitCheck = (habitIndex, dayIndex) => {
@@ -80,17 +79,8 @@ const App = () => {
 
       {/* Фильтры категорий */}
       <div className="categories-section">
-        <div className="categories-buttons">
-          {categories.map(category => (
-            <button
-              key={category}
-              className={`category-btn ${selectedCategory === category ? 'active' : ''}`}
-              onClick={() => setSelectedCategory(category)}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
+        
+      
         <div className="stats">
           <div className="stat-item">50<br/>Вчера</div>
           <div className="stat-item">35<br/>Сегодня</div>
@@ -102,6 +92,7 @@ const App = () => {
         {habits.map((habit, habitIndex) => (
           <div key={habitIndex} className="habit-row">
             <div className="habit-name">{habit.name}</div>
+            
             <div className="habit-checks">
               {days.map((day, dayIndex) => (
                 <button
