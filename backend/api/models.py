@@ -3,6 +3,16 @@ from django.contrib.auth.models import User
 from django.utils.text import slugify
 
 
+def unique_slugify(instance, slug):
+    model = instance.__class__
+    unique_slug = slug
+    num = 1
+    while model.objects.filter(slug=unique_slug).exclude(id=instance.id).exists():
+        unique_slug = f'{slug}-{num}'
+        num += 1
+    return unique_slug
+
+
 class UserAll(models.Model):
     name = models.CharField(
         max_length=100,
@@ -23,7 +33,7 @@ class UserAll(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            self.slug = unique_slugify(self, slugify(self.name))
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
@@ -66,7 +76,7 @@ class Habit(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            self.slug = unique_slugify(self, slugify(self.name))
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
@@ -114,7 +124,7 @@ class Date(models.Model):
         if not self.name:
             self.name = f"{self.habit.name} - {self.habit_date}"
         if not self.slug:
-            self.slug = slugify(self.name)
+            self.slug = unique_slugify(self, slugify(self.name))
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
