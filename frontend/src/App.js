@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 const App = () => {
-  const [selectedDay, setSelectedDay] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Личное');
+  const [selectedCategory, setSelectedCategory] = useState('Все');
   const [activeTab, setActiveTab] = useState('Журналы');
   const [habitsData, setHabitsData] = useState([]);
-  const [weekDays, setWeekDays] = useState([]);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const categories = ['Душа', 'Личное', 'Работа'];
+  const WEEK_DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+  const categories = ['Все', 'Душа', 'Личное', 'Работа'];
 
   const bottomTabs = [
     { name: 'Журналы', icon: '✓', disabled: false },
@@ -24,19 +25,6 @@ const App = () => {
       if (!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
       setHabitsData(data);
-
-      // Extract days from the first habit's statuses for the header
-      if (data.length > 0 && data[0].statuses) {
-        const days = data[0].statuses.map(status => {
-          const date = new Date(status.date);
-          return new Intl.DateTimeFormat('ru-RU', { weekday: 'short' }).format(date);
-        });
-        setWeekDays(days);
-        // Set current day (last one) as selected by default if not set
-        if (!selectedDay) {
-          setSelectedDay(days[days.length - 1]);
-        }
-      }
     } catch (error) {
       console.error('Error fetching habits:', error);
     }
@@ -131,22 +119,10 @@ const App = () => {
         <button className="add-btn">+</button>
       </div>
 
-      {/* Навигация по дням */}
-      <div className="days-nav">
-        {weekDays.map((day, index) => (
-          <button
-            key={index}
-            className={`day-btn ${selectedDay === day ? 'active' : ''}`}
-            onClick={() => setSelectedDay(day)}
-          >
-            {day}
-          </button>
-        ))}
-      </div>
-
       {/* Фильтры категорий */}
       <div className="categories-section">
-        <div className="categories-buttons">
+        {/* Desktop / Standard View */}
+        <div className="categories-buttons desktop-only">
           {categories.map(category => (
             <button
               key={category}
@@ -157,15 +133,68 @@ const App = () => {
             </button>
           ))}
         </div>
+
+        {/* Mobile / Hamburger View */}
+        <div className="categories-mobile mobile-only">
+          <button className="category-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+            {selectedCategory} <span className="arrow">▼</span>
+          </button>
+          {isMenuOpen && (
+            <div className="category-dropdown">
+              {categories.map(category => (
+                <div
+                  key={category}
+                  className={`dropdown-item ${selectedCategory === category ? 'active' : ''}`}
+                  onClick={() => {
+                    setSelectedCategory(category);
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  {category}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="stats">
           <div className="stat-item">{completedYesterday}<br />Вчера</div>
           <div className="stat-item">{completedToday}<br />Сегодня</div>
         </div>
       </div>
 
+      {/* Заголовки дней недели */}
+      <div className="days-header">
+        <div className="days-cols">
+          {WEEK_DAYS.map((day, index) => {
+            // Calculate date for this column (Monday + index)
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0 (Sun) to 6 (Sat)
+            // Adjust so 0 is Mon, 6 is Sun for calculation
+            const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            const diff = index - currentDayIndex;
+
+            const columnDate = new Date(today);
+            columnDate.setDate(today.getDate() + diff);
+            const columnDateStr = columnDate.toLocaleDateString('en-CA');
+            const todayStr = today.toLocaleDateString('en-CA');
+
+            const isTodayCol = columnDateStr === todayStr;
+
+            return (
+              <div key={day} className={`day-col ${isTodayCol ? 'today' : ''}`}>
+                {day}
+              </div>
+            );
+          })}
+        </div>
+        <div className="days-placeholder-end"></div>
+      </div>
+
       {/* Список привычек */}
       <div className="habits-container">
         {habitsData.filter(h => {
+          if (selectedCategory === 'Все') return true;
           // Map backend choices to UI categories
           // Backend: 'Soul', 'Personal', 'Work'
           // UI: 'Душа', 'Личное', 'Работа'
@@ -174,17 +203,52 @@ const App = () => {
         }).map((habit) => (
           <div key={habit.id} className="habit-row">
             <div className="habit-name">{habit.name}</div>
-            <div className="habit-checks">
-              {habit.statuses.map((status, index) => (
-                <button
-                  key={status.date}
-                  className={`check-box ${status.is_done ? 'checked' : ''}`}
-                  onClick={() => toggleHabitCheck(habit.id, status.date, status.is_done, status.id)}
-                >
-                </button>
-              ))}
+            <div className="habit-row-content">
+              <div className="habit-checks">
+                {WEEK_DAYS.map((_, index) => {
+                  // Calculate date for this slot
+                  const today = new Date();
+                  const dayOfWeek = today.getDay();
+                  const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                  const diff = index - currentDayIndex;
+
+                  const slotDate = new Date(today);
+                  slotDate.setDate(today.getDate() + diff);
+                  const slotDateStr = slotDate.toLocaleDateString('en-CA');
+
+                  // Find status for this date
+                  const status = habit.statuses.find(s => s.date === slotDateStr);
+                  const isDone = status ? status.is_done : false;
+                  const statusId = status ? status.id : null;
+
+                  // Calculate yesterday date string
+                  const yesterday = new Date(today);
+                  yesterday.setDate(today.getDate() - 1);
+                  const yesterdayStr = yesterday.toLocaleDateString('en-CA');
+
+                  const todayStr = today.toLocaleDateString('en-CA');
+                  const isToday = slotDateStr === todayStr;
+                  const isPast = slotDateStr < todayStr;
+                  const isYesterday = slotDateStr === yesterdayStr;
+                  const isMissed = isPast && !isDone;
+
+                  // Disable if missed and NOT yesterday. 
+                  // (i.e. strictly past days beyond yesterday are locked if missed)
+                  const isDisabled = isMissed && !isYesterday;
+
+                  return (
+                    <button
+                      key={slotDateStr}
+                      className={`check-box ${isDone ? 'checked' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''}`}
+                      onClick={() => !isDisabled && toggleHabitCheck(habit.id, slotDateStr, isDone, statusId)}
+                      disabled={isDisabled}
+                    >
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="habit-count">{getHabitCount(habit)}</div>
             </div>
-            <div className="habit-count">{getHabitCount(habit)}</div>
           </div>
         ))}
       </div>

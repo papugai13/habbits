@@ -161,6 +161,70 @@ body {
   font-weight: 500;
 }
 
+/* Dropdown Menu for Mobile */
+.categories-mobile {
+  position: relative;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.category-toggle {
+  width: 100%;
+  padding: 10px 15px;
+  background-color: #F8F8F8;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.category-toggle .arrow {
+  font-size: 10px;
+  color: #888;
+}
+
+.category-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background-color: #FFFFFF;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  padding: 12px 15px;
+  font-size: 14px;
+  color: #333;
+  border-bottom: 1px solid #F0F0F0;
+  cursor: pointer;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item.active {
+  background-color: #F0FFF4;
+  color: #00FF7F;
+  font-weight: 500;
+}
+
+/* Utilities for responsiveness */
+.mobile-only {
+  display: none;
+}
+
 /* Список привычек */
 .habits-container {
   flex: 1;
@@ -170,34 +234,44 @@ body {
 
 .habit-row {
   display: flex;
-  align-items: center;
-  margin-bottom: 15px;
-  gap: 10px;
+  flex-direction: column;
+  margin-bottom: 20px;
+  gap: 8px;
 }
 
 .habit-name {
-  flex: 1;
   font-size: 14px;
   color: #333;
   font-weight: 500;
-  min-width: 0;
+  width: 100%;
   word-wrap: break-word;
+}
+
+.habit-row-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
 }
 
 .habit-checks {
   display: flex;
+  flex: 1;
+  justify-content: space-between;
   gap: 4px;
 }
 
 .check-box {
-  width: 32px;
+  flex: 1;
   height: 32px;
   background-color: #D0D0D0;
   border: 1px solid #C0C0C0;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   padding: 0;
+  min-width: 0;
+  /* allows flex shrink if needed */
 }
 
 .check-box.checked {
@@ -205,8 +279,41 @@ body {
   border-color: #00FF7F;
 }
 
+.check-box.missed {
+  background-color: #A0A0A0;
+  /* Darker gray for past missed */
+  opacity: 0.6;
+}
+
+/* Only disable cursor if button is actually disabled */
+.check-box.missed:disabled {
+  cursor: not-allowed;
+}
+
+/* If not disabled, it's editable (e.g. yesterday) */
+.check-box.missed:not(:disabled) {
+  cursor: pointer;
+}
+
+.check-box.today {
+  border: 1px solid #666;
+  /* Highlight current day */
+}
+
+/* Also styling the day header if it matches today */
+.day-col.today {
+  color: #000;
+  font-weight: 800;
+  /* border: 1px solid #666;  Optional if user wants the header boxed too */
+}
+
 .check-box:hover {
   opacity: 0.8;
+}
+
+.check-box:hover.missed:disabled {
+  opacity: 0.6;
+  /* No hover effect for truly disabled missed */
 }
 
 .habit-count {
@@ -303,6 +410,15 @@ body {
     max-width: 100%;
   }
 
+  /* Show/Hide logic */
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: block;
+  }
+
   .bottom-nav {
     max-width: 100%;
   }
@@ -312,8 +428,8 @@ body {
   }
 
   .check-box {
-    width: 28px;
     height: 28px;
+    /* width handled by flex */
   }
 
   .categories-buttons {
@@ -323,8 +439,8 @@ body {
 
 @media (max-width: 360px) {
   .check-box {
-    width: 24px;
     height: 24px;
+    /* width handled by flex */
   }
 
   .habit-count {
@@ -338,3 +454,37 @@ body {
     font-size: 12px;
   }
 }
+
+.days-header {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px 5px;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.days-placeholder {
+  display: none;
+}
+
+.days-cols {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  /* aligns with habit-checks gap */
+}
+
+.day-col {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  color: #333;
+  font-weight: 600;
+}
+
+.days-placeholder-end {
+  min-width: 35px;
+  /* aligns with habit count */
+}
+
+/* Removed fixed widths for responsiveness */
