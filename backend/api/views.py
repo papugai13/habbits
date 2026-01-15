@@ -5,8 +5,8 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from datetime import date, timedelta
 
-from . models import Date, Habit, UserAll
-from .serializers import DateSerializer, HabitSerializer, UserAllSerializer
+from . models import Achievement, Date, Habit, UserAll
+from .serializers import AchievementSerializer, DateSerializer, HabitSerializer, UserAllSerializer
 
 
 class HabitViewSet(viewsets.ModelViewSet):
@@ -50,6 +50,9 @@ class HabitViewSet(viewsets.ModelViewSet):
             
         return Response(result)
 
+class AchievementViewSet(viewsets.ModelViewSet):
+    queryset = Achievement.objects.all()
+    serializer_class = AchievementSerializer
 
 @api_view(['GET', 'POST'])
 def dates_list(request):
