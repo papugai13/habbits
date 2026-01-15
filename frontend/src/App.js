@@ -1,34 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 
 const App = () => {
-  const [selectedDay, setSelectedDay] = useState('Вт'); // Вторник по умолчанию
+  const [selectedDay, setSelectedDay] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Личное');
   const [activeTab, setActiveTab] = useState('Журналы');
-  
-  // Состояние для чекбоксов привычек (habit index -> day index -> checked)
-  const [habitChecks, setHabitChecks] = useState({
-    0: [true, false, true, true, true, true, true], // Пост
-    1: [true, false, true, true, true, false, false], // Техеджут
-    2: [true, false, false, false, false, false, false], // КК
-    3: [true, false, false, false, false, false, false], // Джевшен
-    4: [true, false, true, true, true, true, true], // Тафсир
-    5: [true, false, true, true, true, true, true], // Гимнастика
-    6: [true, false, true, true, true, true, true], // Настрой
-  });
+  const [habitsData, setHabitsData] = useState([]);
+  const [weekDays, setWeekDays] = useState([]);
 
-  const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
   const categories = ['Душа', 'Личное', 'Работа'];
-  
-  const habits = [
-    { name: 'Пост', count: 13 },
-    { name: 'Техеджут', count: 7 },
-    { name: 'КК', count: 4 },
-    { name: 'Джевшен', count: 0 },
-    { name: 'Тафсир', count: 10 },
-    { name: 'Гимнастика/холодный душ/прогулка', count: 15 },
-    { name: 'Настрой на благополучный день', count: 9 },
-  ];
 
   const bottomTabs = [
     { name: 'Журналы', icon: '✓', disabled: false },
@@ -38,18 +18,103 @@ const App = () => {
     { name: 'Настройка', icon: '⚙️', disabled: false },
   ];
 
-  const toggleHabitCheck = (habitIndex, dayIndex) => {
-    setHabitChecks(prev => ({
-      ...prev,
-      [habitIndex]: prev[habitIndex].map((checked, i) => 
-        i === dayIndex ? !checked : checked
-      )
-    }));
+  const fetchHabits = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/v1/habits/weekly_status/?user_id=1');
+      if (!response.ok) throw new Error('Failed to fetch');
+      const data = await response.json();
+      setHabitsData(data);
+
+      // Extract days from the first habit's statuses for the header
+      if (data.length > 0 && data[0].statuses) {
+        const days = data[0].statuses.map(status => {
+          const date = new Date(status.date);
+          return new Intl.DateTimeFormat('ru-RU', { weekday: 'short' }).format(date);
+        });
+        setWeekDays(days);
+        // Set current day (last one) as selected by default if not set
+        if (!selectedDay) {
+          setSelectedDay(days[days.length - 1]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching habits:', error);
+    }
   };
 
-  const getHabitCount = (habitIndex) => {
-    return habitChecks[habitIndex]?.filter(Boolean).length || 0;
+  useEffect(() => {
+    fetchHabits();
+  }, []);
+
+  const toggleHabitCheck = async (habitId, dayDate, currentStatus, dateId) => {
+    // Optimistic update
+    const updatedHabits = habitsData.map(habit => {
+      if (habit.id === habitId) {
+        return {
+          ...habit,
+          statuses: habit.statuses.map(status =>
+            status.date === dayDate ? { ...status, is_done: !status.is_done } : status
+          )
+        };
+      }
+      return habit;
+    });
+    setHabitsData(updatedHabits);
+
+    try {
+      let response;
+      if (dateId) {
+        // Toggle existing date entry
+        response = await fetch(`http://127.0.0.1:8000/api/v1/date/${dateId}/`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_done: !currentStatus })
+        });
+      } else {
+        // Create new date entry
+        response = await fetch(`http://127.0.0.1:8000/api/v1/dates/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user: 1, // Hardcoded user for now as per plan
+            habit: habitId,
+            habit_date: dayDate,
+            is_done: true
+          })
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error('API request failed');
+      }
+
+      // Refetch to get correct IDs and sync state
+      await fetchHabits();
+
+    } catch (error) {
+      console.error('Error toggling habit:', error);
+      // Revert optimistic update on error would be ideal here, 
+      // but for now we just log.
+      fetchHabits(); // Sync back to server state
+    }
   };
+
+  const getHabitCount = (habit) => {
+    // Just counting visible checks for now as backend doesn't return total count
+    return habit.statuses.filter(s => s.is_done).length;
+  };
+
+  // Calculate stats
+  const completedToday = habitsData.reduce((acc, habit) => {
+    const todayStatus = habit.statuses[habit.statuses.length - 1]; // Assuming last one is today
+    return acc + (todayStatus && todayStatus.is_done ? 1 : 0);
+  }, 0);
+
+  const completedYesterday = habitsData.reduce((acc, habit) => {
+    const yesterdayStatus = habit.statuses[habit.statuses.length - 2];
+    return acc + (yesterdayStatus && yesterdayStatus.is_done ? 1 : 0);
+  }, 0);
+
 
   return (
     <div className="app">
@@ -57,9 +122,10 @@ const App = () => {
       <div className="top-bar">
         <button className="menu-btn">☰</button>
         <div className="date-section">
-          <div className="date-text">30 июня-июля 2025г.</div>
+          <div className="date-text">Статистика</div>
           <div className="progress-bar">
-            <div className="progress-fill" style={{ width: '60%' }}></div>
+            {/* Simple progress bar based on today's completion rate */}
+            <div className="progress-fill" style={{ width: habitsData.length > 0 ? `${(completedToday / habitsData.length) * 100}%` : '0%' }}></div>
           </div>
         </div>
         <button className="add-btn">+</button>
@@ -67,9 +133,9 @@ const App = () => {
 
       {/* Навигация по дням */}
       <div className="days-nav">
-        {days.map(day => (
+        {weekDays.map((day, index) => (
           <button
-            key={day}
+            key={index}
             className={`day-btn ${selectedDay === day ? 'active' : ''}`}
             onClick={() => setSelectedDay(day)}
           >
@@ -92,27 +158,33 @@ const App = () => {
           ))}
         </div>
         <div className="stats">
-          <div className="stat-item">50<br/>Вчера</div>
-          <div className="stat-item">35<br/>Сегодня</div>
+          <div className="stat-item">{completedYesterday}<br />Вчера</div>
+          <div className="stat-item">{completedToday}<br />Сегодня</div>
         </div>
       </div>
 
       {/* Список привычек */}
       <div className="habits-container">
-        {habits.map((habit, habitIndex) => (
-          <div key={habitIndex} className="habit-row">
+        {habitsData.filter(h => {
+          // Map backend choices to UI categories
+          // Backend: 'Soul', 'Personal', 'Work'
+          // UI: 'Душа', 'Личное', 'Работа'
+          const catMap = { 'Soul': 'Душа', 'Personal': 'Личное', 'Work': 'Работа' };
+          return catMap[h.category] === selectedCategory || selectedCategory === h.category;
+        }).map((habit) => (
+          <div key={habit.id} className="habit-row">
             <div className="habit-name">{habit.name}</div>
             <div className="habit-checks">
-              {days.map((day, dayIndex) => (
+              {habit.statuses.map((status, index) => (
                 <button
-                  key={dayIndex}
-                  className={`check-box ${habitChecks[habitIndex]?.[dayIndex] ? 'checked' : ''}`}
-                  onClick={() => toggleHabitCheck(habitIndex, dayIndex)}
+                  key={status.date}
+                  className={`check-box ${status.is_done ? 'checked' : ''}`}
+                  onClick={() => toggleHabitCheck(habit.id, status.date, status.is_done, status.id)}
                 >
                 </button>
               ))}
             </div>
-            <div className="habit-count">{getHabitCount(habitIndex)}</div>
+            <div className="habit-count">{getHabitCount(habit)}</div>
           </div>
         ))}
       </div>

@@ -1,7 +1,9 @@
-from rest_framework.decorators import api_view
-from rest_framework. response import Response
+from rest_framework.decorators import api_view, action
+from rest_framework.response import Response
 from rest_framework import generics, status, viewsets
 from django.shortcuts import get_object_or_404
+from django.http import HttpResponse
+from datetime import date, timedelta
 
 from . models import Achievement, Date, Habit, UserAll
 from .serializers import AchievementSerializer, DateSerializer, HabitSerializer, UserAllSerializer
@@ -10,6 +12,43 @@ from .serializers import AchievementSerializer, DateSerializer, HabitSerializer,
 class HabitViewSet(viewsets.ModelViewSet):
     queryset = Habit.objects.all()
     serializer_class = HabitSerializer
+
+    @action(detail=False, methods=['get'])
+    def weekly_status(self, request):
+        user_id = request.query_params.get('user_id')
+        if not user_id:
+            # Fallback to first user for demo purposes if no user_id provided
+            user = UserAll.objects.first()
+        else:
+            user = get_object_or_404(UserAll, id=user_id)
+
+        if not user:
+            return Response({"error": "No user found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get habits for this user
+        habits = Habit.objects.filter(user=user)
+        
+        # We'll return status for the last 7 days including today
+        today = date.today()
+        start_date = today - timedelta(days=6)
+        
+        result = []
+        for habit in habits:
+            habit_data = HabitSerializer(habit).data
+            # Get statuses for the range
+            statuses = []
+            for i in range(7):
+                current_date = start_date + timedelta(days=i)
+                date_entry = Date.objects.filter(habit=habit, habit_date=current_date).first()
+                statuses.append({
+                    "date": current_date.isoformat(),
+                    "is_done": date_entry.is_done if date_entry else False,
+                    "id": date_entry.id if date_entry else None
+                })
+            habit_data['statuses'] = statuses
+            result.append(habit_data)
+            
+        return Response(result)
 
 class AchievementViewSet(viewsets.ModelViewSet):
     queryset = Achievement.objects.all()
@@ -36,7 +75,7 @@ def api_dates_detail(request, pk):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.error, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     elif request.method == 'DELETE':
         post.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -65,7 +104,7 @@ def api_userall_detail(request, pk):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.error, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     elif request.method == 'DELETE':
         post.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
