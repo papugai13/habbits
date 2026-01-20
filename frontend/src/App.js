@@ -12,10 +12,8 @@ const App = () => {
   const categories = ['Все', 'Душа', 'Личное', 'Работа'];
 
   const bottomTabs = [
-    { name: 'Журналы', icon: '✓', disabled: false },
+    { name: 'Журналы', icon: '✔️', disabled: false },
     { name: 'Графики', icon: '📊', disabled: false },
-    { name: 'Смелки', icon: '🎯', disabled: true },
-    { name: 'Напоминания', icon: '🔔', disabled: true },
     { name: 'Настройка', icon: '⚙️', disabled: false },
   ];
 
