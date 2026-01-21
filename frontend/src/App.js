@@ -1,11 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import Login from './components/Login';
+import Register from './components/Register';
 
 const App = () => {
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const [activeTab, setActiveTab] = useState('Журналы');
   const [habitsData, setHabitsData] = useState([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Authentication state
+  const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [showRegister, setShowRegister] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  // Form state for creating habit
+  const [newHabitName, setNewHabitName] = useState('');
+  const [newHabitCategory, setNewHabitCategory] = useState('Soul');
+  const [createError, setCreateError] = useState('');
 
   const WEEK_DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -19,9 +34,53 @@ const App = () => {
     { name: 'Настройка', icon: '⚙️', disabled: false },
   ];
 
+  // Check authentication status on mount
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showProfileMenu && !event.target.closest('.profile-section')) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfileMenu]);
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/auth/me/', {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+        setIsAuthenticated(true);
+        // Fetch habits after authentication confirmed
+        fetchHabits();
+      } else {
+        setIsAuthenticated(false);
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setIsAuthenticated(false);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   const fetchHabits = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/habits/weekly_status/?user_id=1');
+      const response = await fetch('http://127.0.0.1:8000/api/v1/habits/weekly_status/', {
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
       setHabitsData(data);
@@ -29,10 +88,6 @@ const App = () => {
       console.error('Error fetching habits:', error);
     }
   };
-
-  useEffect(() => {
-    fetchHabits();
-  }, []);
 
   const toggleHabitCheck = async (habitId, dayDate, currentStatus, dateId) => {
     // Optimistic update
@@ -56,6 +111,7 @@ const App = () => {
         response = await fetch(`http://127.0.0.1:8000/api/v1/date/${dateId}/`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ is_done: !currentStatus })
         });
       } else {
@@ -63,8 +119,8 @@ const App = () => {
         response = await fetch(`http://127.0.0.1:8000/api/v1/dates/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
-            user: 1, // Hardcoded user for now as per plan
             habit: habitId,
             habit_date: dayDate,
             is_done: true
@@ -81,8 +137,6 @@ const App = () => {
 
     } catch (error) {
       console.error('Error toggling habit:', error);
-      // Revert optimistic update on error would be ideal here, 
-      // but for now we just log.
       fetchHabits(); // Sync back to server state
     }
   };
@@ -103,20 +157,159 @@ const App = () => {
     return acc + (yesterdayStatus && yesterdayStatus.is_done ? 1 : 0);
   }, 0);
 
+  // Authentication handlers
+  const handleLogin = (userData) => {
+    setUser(userData);
+    setIsAuthenticated(true);
+    fetchHabits();
+  };
+
+  const handleRegister = (userData) => {
+    setUser(userData);
+    setIsAuthenticated(true);
+    fetchHabits();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('http://127.0.0.1:8000/api/auth/logout/', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      setUser(null);
+      setIsAuthenticated(false);
+      setHabitsData([]);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  const handleCreateHabit = async (e) => {
+    e.preventDefault();
+    setCreateError('');
+
+    if (!newHabitName.trim()) {
+      setCreateError('Введите название привычки');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/v1/habits/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: newHabitName.trim(),
+          category: newHabitCategory
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Не удалось создать привычку');
+      }
+
+      // Reset form and close modal
+      setNewHabitName('');
+      setNewHabitCategory('Soul');
+      setShowCreateModal(false);
+
+      // Refresh habits list
+      await fetchHabits();
+    } catch (error) {
+      console.error('Error creating habit:', error);
+      setCreateError(error.message || 'Произошла ошибка при создании привычки');
+    }
+  };
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="app">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth forms if not authenticated
+  if (!isAuthenticated) {
+    return showRegister ? (
+      <Register
+        onRegister={handleRegister}
+        onSwitchToLogin={() => setShowRegister(false)}
+      />
+    ) : (
+      <Login
+        onLogin={handleLogin}
+        onSwitchToRegister={() => setShowRegister(true)}
+      />
+    );
+  }
 
   return (
     <div className="app">
       {/* Верхняя панель */}
       <div className="top-bar">
-        <button className="menu-btn">☰</button>
+        <div className="profile-section">
+          <button
+            className="profile-btn"
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+          >
+            <div className="profile-avatar">
+              {user?.username?.charAt(0).toUpperCase() || 'U'}
+            </div>
+            <span className="profile-name">{user?.username || 'Пользователь'}</span>
+          </button>
+
+          {showProfileMenu && (
+            <div className="profile-menu">
+              <div className="profile-menu-item profile-info">
+                <strong>{user?.username}</strong>
+                <span>{user?.email}</span>
+              </div>
+              <div className="profile-menu-divider"></div>
+              <button
+                className="profile-menu-item profile-menu-action"
+                onClick={() => {
+                  setShowProfileMenu(false);
+                  // TODO: Открыть настройки
+                }}
+              >
+                ⚙️ Настройки
+              </button>
+              <button
+                className="profile-menu-item profile-menu-action logout-action"
+                onClick={() => {
+                  setShowProfileMenu(false);
+                  handleLogout();
+                }}
+              >
+                🚪 Выход
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="date-section">
-          <div className="date-text">Статистика</div>
           <div className="progress-bar">
             {/* Simple progress bar based on today's completion rate */}
             <div className="progress-fill" style={{ width: habitsData.length > 0 ? `${(completedToday / habitsData.length) * 100}%` : '0%' }}></div>
           </div>
+          <div className="date-text">
+            {completedToday} из {habitsData.length} сегодня
+          </div>
         </div>
-        <button className="add-btn">+</button>
+
+        <button
+          className="add-btn"
+          title="Создать привычку"
+          onClick={() => setShowCreateModal(true)}
+        >
+          +
+        </button>
       </div>
 
       {/* Фильтры категорий */}
@@ -266,6 +459,74 @@ const App = () => {
           </button>
         ))}
       </div>
+
+      {/* Модальное окно создания привычки */}
+      {showCreateModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Создать привычку</h2>
+              <button
+                className="modal-close"
+                onClick={() => setShowCreateModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateHabit} className="habit-form">
+              <div className="form-group">
+                <label htmlFor="habit-name">Название привычки</label>
+                <input
+                  id="habit-name"
+                  type="text"
+                  className="form-input"
+                  placeholder="Например: Зарядка"
+                  value={newHabitName}
+                  onChange={(e) => setNewHabitName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="habit-category">Категория</label>
+                <select
+                  id="habit-category"
+                  className="form-select"
+                  value={newHabitCategory}
+                  onChange={(e) => setNewHabitCategory(e.target.value)}
+                >
+                  <option value="Soul">Душа</option>
+                  <option value="Personal">Личное</option>
+                  <option value="Work">Работа</option>
+                </select>
+              </div>
+
+              {createError && (
+                <div className="error-message">
+                  {createError}
+                </div>
+              )}
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowCreateModal(false)}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                >
+                  Создать
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

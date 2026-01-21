@@ -1,32 +1,39 @@
 from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
 from rest_framework import generics, status, viewsets
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from datetime import date, timedelta
 
 from . models import Achievement, Date, Habit, UserAll
-from .serializers import AchievementSerializer, DateSerializer, HabitSerializer, UserAllSerializer
+from .serializers import (
+    AchievementSerializer, DateSerializer, HabitSerializer, 
+    UserAllSerializer, UserSerializer, RegisterSerializer, LoginSerializer
+)
 
 
 class HabitViewSet(viewsets.ModelViewSet):
     queryset = Habit.objects.all()
     serializer_class = HabitSerializer
+    permission_classes = [IsAuthenticated]
 
     @action(detail=False, methods=['get'])
     def weekly_status(self, request):
-        user_id = request.query_params.get('user_id')
-        if not user_id:
-            # Fallback to first user for demo purposes if no user_id provided
-            user = UserAll.objects.first()
-        else:
-            user = get_object_or_404(UserAll, id=user_id)
-
-        if not user:
-            return Response({"error": "No user found"}, status=status.HTTP_404_NOT_FOUND)
+        # Get or create UserAll profile for authenticated user
+        user_profile, created = UserAll.objects.get_or_create(
+            auth_user=request.user,
+            defaults={
+                'name': request.user.username,
+                'age': ''
+            }
+        )
 
         # Get habits for this user
-        habits = Habit.objects.filter(user=user)
+        habits = Habit.objects.filter(user=user_profile)
         
         # We'll return status for the last 7 days including today
         today = date.today()
@@ -57,7 +64,22 @@ class AchievementViewSet(viewsets.ModelViewSet):
 @api_view(['GET', 'POST'])
 def dates_list(request):
     if request.method == 'POST':
-        serializer = DateSerializer(data=request.data)
+        # Get or create UserAll profile for authenticated user
+        if request.user.is_authenticated:
+            user_profile, _ = UserAll.objects.get_or_create(
+                auth_user=request.user,
+                defaults={
+                    'name': request.user.username,
+                    'age': ''
+                }
+            )
+            # Add user to request data
+            data = request.data.copy()
+            data['user'] = user_profile.id
+        else:
+            data = request.data
+            
+        serializer = DateSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -113,3 +135,67 @@ def api_userall_detail(request, pk):
 
 def index(request):
     return HttpResponse('Апи работает')
+
+
+# Authentication Views
+class RegisterView(APIView):
+    """Регистрация нового пользователя"""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            # Автоматический вход после регистрации
+            login(request, user)
+            return Response(
+                UserSerializer(user).data,
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LoginView(APIView):
+    """Вход в систему"""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data['username']
+            password = serializer.validated_data['password']
+            
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                return Response(
+                    UserSerializer(user).data,
+                    status=status.HTTP_200_OK
+                )
+            return Response(
+                {'error': 'Неверное имя пользователя или пароль'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LogoutView(APIView):
+    """Выход из системы"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        logout(request)
+        return Response(
+            {'message': 'Успешный выход'},
+            status=status.HTTP_200_OK
+        )
+
+
+class CurrentUserView(APIView):
+    """Получение данных текущего пользователя"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
