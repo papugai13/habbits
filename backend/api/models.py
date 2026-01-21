@@ -14,6 +14,15 @@ def unique_slugify(instance, slug):
 
 
 class UserAll(models.Model):
+    auth_user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="user_profile",
+        null=True,
+        blank=True,
+        verbose_name="Пользователь Django"
+    )
+    
     name = models.CharField(
         max_length=100,
         verbose_name="Название"
@@ -21,7 +30,8 @@ class UserAll(models.Model):
 
     age = models.CharField(
         max_length=100,
-        verbose_name="Возраст"
+        verbose_name="Возраст",
+        blank=True
     )
 
     slug = models.SlugField(
