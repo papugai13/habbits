@@ -4,6 +4,22 @@ import Login from './components/Login';
 import Register from './components/Register';
 
 const App = () => {
+  // Helper to get CSRF token
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const [activeTab, setActiveTab] = useState('Журналы');
   const [habitsData, setHabitsData] = useState([]);
@@ -53,9 +69,7 @@ const App = () => {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/auth/me/', {
-        credentials: 'include'
-      });
+      const response = await fetch('/api/auth/me/');
 
       if (response.ok) {
         const userData = await response.json();
@@ -76,9 +90,7 @@ const App = () => {
 
   const fetchHabits = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/habits/weekly_status/', {
-        credentials: 'include'
-      });
+      const response = await fetch('/api/v1/habits/weekly_status/');
       if (!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
       setHabitsData(data);
@@ -106,17 +118,23 @@ const App = () => {
       let response;
       if (dateId) {
         // Toggle existing date entry
-        response = await fetch(`http://127.0.0.1:8000/api/v1/date/${dateId}/`, {
+        response = await fetch(`/api/v1/date/${dateId}/`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
           credentials: 'include',
           body: JSON.stringify({ is_done: !currentStatus })
         });
       } else {
         // Create new date entry
-        response = await fetch(`http://127.0.0.1:8000/api/v1/dates/`, {
+        response = await fetch(`/api/v1/dates/`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
           credentials: 'include',
           body: JSON.stringify({
             habit: habitId,
@@ -170,8 +188,11 @@ const App = () => {
 
   const handleLogout = async () => {
     try {
-      await fetch('http://127.0.0.1:8000/api/auth/logout/', {
+      await fetch('/api/auth/logout/', {
         method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
         credentials: 'include'
       });
       setUser(null);
@@ -192,9 +213,12 @@ const App = () => {
     }
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/habits/', {
+      const response = await fetch('/api/v1/habits/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
         credentials: 'include',
         body: JSON.stringify({
           name: newHabitName.trim(),
