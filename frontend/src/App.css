@@ -351,6 +351,23 @@ body {
   font-weight: 500;
 }
 
+/* More Categories Dropdown (Desktop) */
+.more-categories-wrapper {
+  position: relative;
+  display: flex;
+}
+
+.more-dropdown {
+  right: 0;
+  left: auto;
+  min-width: 150px;
+}
+
+.more-btn.active {
+  background-color: #00FF7F;
+  color: white;
+}
+
 /* Utilities for responsiveness */
 .mobile-only {
   display: none;
@@ -780,6 +797,51 @@ body {
   border-color: #00FF7F;
   background-color: #FFFFFF;
   box-shadow: 0 0 0 3px rgba(0, 255, 127, 0.1);
+}
+
+.category-input-wrapper {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.category-input-wrapper .form-select {
+  flex: 1;
+}
+
+.add-category-inline-btn {
+  width: 42px;
+  height: 42px;
+  background-color: #F0F0F0;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.add-category-inline-btn:hover {
+  background-color: #E0E0E0;
+  color: #333;
+}
+
+.inline-add-row {
+  display: flex;
+  gap: 8px;
+}
+
+.inline-add-row .form-input {
+  flex: 1;
+}
+
+.btn-small {
+  padding: 8px 16px;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .form-input::placeholder {

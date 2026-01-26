@@ -54,13 +54,37 @@ class UserAll(models.Model):
         verbose_name_plural = "Пользователи"
 
 
-class Habit(models.Model):
-    CATEGORY_CHOICES = [
-        ('Soul', 'Душа'),
-        ('Personal', 'Личное'),
-        ('Work', 'Работа'),
-    ]
+class Category(models.Model):
+    user = models.ForeignKey(
+        UserAll,
+        on_delete=models.CASCADE,
+        related_name="categories",
+    )
+    name = models.CharField(
+        max_length=20,
+        verbose_name="Название",
+    )
+    slug = models.SlugField(
+        verbose_name="Слаг",
+        max_length=100,
+        blank=True,
+    )
 
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = unique_slugify(self, slugify(self.name))
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return self.name
+
+    class Meta:
+        verbose_name = "Категория"
+        verbose_name_plural = "Категории"
+        unique_together = (('user', 'name'), ('user', 'slug'))
+
+
+class Habit(models.Model):
     user = models.ForeignKey(
         UserAll,
         on_delete=models.CASCADE,
@@ -70,10 +94,22 @@ class Habit(models.Model):
         max_length=100,
         verbose_name="Название",
     )
-    category = models.CharField(
+    category_old = models.CharField(
         max_length=20,
-        choices=CATEGORY_CHOICES,
+        choices=[
+            ('Soul', 'Душа'),
+            ('Personal', 'Личное'),
+            ('Work', 'Работа'),
+        ],
         default='Personal',
+        verbose_name="Старая категория"
+    )
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="habits",
         verbose_name="Категория"
     )
 

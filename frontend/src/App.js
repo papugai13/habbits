@@ -35,12 +35,15 @@ const App = () => {
 
   // Form state for creating habit
   const [newHabitName, setNewHabitName] = useState('');
-  const [newHabitCategory, setNewHabitCategory] = useState('Soul');
+  const [newHabitCategory, setNewHabitCategory] = useState('');
   const [createError, setCreateError] = useState('');
+  // Categories state
+  const [categories, setCategories] = useState([{ id: 'all', name: 'Все' }]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   const WEEK_DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-
-  const categories = ['Все', 'Душа', 'Личное', 'Работа'];
 
   const bottomTabs = [
     { name: 'Журналы', icon: '✔️', disabled: false },
@@ -75,8 +78,9 @@ const App = () => {
         const userData = await response.json();
         setUser(userData);
         setIsAuthenticated(true);
-        // Fetch habits after authentication confirmed
+        // Fetch data after authentication confirmed
         fetchHabits();
+        fetchCategories();
       } else {
         setIsAuthenticated(false);
       }
@@ -88,14 +92,62 @@ const App = () => {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/v1/categories/');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data);
+
+        // Set default category for form if not set
+        if (data.length > 0 && !newHabitCategory) {
+          setNewHabitCategory(data[0].id.toString());
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
   const fetchHabits = async () => {
     try {
       const response = await fetch('/api/v1/habits/weekly_status/');
-      if (!response.ok) throw new Error('Failed to fetch');
-      const data = await response.json();
-      setHabitsData(data);
+      if (response.ok) {
+        const data = await response.json();
+        setHabitsData(data);
+      }
     } catch (error) {
       console.error('Error fetching habits:', error);
+    }
+  };
+
+  const handleCreateCategory = async (e) => {
+    if (e) e.preventDefault();
+    if (!newCategoryName.trim()) return;
+
+    try {
+      const response = await fetch('/api/v1/categories/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include',
+        body: JSON.stringify({ name: newCategoryName.trim() })
+      });
+
+      if (response.ok) {
+        const newCat = await response.json();
+        setNewCategoryName('');
+        setShowAddCategory(false);
+        await fetchCategories();
+        setNewHabitCategory(newCat.id.toString());
+      } else {
+        const err = await response.json();
+        setCreateError(err.detail || 'Ошибка при создании категории');
+      }
+    } catch (error) {
+      console.error('Error creating category:', error);
     }
   };
 
@@ -173,6 +225,26 @@ const App = () => {
     return acc + (yesterdayStatus && yesterdayStatus.is_done ? 1 : 0);
   }, 0);
 
+  // Sort and filter categories
+  const sortedCategories = React.useMemo(() => {
+    const counts = habitsData.reduce((acc, habit) => {
+      acc[habit.category_name] = (acc[habit.category_name] || 0) + 1;
+      return acc;
+    }, {});
+
+    const sorted = [...categories].sort((a, b) => {
+      const countA = counts[a.name] || 0;
+      const countB = counts[b.name] || 0;
+      return countB - countA;
+    });
+
+    return [{ id: 'all', name: 'Все' }, ...sorted];
+  }, [categories, habitsData]);
+
+  const MAX_VISIBLE_CATEGORIES = 4;
+  const visibleCategories = sortedCategories.slice(0, MAX_VISIBLE_CATEGORIES);
+  const hiddenCategories = sortedCategories.slice(MAX_VISIBLE_CATEGORIES);
+
   // Authentication handlers
   const handleLogin = (userData) => {
     setUser(userData);
@@ -233,7 +305,6 @@ const App = () => {
 
       // Reset form and close modal
       setNewHabitName('');
-      setNewHabitCategory('Soul');
       setShowCreateModal(false);
 
       // Refresh habits list
@@ -338,15 +409,41 @@ const App = () => {
       <div className="categories-section">
         {/* Desktop / Standard View */}
         <div className="categories-buttons desktop-only">
-          {categories.map(category => (
+          {visibleCategories.map(category => (
             <button
-              key={category}
-              className={`category-btn ${selectedCategory === category ? 'active' : ''}`}
-              onClick={() => setSelectedCategory(category)}
+              key={category.id}
+              className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
+              onClick={() => setSelectedCategory(category.name)}
             >
-              {category}
+              {category.name}
             </button>
           ))}
+          {hiddenCategories.length > 0 && (
+            <div className="more-categories-wrapper">
+              <button
+                className={`category-btn more-btn ${hiddenCategories.some(c => c.name === selectedCategory) ? 'active' : ''}`}
+                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+              >
+                Ещё {isMoreMenuOpen ? '▲' : '▼'}
+              </button>
+              {isMoreMenuOpen && (
+                <div className="category-dropdown more-dropdown">
+                  {hiddenCategories.map(category => (
+                    <div
+                      key={category.id}
+                      className={`dropdown-item ${selectedCategory === category.name ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedCategory(category.name);
+                        setIsMoreMenuOpen(false);
+                      }}
+                    >
+                      {category.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Mobile / Hamburger View */}
@@ -356,26 +453,22 @@ const App = () => {
           </button>
           {isMenuOpen && (
             <div className="category-dropdown">
-              {categories.map(category => (
+              {sortedCategories.map(category => (
                 <div
-                  key={category}
-                  className={`dropdown-item ${selectedCategory === category ? 'active' : ''}`}
+                  key={category.id}
+                  className={`dropdown-item ${selectedCategory === category.name ? 'active' : ''}`}
                   onClick={() => {
-                    setSelectedCategory(category);
+                    setSelectedCategory(category.name);
                     setIsMenuOpen(false);
                   }}
                 >
-                  {category}
+                  {category.name}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div className="stats">
-          <div className="stat-item">{completedYesterday}<br />Вчера</div>
-          <div className="stat-item">{completedToday}<br />Сегодня</div>
-        </div>
       </div>
 
       {/* Заголовки дней недели */}
@@ -408,13 +501,9 @@ const App = () => {
 
       {/* Список привычек */}
       <div className="habits-container">
-        {habitsData.filter(h => {
+        {habitsData.filter(habit => {
           if (selectedCategory === 'Все') return true;
-          // Map backend choices to UI categories
-          // Backend: 'Soul', 'Personal', 'Work'
-          // UI: 'Душа', 'Личное', 'Работа'
-          const catMap = { 'Soul': 'Душа', 'Personal': 'Личное', 'Work': 'Работа' };
-          return catMap[h.category] === selectedCategory || selectedCategory === h.category;
+          return habit.category_name === selectedCategory;
         }).map((habit) => (
           <div key={habit.id} className="habit-row">
             <div className="habit-name">{habit.name}</div>
@@ -512,17 +601,47 @@ const App = () => {
 
               <div className="form-group">
                 <label htmlFor="habit-category">Категория</label>
-                <select
-                  id="habit-category"
-                  className="form-select"
-                  value={newHabitCategory}
-                  onChange={(e) => setNewHabitCategory(e.target.value)}
-                >
-                  <option value="Soul">Душа</option>
-                  <option value="Personal">Личное</option>
-                  <option value="Work">Работа</option>
-                </select>
+                <div className="category-input-wrapper">
+                  <select
+                    id="habit-category"
+                    className="form-select"
+                    value={newHabitCategory}
+                    onChange={(e) => setNewHabitCategory(e.target.value)}
+                  >
+                    {categories.filter(c => c.id !== 'all').map(cat => {
+                      return <option key={cat.id} value={cat.id}>{cat.name}</option>;
+                    })}
+                  </select>
+                  <button
+                    type="button"
+                    className="add-category-inline-btn"
+                    onClick={() => setShowAddCategory(!showAddCategory)}
+                  >
+                    {showAddCategory ? '−' : '+'}
+                  </button>
+                </div>
               </div>
+
+              {showAddCategory && (
+                <div className="form-group add-category-field">
+                  <div className="inline-add-row">
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Новая категория"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="btn-primary btn-small"
+                      onClick={handleCreateCategory}
+                    >
+                      Добавить
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {createError && (
                 <div className="error-message">

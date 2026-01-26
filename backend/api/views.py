@@ -9,10 +9,11 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from datetime import date, timedelta
 
-from . models import Achievement, Date, Habit, UserAll
+from . models import Achievement, Date, Habit, UserAll, Category
 from .serializers import (
     AchievementSerializer, DateSerializer, HabitSerializer, 
-    UserAllSerializer, UserSerializer, RegisterSerializer, LoginSerializer
+    UserAllSerializer, UserSerializer, RegisterSerializer, LoginSerializer,
+    CategorySerializer
 )
 
 
@@ -20,6 +21,17 @@ class HabitViewSet(viewsets.ModelViewSet):
     queryset = Habit.objects.all()
     serializer_class = HabitSerializer
     permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # Get or create UserAll profile for authenticated user
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=self.request.user,
+            defaults={
+                'name': self.request.user.username,
+                'age': ''
+            }
+        )
+        serializer.save(user=user_profile)
 
     @action(detail=False, methods=['get'])
     def weekly_status(self, request):
@@ -56,6 +68,25 @@ class HabitViewSet(viewsets.ModelViewSet):
             result.append(habit_data)
             
         return Response(result)
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=self.request.user,
+            defaults={'name': self.request.user.username, 'age': ''}
+        )
+        return Category.objects.filter(user=user_profile)
+
+    def perform_create(self, serializer):
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=self.request.user,
+            defaults={'name': self.request.user.username, 'age': ''}
+        )
+        serializer.save(user=user_profile)
 
 class AchievementViewSet(viewsets.ModelViewSet):
     queryset = Achievement.objects.all()

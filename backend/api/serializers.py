@@ -1,15 +1,27 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from . models import Achievement, Date, UserAll, Habit
+from . models import Achievement, Category, Date, UserAll, Habit
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ('id', 'user', 'name', 'slug')
+        read_only_fields = ('id', 'user', 'slug')
 
 
 class HabitSerializer(serializers.ModelSerializer):
-    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(), required=False, allow_null=True
+    )
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    category_slug = serializers.CharField(source='category.slug', read_only=True)
 
     class Meta:
         model = Habit
-        fields = '__all__'
+        fields = ('id', 'user', 'name', 'category', 'category_name', 'category_slug', 'slug')
+        read_only_fields = ('id', 'user', 'slug')
 
 
 class UserAllSerializer(serializers.ModelSerializer):

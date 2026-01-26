@@ -6,6 +6,7 @@ from rest_framework.routers import SimpleRouter
 
 router_v1 = SimpleRouter()
 router_v1.register('v1/habits', views.HabitViewSet)
+router_v1.register('v1/categories', views.CategoryViewSet)
 router_v1.register('v1/achievement', views.AchievementViewSet)
 
 urlpatterns = [
