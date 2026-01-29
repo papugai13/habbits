@@ -5,6 +5,15 @@ from . models import Achievement, Category, Date, UserAll, Habit
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    name = serializers.CharField(
+        min_length=2,
+        max_length=20,
+        error_messages={
+            "min_length": "Название категории должно содержать минимум 2 символа.",
+            "max_length": "Название категории не должно превышать 20 символов."
+        }
+    )
+
     class Meta:
         model = Category
         fields = ('id', 'user', 'name', 'slug')
@@ -33,7 +42,7 @@ class UserAllSerializer(serializers.ModelSerializer):
 class DateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Date
-        fields = '__all__'
+        fields = '__all__'  # Includes quantity field
 
 class AchievementSerializer(serializers.ModelSerializer):
     class Meta:
@@ -43,11 +52,31 @@ class AchievementSerializer(serializers.ModelSerializer):
 
 # Authentication serializers
 class UserSerializer(serializers.ModelSerializer):
-    """Сериализатор для отображения данных пользователя"""
+    """Сериализатор для отображения и редактирования данных пользователя"""
+    age = serializers.CharField(source='user_profile.age', allow_blank=True, required=False)
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'age')
         read_only_fields = ('id',)
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop('user_profile', {})
+        age = profile_data.get('age')
+
+        # Update User model
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Update UserAll model
+        profile = instance.user_profile
+        if age is not None:
+            profile.age = age
+        profile.name = instance.username # Keep sync if needed
+        profile.save()
+
+        return instance
 
 
 class RegisterSerializer(serializers.ModelSerializer):

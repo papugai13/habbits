@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import Login from './components/Login';
 import Register from './components/Register';
+import Charts from './components/Charts';
 
 const App = () => {
   // Helper to get CSRF token
@@ -43,6 +44,16 @@ const App = () => {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
+  // Quantity modal state
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [quantityModalData, setQuantityModalData] = useState(null);
+  const [quantityValue, setQuantityValue] = useState('');
+  const [longPressTimer, setLongPressTimer] = useState(null);
+  const [editingHabit, setEditingHabit] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [editProfileData, setEditProfileData] = useState({ username: '', email: '', age: '' });
+
   const WEEK_DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
   const bottomTabs = [
@@ -51,26 +62,39 @@ const App = () => {
     { name: 'Настройка', icon: '⚙️', disabled: false },
   ];
 
-  // Check authentication status on mount
-  useEffect(() => {
-    checkAuth();
+  // Fetch categories from API
+  const fetchCategories = React.useCallback(async () => {
+    try {
+      const response = await fetch('/api/v1/categories/');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data);
+
+        // Set default category for form if not set
+        if (data.length > 0 && !newHabitCategory) {
+          setNewHabitCategory(data[0].id.toString());
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  }, [newHabitCategory]);
+
+  // Fetch habits from API
+  const fetchHabits = React.useCallback(async () => {
+    try {
+      const response = await fetch('/api/v1/habits/weekly_status/');
+      if (response.ok) {
+        const data = await response.json();
+        setHabitsData(data);
+      }
+    } catch (error) {
+      console.error('Error fetching habits:', error);
+    }
   }, []);
 
-  // Close profile menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showProfileMenu && !event.target.closest('.profile-section')) {
-        setShowProfileMenu(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showProfileMenu]);
-
-  const checkAuth = async () => {
+  // Check authentication status
+  const checkAuth = React.useCallback(async () => {
     try {
       const response = await fetch('/api/auth/me/');
 
@@ -90,40 +114,41 @@ const App = () => {
     } finally {
       setAuthLoading(false);
     }
-  };
+  }, [fetchHabits, fetchCategories]);
 
-  const fetchCategories = async () => {
-    try {
-      const response = await fetch('/api/v1/categories/');
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data);
+  // Check authentication status on mount
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
-        // Set default category for form if not set
-        if (data.length > 0 && !newHabitCategory) {
-          setNewHabitCategory(data[0].id.toString());
-        }
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showProfileMenu && !event.target.closest('.profile-section')) {
+        setShowProfileMenu(false);
       }
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
-  };
+    };
 
-  const fetchHabits = async () => {
-    try {
-      const response = await fetch('/api/v1/habits/weekly_status/');
-      if (response.ok) {
-        const data = await response.json();
-        setHabitsData(data);
-      }
-    } catch (error) {
-      console.error('Error fetching habits:', error);
-    }
-  };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfileMenu]);
+
 
   const handleCreateCategory = async (e) => {
     if (e) e.preventDefault();
-    if (!newCategoryName.trim()) return;
+    const name = newCategoryName.trim();
+    if (!name) return;
+
+    if (name.length < 2) {
+      setCreateError('Название категории должно содержать минимум 2 символа');
+      return;
+    }
+    if (name.length > 20) {
+      setCreateError('Название категории не должно превышать 20 символов');
+      return;
+    }
 
     try {
       const response = await fetch('/api/v1/categories/', {
@@ -144,21 +169,22 @@ const App = () => {
         setNewHabitCategory(newCat.id.toString());
       } else {
         const err = await response.json();
-        setCreateError(err.detail || 'Ошибка при создании категории');
+        const errorMessage = err.name ? err.name[0] : (err.detail || 'Ошибка при создании категории');
+        setCreateError(errorMessage);
       }
     } catch (error) {
       console.error('Error creating category:', error);
     }
   };
 
-  const toggleHabitCheck = async (habitId, dayDate, currentStatus, dateId) => {
+  const toggleHabitCheck = async (habitId, dayDate, currentStatus, dateId, quantity = null) => {
     // Optimistic update
     const updatedHabits = habitsData.map(habit => {
       if (habit.id === habitId) {
         return {
           ...habit,
           statuses: habit.statuses.map(status =>
-            status.date === dayDate ? { ...status, is_done: !status.is_done } : status
+            status.date === dayDate ? { ...status, is_done: !status.is_done, quantity: quantity || status.quantity } : status
           )
         };
       }
@@ -168,6 +194,8 @@ const App = () => {
 
     try {
       let response;
+      const payload = quantity !== null ? { is_done: !currentStatus, quantity } : { is_done: !currentStatus };
+
       if (dateId) {
         // Toggle existing date entry
         response = await fetch(`/api/v1/date/${dateId}/`, {
@@ -177,7 +205,7 @@ const App = () => {
             'X-CSRFToken': getCookie('csrftoken')
           },
           credentials: 'include',
-          body: JSON.stringify({ is_done: !currentStatus })
+          body: JSON.stringify(payload)
         });
       } else {
         // Create new date entry
@@ -191,7 +219,8 @@ const App = () => {
           body: JSON.stringify({
             habit: habitId,
             habit_date: dayDate,
-            is_done: true
+            is_done: true,
+            ...(quantity !== null && { quantity })
           })
         });
       }
@@ -209,21 +238,106 @@ const App = () => {
     }
   };
 
-  const getHabitCount = (habit) => {
-    // Just counting visible checks for now as backend doesn't return total count
-    return habit.statuses.filter(s => s.is_done).length;
+  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity) => {
+    const timer = setTimeout(() => {
+      // Open quantity modal
+      setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId });
+      setQuantityValue(currentQuantity || '');
+      setShowQuantityModal(true);
+    }, 500); // 500ms for long press
+    setLongPressTimer(timer);
   };
 
-  // Calculate stats
-  const completedToday = habitsData.reduce((acc, habit) => {
-    const todayStatus = habit.statuses[habit.statuses.length - 1]; // Assuming last one is today
-    return acc + (todayStatus && todayStatus.is_done ? 1 : 0);
+  const handleLongPressEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  const handleQuantitySubmit = async () => {
+    if (!quantityModalData) return;
+
+    const qty = parseInt(quantityValue, 10);
+    if (isNaN(qty) || qty <= 0) {
+      alert('Пожалуйста, введите корректное количество');
+      return;
+    }
+
+    const { habitId, dayDate, dateId } = quantityModalData;
+
+    try {
+      let response;
+      if (dateId) {
+        // Update existing entry
+        response = await fetch(`/api/v1/date/${dateId}/`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          credentials: 'include',
+          body: JSON.stringify({ is_done: true, quantity: qty })
+        });
+      } else {
+        // Create new entry
+        response = await fetch(`/api/v1/dates/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            habit: habitId,
+            habit_date: dayDate,
+            is_done: true,
+            quantity: qty
+          })
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error('API request failed');
+      }
+
+      // Close modal and refresh
+      setShowQuantityModal(false);
+      setQuantityModalData(null);
+      setQuantityValue('');
+      await fetchHabits();
+
+    } catch (error) {
+      console.error('Error saving quantity:', error);
+      alert('Ошибка при сохранении количества');
+    } finally {
+      // Always close modal and reset state
+      setShowQuantityModal(false);
+      setQuantityModalData(null);
+      setQuantityValue('');
+    }
+  };
+
+  const getHabitCount = (habit) => {
+    return habit.statuses.reduce((acc, s) => {
+      if (s.is_done) {
+        return acc + (s.quantity || 1);
+      }
+      return acc;
+    }, 0);
+  };
+
+  // Calculate weekly stats
+  const completedThisWeek = habitsData.reduce((acc, habit) => {
+    return acc + habit.statuses.reduce((sum, status) => {
+      if (status.is_done) {
+        return sum + (status.quantity || 1);
+      }
+      return sum;
+    }, 0);
   }, 0);
 
-  const completedYesterday = habitsData.reduce((acc, habit) => {
-    const yesterdayStatus = habit.statuses[habit.statuses.length - 2];
-    return acc + (yesterdayStatus && yesterdayStatus.is_done ? 1 : 0);
-  }, 0);
+  const totalPossibleThisWeek = habitsData.length * 7;
 
   // Sort and filter categories
   const sortedCategories = React.useMemo(() => {
@@ -232,7 +346,7 @@ const App = () => {
       return acc;
     }, {});
 
-    const sorted = [...categories].sort((a, b) => {
+    const sorted = [...categories].filter(c => c.id !== 'all' && c.name !== 'Все').sort((a, b) => {
       const countA = counts[a.name] || 0;
       const countB = counts[b.name] || 0;
       return countB - countA;
@@ -315,6 +429,87 @@ const App = () => {
     }
   };
 
+  const handleDeleteHabit = async (habitId) => {
+    if (!window.confirm('Вы уверены, что хотите удалить эту привычку? Все данные о выполнении будут удалены.')) return;
+
+    try {
+      const response = await fetch(`/api/v1/habits/${habitId}/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        await fetchHabits();
+      } else {
+        alert('Ошибка при удалении привычки');
+      }
+    } catch (error) {
+      console.error('Error deleting habit:', error);
+    }
+  };
+
+  const handleUpdateHabit = async (e) => {
+    e.preventDefault();
+    if (!editingHabit) return;
+
+    try {
+      const response = await fetch(`/api/v1/habits/${editingHabit.id}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: editingHabit.name,
+          category: editingHabit.category
+        })
+      });
+
+      if (response.ok) {
+        setShowEditModal(false);
+        setEditingHabit(null);
+        await fetchHabits();
+      } else {
+        const err = await response.json();
+        alert(err.detail || 'Ошибка при обновлении привычки');
+      }
+    } catch (error) {
+      console.error('Error updating habit:', error);
+    }
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/auth/me/', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include',
+        body: JSON.stringify(editProfileData)
+      });
+
+      if (response.ok) {
+        const updatedUser = await response.json();
+        setUser(updatedUser);
+        setShowEditProfileModal(false);
+        // Sync UserAll name if needed (backend does this now)
+        await fetchHabits();
+      } else {
+        const err = await response.json();
+        alert(JSON.stringify(err) || 'Ошибка при обновлении профиля');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+    }
+  };
+
   // Show loading while checking authentication
   if (authLoading) {
     return (
@@ -388,11 +583,14 @@ const App = () => {
 
         <div className="date-section">
           <div className="progress-bar">
-            {/* Simple progress bar based on today's completion rate */}
-            <div className="progress-fill" style={{ width: habitsData.length > 0 ? `${(completedToday / habitsData.length) * 100}%` : '0%' }}></div>
+            {/* Weekly progress bar */}
+            <div
+              className="progress-fill"
+              style={{ width: totalPossibleThisWeek > 0 ? `${(completedThisWeek / totalPossibleThisWeek) * 100}%` : '0%' }}
+            ></div>
           </div>
           <div className="date-text">
-            {completedToday} из {habitsData.length} сегодня
+            {completedThisWeek} из {totalPossibleThisWeek} за неделю
           </div>
         </div>
 
@@ -405,157 +603,256 @@ const App = () => {
         </button>
       </div>
 
-      {/* Фильтры категорий */}
-      <div className="categories-section">
-        {/* Desktop / Standard View */}
-        <div className="categories-buttons desktop-only">
-          {visibleCategories.map(category => (
-            <button
-              key={category.id}
-              className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
-              onClick={() => setSelectedCategory(category.name)}
-            >
-              {category.name}
-            </button>
-          ))}
-          {hiddenCategories.length > 0 && (
-            <div className="more-categories-wrapper">
+
+      {/* Фильтры категорий - только для вкладки Журналы */}
+      {activeTab === 'Журналы' && (
+        <div className="categories-section">
+          {/* Desktop / Standard View */}
+          <div className="categories-buttons desktop-only">
+            {visibleCategories.map(category => (
               <button
-                className={`category-btn more-btn ${hiddenCategories.some(c => c.name === selectedCategory) ? 'active' : ''}`}
-                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                key={category.id}
+                className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
+                onClick={() => setSelectedCategory(category.name)}
               >
-                Ещё {isMoreMenuOpen ? '▲' : '▼'}
+                {category.name}
               </button>
-              {isMoreMenuOpen && (
-                <div className="category-dropdown more-dropdown">
-                  {hiddenCategories.map(category => (
-                    <div
-                      key={category.id}
-                      className={`dropdown-item ${selectedCategory === category.name ? 'active' : ''}`}
-                      onClick={() => {
-                        setSelectedCategory(category.name);
-                        setIsMoreMenuOpen(false);
-                      }}
-                    >
-                      {category.name}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Mobile / Hamburger View */}
-        <div className="categories-mobile mobile-only">
-          <button className="category-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-            {selectedCategory} <span className="arrow">▼</span>
-          </button>
-          {isMenuOpen && (
-            <div className="category-dropdown">
-              {sortedCategories.map(category => (
-                <div
-                  key={category.id}
-                  className={`dropdown-item ${selectedCategory === category.name ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedCategory(category.name);
-                    setIsMenuOpen(false);
-                  }}
+            ))}
+            {hiddenCategories.length > 0 && (
+              <div className="more-categories-wrapper">
+                <button
+                  className={`category-btn more-btn ${hiddenCategories.some(c => c.name === selectedCategory) ? 'active' : ''}`}
+                  onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
                 >
-                  {category.name}
+                  Ещё {isMoreMenuOpen ? '▲' : '▼'}
+                </button>
+                {isMoreMenuOpen && (
+                  <div className="category-dropdown more-dropdown">
+                    {hiddenCategories.map(category => (
+                      <div
+                        key={category.id}
+                        className={`dropdown-item ${selectedCategory === category.name ? 'active' : ''}`}
+                        onClick={() => {
+                          setSelectedCategory(category.name);
+                          setIsMoreMenuOpen(false);
+                        }}
+                      >
+                        {category.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Mobile / Hamburger View */}
+          <div className="categories-mobile mobile-only">
+            <button className="category-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+              {selectedCategory} <span className="arrow">▼</span>
+            </button>
+            {isMenuOpen && (
+              <div className="category-dropdown">
+                {sortedCategories.map(category => (
+                  <div
+                    key={category.id}
+                    className={`dropdown-item ${selectedCategory === category.name ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedCategory(category.name);
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    {category.name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {/* Заголовки дней недели - только для вкладки Журналы */}
+      {activeTab === 'Журналы' && (
+        <div className="days-header">
+          <div className="days-cols">
+            {WEEK_DAYS.map((day, index) => {
+              // Calculate date for this column (Monday + index)
+              const today = new Date();
+              const dayOfWeek = today.getDay(); // 0 (Sun) to 6 (Sat)
+              // Adjust so 0 is Mon, 6 is Sun for calculation
+              const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+              const diff = index - currentDayIndex;
+
+              const columnDate = new Date(today);
+              columnDate.setDate(today.getDate() + diff);
+              const columnDateStr = columnDate.toLocaleDateString('en-CA');
+              const todayStr = today.toLocaleDateString('en-CA');
+
+              const isTodayCol = columnDateStr === todayStr;
+
+              return (
+                <div key={day} className={`day-col ${isTodayCol ? 'today' : ''}`}>
+                  {day}
                 </div>
-              ))}
+              );
+            })}
+          </div>
+          <div className="days-placeholder-end"></div>
+        </div>
+      )}
+
+      {/* Список привычек - только для вкладки Журналы */}
+      {activeTab === 'Журналы' && (
+        <div className="habits-container">
+          {habitsData.filter(habit => {
+            if (selectedCategory === 'Все') return true;
+            return habit.category_name === selectedCategory;
+          }).map((habit) => (
+            <div key={habit.id} className="habit-row">
+              <div className="habit-name">{habit.name}</div>
+              <div className="habit-row-content">
+                <div className="habit-checks">
+                  {WEEK_DAYS.map((_, index) => {
+                    // Calculate date for this slot
+                    const today = new Date();
+                    const dayOfWeek = today.getDay();
+                    const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                    const diff = index - currentDayIndex;
+
+                    const slotDate = new Date(today);
+                    slotDate.setDate(today.getDate() + diff);
+                    const slotDateStr = slotDate.toLocaleDateString('en-CA');
+
+                    // Find status for this date
+                    const status = habit.statuses.find(s => s.date === slotDateStr);
+                    const isDone = status ? status.is_done : false;
+                    const statusId = status ? status.id : null;
+                    const quantity = status ? status.quantity : null;
+
+                    // Calculate yesterday date string
+                    const yesterday = new Date(today);
+                    yesterday.setDate(today.getDate() - 1);
+                    const yesterdayStr = yesterday.toLocaleDateString('en-CA');
+
+                    const todayStr = today.toLocaleDateString('en-CA');
+                    const isToday = slotDateStr === todayStr;
+                    const isPast = slotDateStr < todayStr;
+                    const isYesterday = slotDateStr === yesterdayStr;
+                    const isMissed = isPast && !isDone;
+
+                    // Disable if NOT today and NOT yesterday. 
+                    const isDisabled = !isToday && !isYesterday;
+
+                    return (
+                      <button
+                        key={slotDateStr}
+                        className={`check-box ${isDone ? 'checked' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && quantity > 1 ? 'with-quantity' : ''}`}
+                        onClick={() => {
+                          if (!isDisabled && !longPressTimer) {
+                            toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
+                          }
+                        }}
+                        onMouseDown={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity)}
+                        onMouseUp={handleLongPressEnd}
+                        onMouseLeave={handleLongPressEnd}
+                        onTouchStart={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity)}
+                        onTouchEnd={handleLongPressEnd}
+                        disabled={isDisabled}
+                      >
+                        {isDone && quantity > 1 && <span className="quantity-display">{quantity}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="habit-count">{getHabitCount(habit)}</div>
+              </div>
             </div>
-          )}
+          ))}
         </div>
+      )}
 
-      </div>
+      {/* Компонент графиков - для вкладки Графики */}
+      {activeTab === 'Графики' && (
+        <Charts getCookie={getCookie} />
+      )}
 
-      {/* Заголовки дней недели */}
-      <div className="days-header">
-        <div className="days-cols">
-          {WEEK_DAYS.map((day, index) => {
-            // Calculate date for this column (Monday + index)
-            const today = new Date();
-            const dayOfWeek = today.getDay(); // 0 (Sun) to 6 (Sat)
-            // Adjust so 0 is Mon, 6 is Sun for calculation
-            const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-            const diff = index - currentDayIndex;
+      {/* Вкладка Настройка */}
+      {activeTab === 'Настройка' && (
+        <div className="settings-container">
+          <div className="settings-header">
+            <h2>⚙️ Настройки</h2>
+          </div>
 
-            const columnDate = new Date(today);
-            columnDate.setDate(today.getDate() + diff);
-            const columnDateStr = columnDate.toLocaleDateString('en-CA');
-            const todayStr = today.toLocaleDateString('en-CA');
-
-            const isTodayCol = columnDateStr === todayStr;
-
-            return (
-              <div key={day} className={`day-col ${isTodayCol ? 'today' : ''}`}>
-                {day}
+          <div className="settings-section profile-settings">
+            <h3 className="section-title">Профиль</h3>
+            <div className="manage-profile-info">
+              <div className="profile-info-row">
+                <span className="info-label">Имя:</span>
+                <span className="info-value">{user?.username}</span>
               </div>
-            );
-          })}
-        </div>
-        <div className="days-placeholder-end"></div>
-      </div>
-
-      {/* Список привычек */}
-      <div className="habits-container">
-        {habitsData.filter(habit => {
-          if (selectedCategory === 'Все') return true;
-          return habit.category_name === selectedCategory;
-        }).map((habit) => (
-          <div key={habit.id} className="habit-row">
-            <div className="habit-name">{habit.name}</div>
-            <div className="habit-row-content">
-              <div className="habit-checks">
-                {WEEK_DAYS.map((_, index) => {
-                  // Calculate date for this slot
-                  const today = new Date();
-                  const dayOfWeek = today.getDay();
-                  const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                  const diff = index - currentDayIndex;
-
-                  const slotDate = new Date(today);
-                  slotDate.setDate(today.getDate() + diff);
-                  const slotDateStr = slotDate.toLocaleDateString('en-CA');
-
-                  // Find status for this date
-                  const status = habit.statuses.find(s => s.date === slotDateStr);
-                  const isDone = status ? status.is_done : false;
-                  const statusId = status ? status.id : null;
-
-                  // Calculate yesterday date string
-                  const yesterday = new Date(today);
-                  yesterday.setDate(today.getDate() - 1);
-                  const yesterdayStr = yesterday.toLocaleDateString('en-CA');
-
-                  const todayStr = today.toLocaleDateString('en-CA');
-                  const isToday = slotDateStr === todayStr;
-                  const isPast = slotDateStr < todayStr;
-                  const isYesterday = slotDateStr === yesterdayStr;
-                  const isMissed = isPast && !isDone;
-
-                  // Disable if missed and NOT yesterday. 
-                  // (i.e. strictly past days beyond yesterday are locked if missed)
-                  const isDisabled = isMissed && !isYesterday;
-
-                  return (
-                    <button
-                      key={slotDateStr}
-                      className={`check-box ${isDone ? 'checked' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''}`}
-                      onClick={() => !isDisabled && toggleHabitCheck(habit.id, slotDateStr, isDone, statusId)}
-                      disabled={isDisabled}
-                    >
-                    </button>
-                  );
-                })}
+              <div className="profile-info-row">
+                <span className="info-label">Email:</span>
+                <span className="info-value">{user?.email}</span>
               </div>
-              <div className="habit-count">{getHabitCount(habit)}</div>
+              <div className="profile-info-row">
+                <span className="info-label">Возраст:</span>
+                <span className="info-value">{user?.age || 'не указан'}</span>
+              </div>
+              <button
+                className="btn-secondary btn-small edit-profile-btn"
+                onClick={() => {
+                  setEditProfileData({
+                    username: user?.username || '',
+                    email: user?.email || '',
+                    age: user?.age || ''
+                  });
+                  setShowEditProfileModal(true);
+                }}
+              >
+                ✏️ Изменить профиль
+              </button>
             </div>
           </div>
-        ))}
-      </div>
+
+          <div className="settings-section">
+            <h3 className="section-title">Управление привычками</h3>
+            <div className="manage-habits-list">
+              {habitsData.length === 0 ? (
+                <p className="no-habits-msg">У вас пока нет привычек.</p>
+              ) : (
+                habitsData.map(habit => (
+                  <div key={habit.id} className="manage-habit-item">
+                    <div className="manage-habit-info">
+                      <div className="manage-habit-name">{habit.name}</div>
+                      <div className="manage-habit-category">{habit.category_name}</div>
+                    </div>
+                    <div className="manage-habit-actions">
+                      <button
+                        className="manage-btn edit-btn"
+                        onClick={() => {
+                          setEditingHabit({ ...habit });
+                          setShowEditModal(true);
+                        }}
+                        title="Изменить"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        className="manage-btn delete-btn"
+                        onClick={() => handleDeleteHabit(habit.id)}
+                        title="Удалить"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Нижняя навигация */}
       <div className="bottom-nav">
@@ -630,7 +927,12 @@ const App = () => {
                       className="form-input"
                       placeholder="Новая категория"
                       value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      onChange={(e) => {
+                        setNewCategoryName(e.target.value);
+                        if (createError) setCreateError('');
+                      }}
+                      minLength="2"
+                      maxLength="20"
                     />
                     <button
                       type="button"
@@ -665,6 +967,203 @@ const App = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно редактирования привычки */}
+      {showEditModal && editingHabit && (
+        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Изменить привычку</h2>
+              <button
+                className="modal-close"
+                onClick={() => setShowEditModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateHabit} className="habit-form">
+              <div className="form-group">
+                <label htmlFor="edit-habit-name">Название привычки</label>
+                <input
+                  id="edit-habit-name"
+                  type="text"
+                  className="form-input"
+                  value={editingHabit.name}
+                  onChange={(e) => setEditingHabit({ ...editingHabit, name: e.target.value })}
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="edit-habit-category">Категория</label>
+                <select
+                  id="edit-habit-category"
+                  className="form-select"
+                  value={editingHabit.category || ''}
+                  onChange={(e) => setEditingHabit({ ...editingHabit, category: e.target.value })}
+                >
+                  {categories.filter(c => c.id !== 'all').map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowEditModal(false)}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                >
+                  Сохранить
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно редактирования профиля */}
+      {showEditProfileModal && (
+        <div className="modal-overlay" onClick={() => setShowEditProfileModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Изменить профиль</h2>
+              <button
+                className="modal-close"
+                onClick={() => setShowEditProfileModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateProfile} className="habit-form">
+              <div className="form-group">
+                <label htmlFor="profile-username">Имя пользователя</label>
+                <input
+                  id="profile-username"
+                  type="text"
+                  className="form-input"
+                  value={editProfileData.username}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, username: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="profile-email">Email</label>
+                <input
+                  id="profile-email"
+                  type="email"
+                  className="form-input"
+                  value={editProfileData.email}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, email: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="profile-age">Возраст</label>
+                <input
+                  id="profile-age"
+                  type="text"
+                  className="form-input"
+                  placeholder="Например: 25"
+                  value={editProfileData.age}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, age: e.target.value })}
+                />
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowEditProfileModal(false)}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                >
+                  Сохранить
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно для ввода количества */}
+      {showQuantityModal && quantityModalData && (
+        <div className="modal-overlay" onClick={() => {
+          setShowQuantityModal(false);
+          setQuantityModalData(null);
+          setQuantityValue('');
+        }}>
+          <div className="modal-content quantity-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Указать количество</h2>
+              <button
+                className="modal-close"
+                onClick={() => {
+                  setShowQuantityModal(false);
+                  setQuantityModalData(null);
+                  setQuantityValue('');
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="quantity-modal-body">
+              <p className="habit-info">
+                <strong>{quantityModalData.habitName}</strong>
+              </p>
+              <div className="form-group">
+                <label htmlFor="quantity-input">Количество</label>
+                <input
+                  id="quantity-input"
+                  type="number"
+                  className="form-input"
+                  placeholder="Например: 30"
+                  value={quantityValue}
+                  onChange={(e) => setQuantityValue(e.target.value)}
+                  autoFocus
+                  min="1"
+                />
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setShowQuantityModal(false);
+                  setQuantityModalData(null);
+                  setQuantityValue('');
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleQuantitySubmit}
+              >
+                Сохранить
+              </button>
+            </div>
           </div>
         </div>
       )}

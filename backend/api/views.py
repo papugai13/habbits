@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from datetime import date, timedelta
+from django.db.models import Sum, Case, When, Value, F, IntegerField
 
 from . models import Achievement, Date, Habit, UserAll, Category
 from .serializers import (
@@ -48,13 +49,16 @@ class HabitViewSet(viewsets.ModelViewSet):
         habits = Habit.objects.filter(user=user_profile)
         
         # We'll return status for the last 7 days including today
+        # Calculate calories week: start from most recent Monday
+        # today.weekday() returns 0 for Monday, 6 for Sunday
         today = date.today()
-        start_date = today - timedelta(days=6)
+        days_since_monday = today.weekday()
+        start_date = today - timedelta(days=days_since_monday)
         
         result = []
         for habit in habits:
             habit_data = HabitSerializer(habit).data
-            # Get statuses for the range
+            # Get statuses for the range (Monday to Sunday)
             statuses = []
             for i in range(7):
                 current_date = start_date + timedelta(days=i)
@@ -62,12 +66,97 @@ class HabitViewSet(viewsets.ModelViewSet):
                 statuses.append({
                     "date": current_date.isoformat(),
                     "is_done": date_entry.is_done if date_entry else False,
-                    "id": date_entry.id if date_entry else None
+                    "id": date_entry.id if date_entry else None,
+                    "quantity": date_entry.quantity if date_entry else None
                 })
             habit_data['statuses'] = statuses
             result.append(habit_data)
             
         return Response(result)
+
+    @action(detail=False, methods=['get'])
+    def daily_statistics(self, request):
+        """
+        Возвращает статистику выполненных привычек по дням за указанный период.
+        Параметры:
+        - start_date: начальная дата (формат YYYY-MM-DD), по умолчанию - 7 дней назад
+        - end_date: конечная дата (формат YYYY-MM-DD), по умолчанию - сегодня
+        - period: предустановленный период ('week', 'month', 'year'), переопределяет start_date/end_date
+        """
+        from datetime import datetime
+        
+        # Get or create UserAll profile for authenticated user
+        user_profile, created = UserAll.objects.get_or_create(
+            auth_user=request.user,
+            defaults={
+                'name': request.user.username,
+                'age': ''
+            }
+        )
+
+        # Определяем период
+        today = date.today()
+        period = request.query_params.get('period', None)
+        
+        if period == 'week':
+            start_date = today - timedelta(days=6)
+            end_date = today
+        elif period == 'month':
+            start_date = today - timedelta(days=29)
+            end_date = today
+        elif period == 'year':
+            start_date = today - timedelta(days=364)
+            end_date = today
+        else:
+            # Используем параметры start_date и end_date
+            start_date_str = request.query_params.get('start_date')
+            end_date_str = request.query_params.get('end_date')
+            
+            if start_date_str:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            else:
+                start_date = today - timedelta(days=6)
+            
+            if end_date_str:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            else:
+                end_date = today
+
+        # Получаем все привычки пользователя
+        habits = Habit.objects.filter(user=user_profile)
+        
+        # Собираем статистику по дням
+        statistics = []
+        current_date = start_date
+        
+        while current_date <= end_date:
+            # Подсчитываем сумму выполненных привычек за этот день с учетом количества
+            day_dates = Date.objects.filter(
+                user=user_profile,
+                habit__in=habits,
+                habit_date=current_date,
+                is_done=True
+            )
+            
+            completed_count = day_dates.aggregate(
+                total=Sum(
+                    Case(
+                        When(quantity__isnull=True, then=Value(1)),
+                        default=F('quantity'),
+                        output_field=IntegerField()
+                    )
+                )
+            )['total'] or 0
+            
+            statistics.append({
+                'date': current_date.isoformat(),
+                'completed_count': completed_count
+            })
+            
+            current_date += timedelta(days=1)
+        
+        return Response(statistics)
+
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -223,10 +312,17 @@ class LogoutView(APIView):
 
 
 class CurrentUserView(APIView):
-    """Получение данных текущего пользователя"""
+    """Получение и обновление данных текущего пользователя"""
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+
+    def patch(self, request):
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

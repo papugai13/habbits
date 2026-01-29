@@ -433,12 +433,12 @@ body {
   opacity: 0.6;
 }
 
-/* Only disable cursor if button is actually disabled */
-.check-box.missed:disabled {
+/* Cursor and opacity for disabled cells */
+.check-box:disabled {
   cursor: not-allowed;
+  opacity: 0.5;
 }
 
-/* If not disabled, it's editable (e.g. yesterday) */
 .check-box.missed:not(:disabled) {
   cursor: pointer;
 }
@@ -467,12 +467,15 @@ body {
 .habit-count {
   background-color: #00FF7F;
   color: #FFFFFF;
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: bold;
-  min-width: 35px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 15px;
+  /* Slightly larger */
+  font-weight: 800;
+  /* Extra bold */
+  min-width: 40px;
   text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Нижняя навигация */
@@ -918,5 +921,194 @@ body {
   .btn-primary,
   .btn-secondary {
     width: 100%;
+  }
+}
+
+/* Settings Container */
+.settings-container {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.settings-header {
+  margin-bottom: 24px;
+}
+
+.settings-header h2 {
+  font-size: 24px;
+  color: #333;
+}
+
+.settings-section {
+  background: #f8f8f8;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+}
+
+.profile-settings {
+  margin-bottom: 20px;
+}
+
+.manage-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.info-label {
+  color: #888;
+  font-weight: 500;
+}
+
+.info-value {
+  color: #333;
+  font-weight: 600;
+}
+
+.edit-profile-btn {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ddd;
+}
+
+.manage-habits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.manage-habit-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid #eee;
+  transition: transform 0.2s;
+}
+
+.manage-habit-item:hover {
+  transform: translateX(4px);
+  border-color: #00FF7F;
+}
+
+.manage-habit-info {
+  flex: 1;
+}
+
+.manage-habit-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.manage-habit-category {
+  font-size: 12px;
+  color: #888;
+}
+
+.manage-habit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.manage-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+  line-height: 1;
+}
+
+.edit-btn:hover {
+  background-color: #f0f0f0;
+}
+
+.delete-btn:hover {
+  background-color: #fee;
+}
+
+.no-habits-msg {
+  text-align: center;
+  color: #999;
+  font-style: italic;
+  padding: 20px;
+}
+
+/* Settings Placeholder (kept for context, but hidden) */
+.settings-placeholder {
+  display: none;
+}
+
+/* Quantity Modal Styles */
+.quantity-modal-body {
+  margin-bottom: 20px;
+}
+
+.habit-info {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.habit-info strong {
+  color: #00FF7F;
+}
+
+/* Quantity Display in Check Box */
+.check-box.with-quantity {
+  position: relative;
+}
+
+.quantity-display {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 13px;
+  /* Slightly larger */
+  font-weight: 800;
+  /* Bolder */
+  color: #FFFFFF !important;
+  /* Ensure it's white */
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  /* Stronger shadow */
+}
+
+/* Prevent text selection during long press */
+.check-box {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+@media (max-width: 480px) {
+  .quantity-display {
+    font-size: 10px;
   }
 }
