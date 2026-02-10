@@ -8,7 +8,7 @@ dotenv.load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-LOCAL = True if os.getenv('LOCAL') == 'True' else False
+LOCAL = os.getenv('LOCAL', 'False').strip().lower() in ['true', '1', 'yes']
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 
