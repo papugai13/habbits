@@ -196,18 +196,42 @@ body {
   font-weight: 500;
 }
 
-.progress-bar {
-  width: 100%;
-  height: 6px;
-  background-color: #E0E0E0;
-  border-radius: 3px;
-  overflow: hidden;
+/* Навигация по неделям */
+.week-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  background-color: #F8F8F8;
+  padding: 8px 12px;
+  border-radius: 12px;
 }
 
-.progress-fill {
-  height: 100%;
-  background-color: #00FF7F;
-  transition: width 0.3s ease;
+.week-nav-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #666;
+  cursor: pointer;
+  padding: 5px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  border-radius: 50%;
+}
+
+.week-nav-btn:hover {
+  background-color: #E0E0E0;
+  color: #333;
+}
+
+.week-range-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  min-width: 120px;
+  text-align: center;
 }
 
 /* Навигация по дням */
@@ -637,9 +661,41 @@ body {
 .day-col {
   flex: 1;
   text-align: center;
-  font-size: 13px;
+  font-size: 11px;
+  color: #888;
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.day-name {
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.day-number {
+  font-size: 14px;
+  font-weight: 700;
   color: #333;
-  font-weight: 600;
+}
+
+.day-col.today .day-number {
+  color: #00FF7F;
+  position: relative;
+}
+
+.day-col.today .day-number::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background-color: #00FF7F;
+  border-radius: 50%;
 }
 
 .days-placeholder-end {

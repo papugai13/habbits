@@ -53,6 +53,7 @@ const App = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [editProfileData, setEditProfileData] = useState({ username: '', email: '', age: '' });
+  const [currentWeekDate, setCurrentWeekDate] = useState(new Date().toLocaleDateString('en-CA'));
 
   const WEEK_DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -81,9 +82,10 @@ const App = () => {
   }, [newHabitCategory]);
 
   // Fetch habits from API
-  const fetchHabits = React.useCallback(async () => {
+  const fetchHabits = React.useCallback(async (targetDate) => {
     try {
-      const response = await fetch('/api/v1/habits/weekly_status/');
+      const dateToFetch = targetDate || currentWeekDate;
+      const response = await fetch(`/api/v1/habits/weekly_status/?date=${dateToFetch}`);
       if (response.ok) {
         const data = await response.json();
         setHabitsData(data);
@@ -91,7 +93,7 @@ const App = () => {
     } catch (error) {
       console.error('Error fetching habits:', error);
     }
-  }, []);
+  }, [currentWeekDate]);
 
   // Check authentication status
   const checkAuth = React.useCallback(async () => {
@@ -120,6 +122,36 @@ const App = () => {
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Fetch habits when currentWeekDate changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchHabits();
+    }
+  }, [currentWeekDate, isAuthenticated, fetchHabits]);
+
+  const handlePrevWeek = () => {
+    const prevDate = new Date(currentWeekDate);
+    prevDate.setDate(prevDate.getDate() - 7);
+    setCurrentWeekDate(prevDate.toLocaleDateString('en-CA'));
+  };
+
+  const handleNextWeek = () => {
+    const nextDate = new Date(currentWeekDate);
+    nextDate.setDate(nextDate.getDate() + 7);
+    setCurrentWeekDate(nextDate.toLocaleDateString('en-CA'));
+  };
+
+  const currentWeekRange = () => {
+    const curr = new Date(currentWeekDate);
+    const day = curr.getDay();
+    const diff = curr.getDate() - (day === 0 ? 6 : day - 1);
+    const firstDay = new Date(curr.setDate(diff));
+    const lastDay = new Date(firstDay);
+    lastDay.setDate(firstDay.getDate() + 6);
+
+    return `${firstDay.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} - ${lastDay.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}`;
+  };
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -484,6 +516,15 @@ const App = () => {
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
+
+    if (editProfileData.age) {
+      const ageNum = parseInt(editProfileData.age, 10);
+      if (isNaN(ageNum) || ageNum < 0 || ageNum > 150) {
+        alert('Возраст должен быть числом от 0 до 150 лет');
+        return;
+      }
+    }
+
     try {
       const response = await fetch('/api/auth/me/', {
         method: 'PATCH',
@@ -582,15 +623,10 @@ const App = () => {
         </div>
 
         <div className="date-section">
-          <div className="progress-bar">
-            {/* Weekly progress bar */}
-            <div
-              className="progress-fill"
-              style={{ width: totalPossibleThisWeek > 0 ? `${(completedThisWeek / totalPossibleThisWeek) * 100}%` : '0%' }}
-            ></div>
-          </div>
-          <div className="date-text">
-            {completedThisWeek} из {totalPossibleThisWeek} за неделю
+          <div className="week-navigation">
+            <button className="week-nav-btn" onClick={handlePrevWeek}>&lt;</button>
+            <div className="week-range-text">{currentWeekRange()}</div>
+            <button className="week-nav-btn" onClick={handleNextWeek}>&gt;</button>
           </div>
         </div>
 
@@ -677,23 +713,23 @@ const App = () => {
         <div className="days-header">
           <div className="days-cols">
             {WEEK_DAYS.map((day, index) => {
-              // Calculate date for this column (Monday + index)
-              const today = new Date();
-              const dayOfWeek = today.getDay(); // 0 (Sun) to 6 (Sat)
-              // Adjust so 0 is Mon, 6 is Sun for calculation
+              // Calculate date for this column based on currentWeekDate
+              const baseDate = new Date(currentWeekDate);
+              const dayOfWeek = baseDate.getDay();
               const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
               const diff = index - currentDayIndex;
 
-              const columnDate = new Date(today);
-              columnDate.setDate(today.getDate() + diff);
+              const columnDate = new Date(baseDate);
+              columnDate.setDate(baseDate.getDate() + diff);
               const columnDateStr = columnDate.toLocaleDateString('en-CA');
-              const todayStr = today.toLocaleDateString('en-CA');
+              const todayStr = new Date().toLocaleDateString('en-CA');
 
               const isTodayCol = columnDateStr === todayStr;
 
               return (
                 <div key={day} className={`day-col ${isTodayCol ? 'today' : ''}`}>
-                  {day}
+                  <div className="day-name">{day}</div>
+                  <div className="day-number">{columnDate.getDate()}</div>
                 </div>
               );
             })}
@@ -714,15 +750,18 @@ const App = () => {
               <div className="habit-row-content">
                 <div className="habit-checks">
                   {WEEK_DAYS.map((_, index) => {
-                    // Calculate date for this slot
-                    const today = new Date();
-                    const dayOfWeek = today.getDay();
+                    // Calculate date for this slot based on currentWeekDate
+                    const baseDate = new Date(currentWeekDate);
+                    const dayOfWeek = baseDate.getDay();
                     const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
                     const diff = index - currentDayIndex;
 
-                    const slotDate = new Date(today);
-                    slotDate.setDate(today.getDate() + diff);
+                    const slotDate = new Date(baseDate);
+                    slotDate.setDate(baseDate.getDate() + diff);
                     const slotDateStr = slotDate.toLocaleDateString('en-CA');
+
+                    const today = new Date();
+                    const todayStr = today.toLocaleDateString('en-CA');
 
                     // Find status for this date
                     const status = habit.statuses.find(s => s.date === slotDateStr);
@@ -735,14 +774,14 @@ const App = () => {
                     yesterday.setDate(today.getDate() - 1);
                     const yesterdayStr = yesterday.toLocaleDateString('en-CA');
 
-                    const todayStr = today.toLocaleDateString('en-CA');
                     const isToday = slotDateStr === todayStr;
                     const isPast = slotDateStr < todayStr;
+                    const isFuture = slotDateStr > todayStr;
                     const isYesterday = slotDateStr === yesterdayStr;
                     const isMissed = isPast && !isDone;
 
-                    // Disable if NOT today and NOT yesterday. 
-                    const isDisabled = !isToday && !isYesterday;
+                    // Disable only IF it's in the future
+                    const isDisabled = isFuture;
 
                     return (
                       <button
