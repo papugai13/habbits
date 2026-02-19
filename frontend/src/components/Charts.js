@@ -98,7 +98,7 @@ const Charts = ({ getCookie }) => {
                 </div>
             ) : (
                 <div className="chart-wrapper">
-                    <ResponsiveContainer width="100%" height={600}>
+                    <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 400 : 600}>
                         <BarChart
                             data={chartData}
                             margin={{ top: 20, right: 30, left: 0, bottom: 5 }}

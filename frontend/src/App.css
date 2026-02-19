@@ -16,7 +16,7 @@ body {
 }
 
 .app {
-  max-width: 480px;
+  max-width: 600px;
   margin: 0 auto;
   background-color: #FFFFFF;
   min-height: 100vh;
@@ -24,6 +24,7 @@ body {
   flex-direction: column;
   position: relative;
   padding-bottom: 80px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
 }
 
 /* Верхняя панель */
@@ -31,10 +32,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 15px 20px;
+  padding: 12px 16px;
   background-color: #FFFFFF;
   border-bottom: 1px solid #E0E0E0;
-  gap: 15px;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 1001;
 }
 
 /* Profile Section */
@@ -183,10 +187,11 @@ body {
 .date-section {
   flex: 1;
   text-align: center;
-  padding: 0 15px;
+  padding: 0 5px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  min-width: 0;
 }
 
 .date-text {
@@ -201,10 +206,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 15px;
+  gap: 8px;
   background-color: #F8F8F8;
-  padding: 8px 12px;
+  padding: 6px 8px;
   border-radius: 12px;
+  width: 100%;
 }
 
 .week-nav-btn {
@@ -227,11 +233,14 @@ body {
 }
 
 .week-range-text {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #333;
-  min-width: 120px;
+  flex: 1;
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Навигация по дням */
@@ -400,7 +409,7 @@ body {
 /* Список привычек */
 .habits-container {
   flex: 1;
-  padding: 15px 20px;
+  padding: 15px 16px;
   overflow-y: auto;
 }
 
@@ -508,13 +517,14 @@ body {
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  max-width: 480px;
+  max-width: 600px;
   width: 100%;
   display: flex;
   justify-content: space-around;
   background-color: #E8E8E8;
   border-top: 1px solid #D0D0D0;
   padding: 10px 0;
+  z-index: 1000;
 }
 
 .nav-item {
@@ -580,9 +590,24 @@ body {
 }
 
 /* Адаптивность */
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .app {
     max-width: 100%;
+    box-shadow: none;
+  }
+
+  .bottom-nav {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-bar {
+    padding: 10px 12px;
+  }
+
+  .habit-row {
+    margin-bottom: 16px;
   }
 
   /* Show/Hide logic */
@@ -594,16 +619,12 @@ body {
     display: block;
   }
 
-  .bottom-nav {
-    max-width: 100%;
-  }
-
   .habit-name {
     font-size: 13px;
   }
 
   .check-box {
-    height: 28px;
+    height: 30px;
     /* width handled by flex */
   }
 
@@ -619,22 +640,70 @@ body {
   .date-text {
     font-size: 12px;
   }
+
+  .week-range-text {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 400px) {
+  .top-bar {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .profile-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .add-btn {
+    font-size: 20px;
+    padding: 2px 5px;
+  }
+
+  .week-navigation {
+    padding: 4px 6px;
+    gap: 4px;
+  }
+
+  .week-nav-btn {
+    font-size: 14px;
+    padding: 4px;
+  }
 }
 
 @media (max-width: 360px) {
+  .top-bar {
+    padding: 6px 8px;
+  }
+
+  .habits-container {
+    padding: 10px 8px;
+  }
+
+  .habit-checks {
+    gap: 3px;
+  }
+
   .check-box {
-    height: 24px;
+    height: 26px;
     /* width handled by flex */
   }
 
   .habit-count {
-    padding: 4px 8px;
-    font-size: 12px;
-    min-width: 30px;
+    padding: 4px 6px;
+    font-size: 11px;
+    min-width: 28px;
   }
 
   .day-btn {
-    padding: 6px 8px;
+    padding: 6px 4px;
+    font-size: 11px;
+  }
+
+  .day-number {
     font-size: 12px;
   }
 }

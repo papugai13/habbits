@@ -63,7 +63,7 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     position: relative;
     flex: 1;
-    min-height: 500px;
+    min-height: 400px;
 }
 
 .custom-tooltip {
@@ -109,20 +109,23 @@
 /* Адаптивность */
 @media (max-width: 768px) {
     .charts-container {
-        padding: 15px;
+        padding: 10px;
     }
 
     .charts-header h2 {
-        font-size: 20px;
+        font-size: 18px;
+        margin-bottom: 12px;
     }
 
     .period-btn {
         flex: 1;
         min-width: calc(33.333% - 7px);
+        padding: 8px 10px;
     }
 
     .chart-wrapper {
-        padding: 15px;
+        padding: 10px;
+        min-height: 300px;
     }
 }
 
