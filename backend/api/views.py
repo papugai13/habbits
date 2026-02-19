@@ -48,12 +48,19 @@ class HabitViewSet(viewsets.ModelViewSet):
         # Get habits for this user
         habits = Habit.objects.filter(user=user_profile)
         
-        # We'll return status for the last 7 days including today
-        # Calculate calories week: start from most recent Monday
-        # today.weekday() returns 0 for Monday, 6 for Sunday
-        today = date.today()
-        days_since_monday = today.weekday()
-        start_date = today - timedelta(days=days_since_monday)
+        # Determine the start of the week
+        date_param = request.query_params.get('date')
+        if date_param:
+            from datetime import datetime
+            try:
+                reference_date = datetime.strptime(date_param, '%Y-%m-%d').date()
+            except ValueError:
+                reference_date = date.today()
+        else:
+            reference_date = date.today()
+            
+        days_since_monday = reference_date.weekday()
+        start_date = reference_date - timedelta(days=days_since_monday)
         
         result = []
         for habit in habits:

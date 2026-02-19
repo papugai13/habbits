@@ -60,6 +60,16 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'username', 'email', 'first_name', 'last_name', 'age')
         read_only_fields = ('id',)
 
+    def validate_age(self, value):
+        if value:
+            try:
+                age_int = int(value)
+                if age_int < 0 or age_int > 150:
+                    raise serializers.ValidationError("Возраст должен быть от 0 до 150 лет.")
+            except ValueError:
+                raise serializers.ValidationError("Возраст должен быть числом.")
+        return value
+
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('user_profile', {})
         age = profile_data.get('age')
