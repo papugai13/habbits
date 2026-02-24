@@ -1237,3 +1237,212 @@ body {
     font-size: 10px;
   }
 }
+
+/* Comment and Photo Attachment Styles */
+.habit-latest-comment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  background-color: #F0F8FF;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  color: #555;
+  white-space: nowrap;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.comment-indicator-circle {
+  width: 6px;
+  height: 6px;
+  background-color: #007AFF;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.comment-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.check-box.has-attachment {
+  position: relative;
+}
+
+.attachment-indicator {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-top: 12px solid #007AFF;
+  border-left: 12px solid transparent;
+  border-top-right-radius: 5px;
+}
+
+/* Report and Print Styles */
+.report-modal-content {
+  max-width: 800px !important;
+  width: 90% !important;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .printable-report,
+  .printable-report * {
+    visibility: visible;
+  }
+
+  .printable-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 20px;
+    background: white;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .report-entry {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 30px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+  }
+
+  .report-entry-photo {
+    max-height: 400px;
+    object-fit: contain;
+  }
+
+  .app {
+    box-shadow: none;
+    max-width: 100%;
+  }
+}
+
+/* =====================================================
+   DrumPicker — барабанный выбор числа как в iPhone
+   ===================================================== */
+
+.drum-picker-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.drum-picker-container {
+  position: relative;
+  width: 120px;
+  height: 220px;
+  /* 5 элементов × 44px */
+  overflow: hidden;
+  border-radius: 16px;
+  background: #f0f0f0;
+}
+
+/* Прокручиваемый список */
+.drum-picker-list {
+  height: 100%;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  user-select: none;
+}
+
+.drum-picker-list::-webkit-scrollbar {
+  display: none;
+}
+
+/* Каждый элемент */
+.drum-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  color: #1a1a1a;
+  scroll-snap-align: center;
+  cursor: pointer;
+  transition: opacity 0.1s ease, transform 0.1s ease;
+  letter-spacing: -0.5px;
+}
+
+.drum-picker-item-selected {
+  color: #000;
+}
+
+/* Линия выбора (центральная полоса) */
+.drum-picker-selection {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  height: 44px;
+  border-top: 1.5px solid #c8c8c8;
+  border-bottom: 1.5px solid #c8c8c8;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Маски — верхнее и нижнее затенение */
+.drum-picker-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 88px;
+  /* 2 × item height */
+  pointer-events: none;
+  z-index: 1;
+}
+
+.drum-picker-mask-top {
+  top: 0;
+  background: linear-gradient(to bottom,
+      rgba(240, 240, 240, 0.95) 0%,
+      rgba(240, 240, 240, 0.4) 100%);
+}
+
+.drum-picker-mask-bottom {
+  bottom: 0;
+  background: linear-gradient(to top,
+      rgba(240, 240, 240, 0.95) 0%,
+      rgba(240, 240, 240, 0.4) 100%);
+}
+
+/* Адаптация модального окна для drum picker */
+.quantity-modal .drum-picker-wrapper {
+  margin: 4px 0 8px;
+}
+
+.quantity-modal .form-group label {
+  text-align: center;
+  display: block;
+  font-size: 13px;
+  color: #888;
+  font-weight: 500;
+  margin-bottom: 4px;
+}

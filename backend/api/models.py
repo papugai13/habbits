@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.text import slugify
-from django.core.validators import MinLengthValidator
+from django.core.validators import MinLengthValidator, MaxValueValidator, MinValueValidator
 
 
 def unique_slugify(instance, slug):
@@ -172,7 +172,21 @@ class Date(models.Model):
         verbose_name="Количество",
         null=True,
         blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(999)],
         help_text="Количество выполненных действий (например, 30 отжиманий)"
+    )
+
+    comment = models.TextField(
+        verbose_name="Комментарий",
+        blank=True,
+        null=True
+    )
+
+    photo = models.ImageField(
+        verbose_name="Фото",
+        upload_to="habit_photos/",
+        blank=True,
+        null=True
     )
 
     def save(self, *args, **kwargs):
