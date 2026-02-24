@@ -55,6 +55,14 @@ const App = () => {
   const [editProfileData, setEditProfileData] = useState({ username: '', email: '', age: '' });
   const [currentWeekDate, setCurrentWeekDate] = useState(new Date().toLocaleDateString('en-CA'));
 
+  // Archive state
+  const [archivedHabits, setArchivedHabits] = useState([]);
+  const [showArchive, setShowArchive] = useState(false);
+
+  // Drag-and-drop state
+  const [draggedHabitId, setDraggedHabitId] = useState(null);
+  const [dragOverHabitId, setDragOverHabitId] = useState(null);
+
   const WEEK_DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
   const bottomTabs = [
@@ -95,6 +103,19 @@ const App = () => {
     }
   }, [currentWeekDate]);
 
+  // Fetch archived habits
+  const fetchArchivedHabits = React.useCallback(async () => {
+    try {
+      const response = await fetch('/api/v1/habits/archived/');
+      if (response.ok) {
+        const data = await response.json();
+        setArchivedHabits(data);
+      }
+    } catch (error) {
+      console.error('Error fetching archived habits:', error);
+    }
+  }, []);
+
   // Check authentication status
   const checkAuth = React.useCallback(async () => {
     try {
@@ -106,6 +127,7 @@ const App = () => {
         setIsAuthenticated(true);
         // Fetch data after authentication confirmed
         fetchHabits();
+        fetchArchivedHabits();
         fetchCategories();
       } else {
         setIsAuthenticated(false);
@@ -116,7 +138,7 @@ const App = () => {
     } finally {
       setAuthLoading(false);
     }
-  }, [fetchHabits, fetchCategories]);
+  }, [fetchHabits, fetchArchivedHabits, fetchCategories]);
 
   // Check authentication status on mount
   useEffect(() => {
@@ -396,12 +418,14 @@ const App = () => {
     setUser(userData);
     setIsAuthenticated(true);
     fetchHabits();
+    fetchArchivedHabits();
   };
 
   const handleRegister = (userData) => {
     setUser(userData);
     setIsAuthenticated(true);
     fetchHabits();
+    fetchArchivedHabits();
   };
 
   const handleLogout = async () => {
@@ -475,12 +499,98 @@ const App = () => {
 
       if (response.ok) {
         await fetchHabits();
+        await fetchArchivedHabits();
       } else {
         alert('Ошибка при удалении привычки');
       }
     } catch (error) {
       console.error('Error deleting habit:', error);
     }
+  };
+
+  const handleArchiveHabit = async (habitId) => {
+    try {
+      const response = await fetch(`/api/v1/habits/${habitId}/archive/`, {
+        method: 'PATCH',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        credentials: 'include'
+      });
+      if (response.ok) {
+        await fetchHabits();
+        await fetchArchivedHabits();
+      }
+    } catch (error) {
+      console.error('Error archiving habit:', error);
+    }
+  };
+
+  const handleUnarchiveHabit = async (habitId) => {
+    try {
+      const response = await fetch(`/api/v1/habits/${habitId}/archive/`, {
+        method: 'PATCH',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        credentials: 'include'
+      });
+      if (response.ok) {
+        await fetchHabits();
+        await fetchArchivedHabits();
+      }
+    } catch (error) {
+      console.error('Error unarchiving habit:', error);
+    }
+  };
+
+  const handleDragStart = (e, habitId) => {
+    setDraggedHabitId(habitId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, habitId) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverHabitId(habitId);
+  };
+
+  const handleDrop = async (e, targetHabitId) => {
+    e.preventDefault();
+    if (draggedHabitId === targetHabitId) {
+      setDraggedHabitId(null);
+      setDragOverHabitId(null);
+      return;
+    }
+
+    // Reorder locally
+    const currentList = [...habitsData];
+    const draggedIndex = currentList.findIndex(h => h.id === draggedHabitId);
+    const targetIndex = currentList.findIndex(h => h.id === targetHabitId);
+    const [removed] = currentList.splice(draggedIndex, 1);
+    currentList.splice(targetIndex, 0, removed);
+    setHabitsData(currentList);
+
+    // Send new order to backend
+    const reorderPayload = currentList.map((h, index) => ({ id: h.id, order: index }));
+    try {
+      await fetch('/api/v1/habits/reorder/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include',
+        body: JSON.stringify(reorderPayload)
+      });
+    } catch (error) {
+      console.error('Error saving order:', error);
+      fetchHabits(); // revert on error
+    }
+
+    setDraggedHabitId(null);
+    setDragOverHabitId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedHabitId(null);
+    setDragOverHabitId(null);
   };
 
   const handleUpdateHabit = async (e) => {
@@ -861,7 +971,16 @@ const App = () => {
                 <p className="no-habits-msg">У вас пока нет привычек.</p>
               ) : (
                 habitsData.map(habit => (
-                  <div key={habit.id} className="manage-habit-item">
+                  <div
+                    key={habit.id}
+                    className={`manage-habit-item ${draggedHabitId === habit.id ? 'dragging' : ''} ${dragOverHabitId === habit.id && draggedHabitId !== habit.id ? 'drag-over' : ''}`}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, habit.id)}
+                    onDragOver={(e) => handleDragOver(e, habit.id)}
+                    onDrop={(e) => handleDrop(e, habit.id)}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <div className="drag-handle" title="Перетащить">⠿</div>
                     <div className="manage-habit-info">
                       <div className="manage-habit-name">{habit.name}</div>
                       <div className="manage-habit-category">{habit.category_name}</div>
@@ -878,6 +997,13 @@ const App = () => {
                         ✏️
                       </button>
                       <button
+                        className="manage-btn archive-btn"
+                        onClick={() => handleArchiveHabit(habit.id)}
+                        title="В архив"
+                      >
+                        📦
+                      </button>
+                      <button
                         className="manage-btn delete-btn"
                         onClick={() => handleDeleteHabit(habit.id)}
                         title="Удалить"
@@ -887,6 +1013,49 @@ const App = () => {
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+
+            {/* Archive section */}
+            <div className="archive-section">
+              <button
+                className="archive-toggle-btn"
+                onClick={() => setShowArchive(!showArchive)}
+              >
+                <span className="archive-toggle-icon">{showArchive ? '▲' : '▼'}</span>
+                📁 Архив ({archivedHabits.length})
+              </button>
+              {showArchive && (
+                <div className="archived-habits-list">
+                  {archivedHabits.length === 0 ? (
+                    <p className="no-habits-msg">Архив пуст.</p>
+                  ) : (
+                    archivedHabits.map(habit => (
+                      <div key={habit.id} className="archived-habit-item">
+                        <div className="manage-habit-info">
+                          <div className="manage-habit-name">{habit.name}</div>
+                          <div className="manage-habit-category">{habit.category_name}</div>
+                        </div>
+                        <div className="manage-habit-actions">
+                          <button
+                            className="manage-btn unarchive-btn"
+                            onClick={() => handleUnarchiveHabit(habit.id)}
+                            title="Восстановить"
+                          >
+                            📤
+                          </button>
+                          <button
+                            className="manage-btn delete-btn"
+                            onClick={() => handleDeleteHabit(habit.id)}
+                            title="Удалить навсегда"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               )}
             </div>
           </div>
