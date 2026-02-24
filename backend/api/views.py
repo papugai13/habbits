@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from datetime import date, timedelta
-from django.db.models import Sum, Case, When, Value, F, IntegerField
+from django.db.models import Sum, Case, When, Value, F, IntegerField, Max
 
 from . models import Achievement, Date, Habit, UserAll, Category
 from .serializers import (
@@ -23,8 +23,17 @@ class HabitViewSet(viewsets.ModelViewSet):
     serializer_class = HabitSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=self.request.user,
+            defaults={'name': self.request.user.username, 'age': ''}
+        )
+        qs = Habit.objects.filter(user=user_profile).order_by('order')
+        if self.action == 'list':
+            return qs.filter(is_archived=False)
+        return qs
+
     def perform_create(self, serializer):
-        # Get or create UserAll profile for authenticated user
         user_profile, _ = UserAll.objects.get_or_create(
             auth_user=self.request.user,
             defaults={
@@ -32,7 +41,50 @@ class HabitViewSet(viewsets.ModelViewSet):
                 'age': ''
             }
         )
-        serializer.save(user=user_profile)
+        # Assign order = max existing order + 1
+        max_order = Habit.objects.filter(user=user_profile).aggregate(
+            max_order=Max('order')
+        )['max_order'] or 0
+        serializer.save(user=user_profile, order=max_order + 1)
+
+    @action(detail=False, methods=['post'])
+    def reorder(self, request):
+        """Accept [{id, order}, ...] and bulk-update habit ordering."""
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=request.user,
+            defaults={'name': request.user.username, 'age': ''}
+        )
+        items = request.data  # list of {id, order}
+        if not isinstance(items, list):
+            return Response({'error': 'Expected a list'}, status=status.HTTP_400_BAD_REQUEST)
+        for item in items:
+            habit_id = item.get('id')
+            new_order = item.get('order')
+            if habit_id is not None and new_order is not None:
+                Habit.objects.filter(id=habit_id, user=user_profile).update(order=new_order)
+        return Response({'status': 'ok'})
+
+    @action(detail=True, methods=['patch'])
+    def archive(self, request, pk=None):
+        """Toggle is_archived for a habit."""
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=request.user,
+            defaults={'name': request.user.username, 'age': ''}
+        )
+        habit = get_object_or_404(Habit, id=pk, user=user_profile)
+        habit.is_archived = not habit.is_archived
+        habit.save()
+        return Response(HabitSerializer(habit).data)
+
+    @action(detail=False, methods=['get'])
+    def archived(self, request):
+        """Return archived habits for the current user."""
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=request.user,
+            defaults={'name': request.user.username, 'age': ''}
+        )
+        habits = Habit.objects.filter(user=user_profile, is_archived=True).order_by('order')
+        return Response(HabitSerializer(habits, many=True).data)
 
     @action(detail=True, methods=['get'])
     def report(self, request, pk=None):
@@ -70,7 +122,7 @@ class HabitViewSet(viewsets.ModelViewSet):
         )
 
         # Get habits for this user
-        habits = Habit.objects.filter(user=user_profile)
+        habits = Habit.objects.filter(user=user_profile, is_archived=False).order_by('order')
         
         # Determine the start of the week
         date_param = request.query_params.get('date')

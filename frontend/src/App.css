@@ -1127,12 +1127,26 @@ body {
   padding: 12px 16px;
   border-radius: 10px;
   border: 1px solid #eee;
-  transition: transform 0.2s;
+  transition: box-shadow 0.2s, border-color 0.2s, opacity 0.2s;
+  cursor: grab;
+  gap: 8px;
 }
 
 .manage-habit-item:hover {
-  transform: translateX(4px);
   border-color: #00FF7F;
+  box-shadow: 0 2px 8px rgba(0, 255, 127, 0.12);
+}
+
+.manage-habit-item.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.manage-habit-item.drag-over {
+  border-color: #00CC66;
+  background-color: #f0fff8;
+  box-shadow: 0 0 0 2px rgba(0, 255, 127, 0.35);
 }
 
 .manage-habit-info {
@@ -1173,6 +1187,78 @@ body {
 
 .delete-btn:hover {
   background-color: #fee;
+}
+
+.drag-handle {
+  font-size: 20px;
+  color: #bbb;
+  cursor: grab;
+  padding: 4px;
+  line-height: 1;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.archive-btn:hover {
+  background-color: #fff8e1;
+}
+
+.unarchive-btn:hover {
+  background-color: #e8f5e9;
+}
+
+/* Archive section */
+.archive-section {
+  margin-top: 16px;
+}
+
+.archive-toggle-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0f0f0;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.archive-toggle-btn:hover {
+  background-color: #e6e6e6;
+  border-color: #ccc;
+}
+
+.archive-toggle-icon {
+  font-size: 11px;
+  color: #999;
+}
+
+.archived-habits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.archived-habit-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fafafa;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px dashed #ddd;
+  gap: 8px;
+  opacity: 0.8;
 }
 
 .no-habits-msg {

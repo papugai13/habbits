@@ -29,7 +29,7 @@ class HabitSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Habit
-        fields = ('id', 'user', 'name', 'category', 'category_name', 'category_slug', 'slug')
+        fields = ('id', 'user', 'name', 'category', 'category_name', 'category_slug', 'slug', 'order', 'is_archived')
         read_only_fields = ('id', 'user', 'slug')
 
 
