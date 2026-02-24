@@ -122,6 +122,16 @@ class Habit(models.Model):
         blank=True,
     )
 
+    order = models.IntegerField(
+        default=0,
+        verbose_name="Порядок",
+    )
+
+    is_archived = models.BooleanField(
+        default=False,
+        verbose_name="В архиве",
+    )
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = unique_slugify(self, slugify(self.name))
@@ -133,6 +143,7 @@ class Habit(models.Model):
     class Meta:
         verbose_name = "Привычка"
         verbose_name_plural = "Привычки"
+        ordering = ['order']
 
 
 class Date(models.Model):
