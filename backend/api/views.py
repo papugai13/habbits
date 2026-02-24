@@ -34,6 +34,30 @@ class HabitViewSet(viewsets.ModelViewSet):
         )
         serializer.save(user=user_profile)
 
+    @action(detail=True, methods=['get'])
+    def report(self, request, pk=None):
+        habit = self.get_object()
+        # Return all done dates ordered chronologically
+        dates = Date.objects.filter(habit=habit, is_done=True).order_by('habit_date')
+        
+        entries = []
+        for d in dates:
+            entries.append({
+                "date": d.habit_date.isoformat(),
+                "quantity": d.quantity,
+                "comment": d.comment,
+                "photo": request.build_absolute_uri(d.photo.url) if d.photo else None
+            })
+            
+        return Response({
+            "habit": {
+                "id": habit.id,
+                "name": habit.name,
+                "category_name": habit.category.name if habit.category else None
+            },
+            "entries": entries
+        })
+
     @action(detail=False, methods=['get'])
     def weekly_status(self, request):
         # Get or create UserAll profile for authenticated user
@@ -65,6 +89,14 @@ class HabitViewSet(viewsets.ModelViewSet):
         result = []
         for habit in habits:
             habit_data = HabitSerializer(habit).data
+            
+            # Fetch latest comment
+            latest_date_entry = Date.objects.filter(
+                habit=habit, 
+                comment__isnull=False
+            ).exclude(comment__exact='').order_by('-habit_date').first()
+            habit_data['latest_comment'] = latest_date_entry.comment if latest_date_entry else None
+            
             # Get statuses for the range (Monday to Sunday)
             statuses = []
             for i in range(7):
@@ -74,7 +106,9 @@ class HabitViewSet(viewsets.ModelViewSet):
                     "date": current_date.isoformat(),
                     "is_done": date_entry.is_done if date_entry else False,
                     "id": date_entry.id if date_entry else None,
-                    "quantity": date_entry.quantity if date_entry else None
+                    "quantity": date_entry.quantity if date_entry else None,
+                    "comment": date_entry.comment if date_entry else None,
+                    "photo": request.build_absolute_uri(date_entry.photo.url) if (date_entry and date_entry.photo) else None
                 })
             habit_data['statuses'] = statuses
             result.append(habit_data)

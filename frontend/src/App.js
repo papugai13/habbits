@@ -3,6 +3,7 @@ import './App.css';
 import Login from './components/Login';
 import Register from './components/Register';
 import Charts from './components/Charts';
+import DrumPicker from './components/DrumPicker';
 
 const App = () => {
   // Helper to get CSRF token
@@ -47,12 +48,16 @@ const App = () => {
   // Quantity modal state
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [quantityModalData, setQuantityModalData] = useState(null);
-  const [quantityValue, setQuantityValue] = useState('');
+  const [quantityValue, setQuantityValue] = useState(1);
+  const [commentValue, setCommentValue] = useState('');
+  const [photoFile, setPhotoFile] = useState(null);
   const [longPressTimer, setLongPressTimer] = useState(null);
   const [editingHabit, setEditingHabit] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [editProfileData, setEditProfileData] = useState({ username: '', email: '', age: '' });
+  const [reportData, setReportData] = useState(null);
+  const [isReportLoading, setIsReportLoading] = useState(false);
   const [currentWeekDate, setCurrentWeekDate] = useState(new Date().toLocaleDateString('en-CA'));
 
   const WEEK_DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -60,7 +65,7 @@ const App = () => {
   const bottomTabs = [
     { name: 'Журналы', icon: '✔️', disabled: false },
     { name: 'Графики', icon: '📊', disabled: false },
-    { name: 'Настройка', icon: '⚙️', disabled: false },
+    { name: 'Настройки', icon: '⚙️', disabled: false },
   ];
 
   // Fetch categories from API
@@ -270,11 +275,13 @@ const App = () => {
     }
   };
 
-  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity) => {
+  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto) => {
     const timer = setTimeout(() => {
       // Open quantity modal
-      setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId });
-      setQuantityValue(currentQuantity || '');
+      setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto });
+      setQuantityValue(currentQuantity && currentQuantity > 0 ? currentQuantity : 1);
+      setCommentValue(currentComment || '');
+      setPhotoFile(null);
       setShowQuantityModal(true);
     }, 500); // 500ms for long press
     setLongPressTimer(timer);
@@ -287,45 +294,42 @@ const App = () => {
     }
   };
 
-  const handleQuantitySubmit = async () => {
+  const handleEntrySubmit = async () => {
     if (!quantityModalData) return;
 
-    const qty = parseInt(quantityValue, 10);
-    if (isNaN(qty) || qty <= 0) {
-      alert('Пожалуйста, введите корректное количество');
-      return;
-    }
+    const qty = typeof quantityValue === 'number' && quantityValue >= 1 ? quantityValue : null;
 
     const { habitId, dayDate, dateId } = quantityModalData;
 
     try {
       let response;
+      const formData = new FormData();
+      formData.append('is_done', 'true');
+      if (qty !== null) formData.append('quantity', qty);
+      if (commentValue) formData.append('comment', commentValue);
+      if (photoFile) formData.append('photo', photoFile);
+
       if (dateId) {
         // Update existing entry
         response = await fetch(`/api/v1/date/${dateId}/`, {
           method: 'PATCH',
           headers: {
-            'Content-Type': 'application/json',
             'X-CSRFToken': getCookie('csrftoken')
           },
           credentials: 'include',
-          body: JSON.stringify({ is_done: true, quantity: qty })
+          body: formData
         });
       } else {
         // Create new entry
+        formData.append('habit', habitId);
+        formData.append('habit_date', dayDate);
         response = await fetch(`/api/v1/dates/`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             'X-CSRFToken': getCookie('csrftoken')
           },
           credentials: 'include',
-          body: JSON.stringify({
-            habit: habitId,
-            habit_date: dayDate,
-            is_done: true,
-            quantity: qty
-          })
+          body: formData
         });
       }
 
@@ -336,17 +340,21 @@ const App = () => {
       // Close modal and refresh
       setShowQuantityModal(false);
       setQuantityModalData(null);
-      setQuantityValue('');
+      setQuantityValue(1);
+      setCommentValue('');
+      setPhotoFile(null);
       await fetchHabits();
 
     } catch (error) {
-      console.error('Error saving quantity:', error);
-      alert('Ошибка при сохранении количества');
+      console.error('Error saving data:', error);
+      alert('Ошибка при сохранении данных');
     } finally {
       // Always close modal and reset state
       setShowQuantityModal(false);
       setQuantityModalData(null);
-      setQuantityValue('');
+      setQuantityValue(1);
+      setCommentValue('');
+      setPhotoFile(null);
     }
   };
 
@@ -578,6 +586,29 @@ const App = () => {
     );
   }
 
+  const handleGenerateReport = async (habitId) => {
+    setIsReportLoading(true);
+    try {
+      const response = await fetch(`/api/v1/habits/${habitId}/report/`, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setReportData(data);
+      } else {
+        alert('Ошибка при загрузке отчета');
+      }
+    } catch (error) {
+      console.error('Error fetching report:', error);
+      alert('Ошибка при загрузке отчета');
+    } finally {
+      setIsReportLoading(false);
+    }
+  };
+
   return (
     <div className="app">
       {/* Верхняя панель */}
@@ -746,7 +777,15 @@ const App = () => {
             return habit.category_name === selectedCategory;
           }).map((habit) => (
             <div key={habit.id} className="habit-row">
-              <div className="habit-name">{habit.name}</div>
+              <div className="habit-name">
+                {habit.name}
+                {habit.latest_comment && (
+                  <div className="habit-latest-comment" title={habit.latest_comment}>
+                    <span className="comment-indicator-circle"></span>
+                    <span className="comment-text">{habit.latest_comment}</span>
+                  </div>
+                )}
+              </div>
               <div className="habit-row-content">
                 <div className="habit-checks">
                   {WEEK_DAYS.map((_, index) => {
@@ -779,6 +818,7 @@ const App = () => {
                     const isFuture = slotDateStr > todayStr;
                     const isYesterday = slotDateStr === yesterdayStr;
                     const isMissed = isPast && !isDone;
+                    const hasAttachment = status && (status.comment || status.photo);
 
                     // Disable only IF it's in the future
                     const isDisabled = isFuture;
@@ -786,20 +826,21 @@ const App = () => {
                     return (
                       <button
                         key={slotDateStr}
-                        className={`check-box ${isDone ? 'checked' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && quantity > 1 ? 'with-quantity' : ''}`}
+                        className={`check-box ${isDone ? 'checked' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && quantity > 1 ? 'with-quantity' : ''} ${hasAttachment ? 'has-attachment' : ''}`}
                         onClick={() => {
                           if (!isDisabled && !longPressTimer) {
                             toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
                           }
                         }}
-                        onMouseDown={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity)}
+                        onMouseDown={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
                         onMouseUp={handleLongPressEnd}
                         onMouseLeave={handleLongPressEnd}
-                        onTouchStart={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity)}
+                        onTouchStart={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
                         onTouchEnd={handleLongPressEnd}
                         disabled={isDisabled}
                       >
                         {isDone && quantity > 1 && <span className="quantity-display">{quantity}</span>}
+                        {hasAttachment && <span className="attachment-indicator"></span>}
                       </button>
                     );
                   })}
@@ -867,6 +908,14 @@ const App = () => {
                       <div className="manage-habit-category">{habit.category_name}</div>
                     </div>
                     <div className="manage-habit-actions">
+                      <button
+                        className="manage-btn report-btn"
+                        onClick={() => handleGenerateReport(habit.id)}
+                        title="Отчет и PDF"
+                        disabled={isReportLoading}
+                      >
+                        📊
+                      </button>
                       <button
                         className="manage-btn edit-btn"
                         onClick={() => {
@@ -1142,22 +1191,26 @@ const App = () => {
         </div>
       )}
 
-      {/* Модальное окно для ввода количества */}
+      {/* Модальное окно для ввода количества, комментария и фото */}
       {showQuantityModal && quantityModalData && (
         <div className="modal-overlay" onClick={() => {
           setShowQuantityModal(false);
           setQuantityModalData(null);
-          setQuantityValue('');
+          setQuantityValue(1);
+          setCommentValue('');
+          setPhotoFile(null);
         }}>
           <div className="modal-content quantity-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Указать количество</h2>
+              <h2>Детали выполнения</h2>
               <button
                 className="modal-close"
                 onClick={() => {
                   setShowQuantityModal(false);
                   setQuantityModalData(null);
-                  setQuantityValue('');
+                  setQuantityValue(1);
+                  setCommentValue('');
+                  setPhotoFile(null);
                 }}
               >
                 ×
@@ -1169,16 +1222,45 @@ const App = () => {
                 <strong>{quantityModalData.habitName}</strong>
               </p>
               <div className="form-group">
-                <label htmlFor="quantity-input">Количество</label>
-                <input
-                  id="quantity-input"
-                  type="number"
-                  className="form-input"
-                  placeholder="Например: 30"
+                <label>Количество</label>
+                <DrumPicker
                   value={quantityValue}
-                  onChange={(e) => setQuantityValue(e.target.value)}
-                  autoFocus
-                  min="1"
+                  min={1}
+                  max={999}
+                  onChange={(val) => setQuantityValue(val)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="comment-input">Комментарий</label>
+                <textarea
+                  id="comment-input"
+                  className="form-input"
+                  placeholder="Добавьте заметку..."
+                  value={commentValue}
+                  onChange={(e) => setCommentValue(e.target.value)}
+                  rows="3"
+                ></textarea>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="photo-input">Фото</label>
+                {quantityModalData.currentPhoto && !photoFile && (
+                  <div className="current-photo-preview">
+                    <img src={quantityModalData.currentPhoto} alt="Текущее фото" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', borderRadius: '8px' }} />
+                  </div>
+                )}
+                <input
+                  id="photo-input"
+                  type="file"
+                  accept="image/*"
+                  className="form-input"
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                      setPhotoFile(files[0]);
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -1190,7 +1272,9 @@ const App = () => {
                 onClick={() => {
                   setShowQuantityModal(false);
                   setQuantityModalData(null);
-                  setQuantityValue('');
+                  setQuantityValue(1);
+                  setCommentValue('');
+                  setPhotoFile(null);
                 }}
               >
                 Отмена
@@ -1198,7 +1282,7 @@ const App = () => {
               <button
                 type="button"
                 className="btn-primary"
-                onClick={handleQuantitySubmit}
+                onClick={handleEntrySubmit}
               >
                 Сохранить
               </button>
@@ -1206,6 +1290,54 @@ const App = () => {
           </div>
         </div>
       )}
+      {/* Модальное окно отчета */}
+      {reportData && (
+        <div className="modal-overlay report-modal-overlay" onClick={() => setReportData(null)}>
+          <div className="modal-content report-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header no-print">
+              <h2>Отчет: {reportData.habit.name}</h2>
+              <div>
+                <button className="btn-primary" onClick={() => window.print()} style={{ marginRight: '10px' }}>
+                  🖨️ Сохранить PDF
+                </button>
+                <button className="modal-close" onClick={() => setReportData(null)} style={{ position: 'relative', top: '0', right: '0' }}>×</button>
+              </div>
+            </div>
+
+            <div className="printable-report">
+              <div className="report-header print-only" style={{ display: 'none' }}>
+                <h2>{reportData.habit.name} - Отчет о прогрессе</h2>
+              </div>
+              <div className="report-stats" style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '8px', marginBottom: '20px' }}>
+                <p><strong>Всего записей:</strong> {reportData.entries.length}</p>
+                <p><strong>Общая сумма действий:</strong> {reportData.entries.reduce((sum, e) => sum + (e.quantity || 1), 0)}</p>
+              </div>
+
+              <div className="report-entries" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {reportData.entries.length === 0 ? (
+                  <p>Нет данных для отчета.</p>
+                ) : (
+                  reportData.entries.map((entry, idx) => (
+                    <div key={idx} className="report-entry" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px' }}>
+                      <div className="report-entry-header" style={{ borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
+                        <strong>{new Date(entry.date).toLocaleDateString('ru-RU')}</strong>
+                        {(entry.quantity !== null && entry.quantity > 1) && <span style={{ marginLeft: '10px', color: '#666' }}>(Кол-во: {entry.quantity})</span>}
+                      </div>
+                      {entry.comment && <p className="report-entry-comment" style={{ fontStyle: 'italic', marginBottom: '10px' }}>{entry.comment}</p>}
+                      {entry.photo && (
+                        <div style={{ marginTop: '10px' }}>
+                          <img src={entry.photo} alt="Прогресс" className="report-entry-photo" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', objectFit: 'contain' }} />
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
