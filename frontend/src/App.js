@@ -968,7 +968,7 @@ const App = () => {
       )}
 
       {/* Вкладка Настройка */}
-      {activeTab === 'Настройка' && (
+      {activeTab === 'Настройки' && (
         <div className="settings-container">
           <div className="settings-header">
             <h2>⚙️ Настройки</h2>
