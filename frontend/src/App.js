@@ -601,6 +601,42 @@ const App = () => {
     setDragOverHabitId(null);
   };
 
+  const handleMoveHabit = async (habitId, direction) => {
+    const currentList = [...habitsData];
+    const index = currentList.findIndex(h => h.id === habitId);
+    if (index === -1) return;
+
+    if (direction === 'up' && index > 0) {
+      const [removed] = currentList.splice(index, 1);
+      currentList.splice(index - 1, 0, removed);
+    } else if (direction === 'down' && index < currentList.length - 1) {
+      const [removed] = currentList.splice(index, 1);
+      currentList.splice(index + 1, 0, removed);
+    } else {
+      return;
+    }
+
+    // Update locally
+    setHabitsData(currentList);
+
+    // Send to backend
+    const reorderPayload = currentList.map((h, index) => ({ id: h.id, order: index }));
+    try {
+      await fetch('/api/v1/habits/reorder/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include',
+        body: JSON.stringify(reorderPayload)
+      });
+    } catch (error) {
+      console.error('Error saving order:', error);
+      fetchHabits(); // revert on error
+    }
+  };
+
   const handleUpdateHabit = async (e) => {
     e.preventDefault();
     if (!editingHabit) return;
@@ -1022,6 +1058,24 @@ const App = () => {
                     onDragEnd={handleDragEnd}
                   >
                     <div className="drag-handle" title="Перетащить">⠿</div>
+                    <div className="reorder-arrows">
+                      <button
+                        className="reorder-btn up"
+                        onClick={() => handleMoveHabit(habit.id, 'up')}
+                        disabled={habitsData.indexOf(habit) === 0}
+                        title="Вверх"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        className="reorder-btn down"
+                        onClick={() => handleMoveHabit(habit.id, 'down')}
+                        disabled={habitsData.indexOf(habit) === habitsData.length - 1}
+                        title="Вниз"
+                      >
+                        ▼
+                      </button>
+                    </div>
                     <div className="manage-habit-info">
                       <div className="manage-habit-name">{habit.name}</div>
                       <div className="manage-habit-category">{habit.category_name}</div>

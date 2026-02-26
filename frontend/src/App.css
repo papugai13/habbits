@@ -1203,6 +1203,47 @@ body {
   cursor: grabbing;
 }
 
+.reorder-arrows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: 4px;
+}
+
+.reorder-btn {
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 28px;
+  height: 24px;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.reorder-btn:hover:not(:disabled) {
+  background-color: #00FF7F;
+  border-color: #00FF7F;
+  color: white;
+}
+
+.reorder-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Hide drag handle on very small screens or prioritize arrows */
+@media (max-width: 400px) {
+  .drag-handle {
+    display: none;
+  }
+}
+
 .archive-btn:hover {
   background-color: #fff8e1;
 }
