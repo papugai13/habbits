@@ -1538,7 +1538,6 @@ const App = () => {
                       style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', borderRadius: '8px', cursor: 'zoom-in' }}
                       onClick={() => setLightboxUrl(quantityModalData.currentPhoto)}
                     />
-                    <img src={quantityModalData.currentPhoto} alt="Текущее фото" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', borderRadius: '8px' }} />
                     <button
                       className="delete-photo-btn"
                       type="button"
