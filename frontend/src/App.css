@@ -1573,3 +1573,128 @@ body {
   font-weight: 500;
   margin-bottom: 4px;
 }
+
+/* =====================================================
+   Lightbox — просмотр фото на весь экран
+   ===================================================== */
+
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+  cursor: zoom-out;
+  /* Разрешаем вертикальный свайп */
+  touch-action: pan-y;
+  /* Безопасные зоны для iPhone с чёлкой */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  user-select: none;
+}
+
+/* Pill-индикатор свайпа (как в iOS модалках) */
+.lightbox-swipe-hint {
+  width: 40px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+}
+
+.lightbox-img {
+  max-width: 90vw;
+  max-height: 82vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+  cursor: default;
+  animation: lightboxZoomIn 0.25s ease-out;
+  will-change: transform, opacity;
+}
+
+@keyframes lightboxZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.lightbox-close {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: none;
+  color: #fff;
+  font-size: 36px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.2s;
+  z-index: 10000;
+}
+
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Хинт "Проведите вниз" */
+.lightbox-hint-text {
+  display: none;
+  position: absolute;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Мобильные адаптации */
+@media (max-width: 768px) and (pointer: coarse) {
+  .lightbox-swipe-hint {
+    display: block;
+  }
+
+  .lightbox-hint-text {
+    display: block;
+  }
+
+  .lightbox-close {
+    /* Больше для пальцев */
+    width: 56px;
+    height: 56px;
+    font-size: 32px;
+    top: calc(14px + env(safe-area-inset-top));
+    right: 14px;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  .lightbox-img {
+    /* Оставляем место под хинт */
+    max-height: 78vh;
+    border-radius: 12px;
+  }
+}

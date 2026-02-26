@@ -59,6 +59,9 @@ const App = () => {
   const [reportData, setReportData] = useState(null);
   const [isReportLoading, setIsReportLoading] = useState(false);
   const [currentWeekDate, setCurrentWeekDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [lightboxUrl, setLightboxUrl] = useState(null);
+  const lightboxTouchStartY = React.useRef(null);
+  const [lightboxTranslateY, setLightboxTranslateY] = useState(0);
 
   // Archive state
   const [archivedHabits, setArchivedHabits] = useState([]);
@@ -193,6 +196,43 @@ const App = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showProfileMenu]);
+
+  // Блокировка прокрутки body при открытом lightbox
+  useEffect(() => {
+    if (lightboxUrl) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [lightboxUrl]);
+
+  const closeLightbox = () => {
+    setLightboxUrl(null);
+    setLightboxTranslateY(0);
+    lightboxTouchStartY.current = null;
+  };
+
+  const handleLightboxTouchStart = (e) => {
+    lightboxTouchStartY.current = e.touches[0].clientY;
+    setLightboxTranslateY(0);
+  };
+
+  const handleLightboxTouchMove = (e) => {
+    if (lightboxTouchStartY.current === null) return;
+    const delta = e.touches[0].clientY - lightboxTouchStartY.current;
+    if (delta > 0) setLightboxTranslateY(delta);
+  };
+
+  const handleLightboxTouchEnd = () => {
+    if (lightboxTranslateY > 80) {
+      if (navigator.vibrate) navigator.vibrate(30);
+      closeLightbox();
+    } else {
+      setLightboxTranslateY(0);
+    }
+    lightboxTouchStartY.current = null;
+  };
 
 
   const handleCreateCategory = async (e) => {
@@ -1470,7 +1510,13 @@ const App = () => {
                 <label htmlFor="photo-input">Фото</label>
                 {quantityModalData.currentPhoto && !photoFile && (
                   <div className="current-photo-preview">
-                    <img src={quantityModalData.currentPhoto} alt="Текущее фото" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', borderRadius: '8px' }} />
+                    <img
+                      src={quantityModalData.currentPhoto}
+                      alt="Текущее фото"
+                      className="photo-thumbnail"
+                      style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', borderRadius: '8px', cursor: 'zoom-in' }}
+                      onClick={() => setLightboxUrl(quantityModalData.currentPhoto)}
+                    />
                   </div>
                 )}
                 <input
@@ -1549,7 +1595,13 @@ const App = () => {
                       {entry.comment && <p className="report-entry-comment" style={{ fontStyle: 'italic', marginBottom: '10px' }}>{entry.comment}</p>}
                       {entry.photo && (
                         <div style={{ marginTop: '10px' }}>
-                          <img src={entry.photo} alt="Прогресс" className="report-entry-photo" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', objectFit: 'contain' }} />
+                          <img
+                            src={entry.photo}
+                            alt="Прогресс"
+                            className="report-entry-photo"
+                            style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', objectFit: 'contain', cursor: 'zoom-in' }}
+                            onClick={() => setLightboxUrl(entry.photo)}
+                          />
                         </div>
                       )}
                     </div>
@@ -1558,6 +1610,33 @@ const App = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Lightbox — просмотр фото на весь экран */}
+      {lightboxUrl && (
+        <div
+          className="lightbox-overlay"
+          onClick={closeLightbox}
+          onTouchStart={handleLightboxTouchStart}
+          onTouchMove={handleLightboxTouchMove}
+          onTouchEnd={handleLightboxTouchEnd}
+        >
+          {/* Индикатор свайпа */}
+          <div className="lightbox-swipe-hint" />
+          <button className="lightbox-close" onClick={closeLightbox}>×</button>
+          <img
+            src={lightboxUrl}
+            alt="Просмотр фото"
+            className="lightbox-img"
+            style={{
+              transform: `translateY(${lightboxTranslateY}px)`,
+              opacity: lightboxTranslateY > 0 ? Math.max(0.4, 1 - lightboxTranslateY / 200) : 1,
+              transition: lightboxTranslateY === 0 ? 'transform 0.25s ease, opacity 0.25s ease' : 'none',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div className="lightbox-hint-text">Проведите вниз, чтобы закрыть</div>
         </div>
       )}
 
