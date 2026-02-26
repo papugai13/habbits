@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './Charts.css';
 
-const Charts = ({ getCookie }) => {
+const Charts = ({ getCookie, habitsData, handleGenerateReport, isReportLoading }) => {
     const [period, setPeriod] = useState('week');
     const [chartData, setChartData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -132,6 +132,31 @@ const Charts = ({ getCookie }) => {
                     )}
                 </div>
             )}
+            <div className="reports-section">
+                <h3>Подробные отчеты (PDF)</h3>
+                <div className="reports-grid">
+                    {habitsData && habitsData.length > 0 ? (
+                        habitsData.map(habit => (
+                            <div key={habit.id} className="report-card">
+                                <div className="report-card-info">
+                                    <div className="report-card-name">{habit.name}</div>
+                                    <div className="report-card-category">{habit.category_name}</div>
+                                </div>
+                                <button
+                                    className="gen-report-btn"
+                                    onClick={() => handleGenerateReport(habit.id)}
+                                    disabled={isReportLoading}
+                                    title="Сгенерировать отчет"
+                                >
+                                    {isReportLoading ? '⌛' : '📄 Отчет'}
+                                </button>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="no-habits-text">У вас пока нет привычек для отчета</p>
+                    )}
+                </div>
+            </div>
         </div>
     );
 };

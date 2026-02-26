@@ -1022,7 +1022,12 @@ const App = () => {
 
       {/* Компонент графиков - для вкладки Графики */}
       {activeTab === 'Графики' && (
-        <Charts getCookie={getCookie} />
+        <Charts
+          getCookie={getCookie}
+          habitsData={habitsData}
+          handleGenerateReport={handleGenerateReport}
+          isReportLoading={isReportLoading}
+        />
       )}
 
       {/* Вкладка Настройка */}
@@ -1103,14 +1108,6 @@ const App = () => {
                       <div className="manage-habit-category">{habit.category_name}</div>
                     </div>
                     <div className="manage-habit-actions">
-                      <button
-                        className="manage-btn report-btn"
-                        onClick={() => handleGenerateReport(habit.id)}
-                        title="Отчет и PDF"
-                        disabled={isReportLoading}
-                      >
-                        📊
-                      </button>
                       <button
                         className="manage-btn edit-btn"
                         onClick={() => {
