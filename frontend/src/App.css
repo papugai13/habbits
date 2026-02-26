@@ -1365,6 +1365,53 @@ body {
   }
 }
 
+.current-photo-preview {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.delete-photo-btn {
+  background: #FEE;
+  border: 1px solid #FCC;
+  color: #C33;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+.delete-photo-btn:hover {
+  background-color: #FDD;
+  border-color: #FBB;
+}
+
+.photo-deletion-notice {
+  padding: 8px;
+  background-color: #FFF3CD;
+  border: 1px solid #FFEEBA;
+  border-radius: 8px;
+  color: #856404;
+  font-size: 13px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #007AFF;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
 /* Comment and Photo Attachment Styles */
 .habit-latest-comment {
   display: inline-flex;

@@ -51,6 +51,7 @@ const App = () => {
   const [quantityValue, setQuantityValue] = useState(1);
   const [commentValue, setCommentValue] = useState('');
   const [photoFile, setPhotoFile] = useState(null);
+  const [deletePhoto, setDeletePhoto] = useState(false);
   const [longPressTimer, setLongPressTimer] = useState(null);
   const [editingHabit, setEditingHabit] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -304,6 +305,7 @@ const App = () => {
       setQuantityValue(currentQuantity && currentQuantity > 0 ? currentQuantity : 1);
       setCommentValue(currentComment || '');
       setPhotoFile(null);
+      setDeletePhoto(false);
       setShowQuantityModal(true);
     }, 500); // 500ms for long press
     setLongPressTimer(timer);
@@ -333,14 +335,33 @@ const App = () => {
 
       if (dateId) {
         // Update existing entry
-        response = await fetch(`/api/v1/date/${dateId}/`, {
-          method: 'PATCH',
-          headers: {
-            'X-CSRFToken': getCookie('csrftoken')
-          },
-          credentials: 'include',
-          body: formData
-        });
+        // If photo should be deleted and NO new file is selected, we send JSON to set photo to null
+        if (deletePhoto && !photoFile) {
+          response = await fetch(`/api/v1/date/${dateId}/`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              is_done: true,
+              quantity: qty,
+              comment: commentValue,
+              photo: null
+            })
+          });
+        } else {
+          // Normal case or updating with new photo
+          response = await fetch(`/api/v1/date/${dateId}/`, {
+            method: 'PATCH',
+            headers: {
+              'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'include',
+            body: formData
+          });
+        }
       } else {
         // Create new entry
         formData.append('habit', habitId);
@@ -377,6 +398,7 @@ const App = () => {
       setQuantityValue(1);
       setCommentValue('');
       setPhotoFile(null);
+      setDeletePhoto(false);
     }
   };
 
@@ -1422,6 +1444,7 @@ const App = () => {
           setQuantityValue(1);
           setCommentValue('');
           setPhotoFile(null);
+          setDeletePhoto(false);
         }}>
           <div className="modal-content quantity-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -1434,6 +1457,7 @@ const App = () => {
                   setQuantityValue(1);
                   setCommentValue('');
                   setPhotoFile(null);
+                  setDeletePhoto(false);
                 }}
               >
                 ×
@@ -1468,9 +1492,29 @@ const App = () => {
 
               <div className="form-group">
                 <label htmlFor="photo-input">Фото</label>
-                {quantityModalData.currentPhoto && !photoFile && (
+                {quantityModalData.currentPhoto && !photoFile && !deletePhoto && (
                   <div className="current-photo-preview">
                     <img src={quantityModalData.currentPhoto} alt="Текущее фото" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', borderRadius: '8px' }} />
+                    <button
+                      className="delete-photo-btn"
+                      type="button"
+                      onClick={() => setDeletePhoto(true)}
+                    >
+                      🗑️ Удалить фото
+                    </button>
+                  </div>
+                )}
+                {deletePhoto && !photoFile && (
+                  <div className="photo-deletion-notice">
+                    Фото будет удалено при сохранении
+                    <button
+                      className="btn-link"
+                      type="button"
+                      onClick={() => setDeletePhoto(false)}
+                      style={{ marginLeft: '10px', fontSize: '12px' }}
+                    >
+                      Отмена
+                    </button>
                   </div>
                 )}
                 <input
@@ -1498,6 +1542,7 @@ const App = () => {
                   setQuantityValue(1);
                   setCommentValue('');
                   setPhotoFile(null);
+                  setDeletePhoto(false);
                 }}
               >
                 Отмена
