@@ -13,7 +13,7 @@ LOCAL = os.getenv('LOCAL', 'False').strip().lower() in ['true', '1', 'yes']
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG')
+DEBUG = os.getenv('DEBUG', 'True').strip().lower() in ['true', '1', 'yes']
 
 ALLOWED_HOSTS = ['*']
 

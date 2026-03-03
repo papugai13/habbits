@@ -151,10 +151,16 @@ class HabitViewSet(viewsets.ModelViewSet):
             
             # Fetch latest photo
             latest_photo_entry = Date.objects.filter(
-                habit=habit, 
-                photo__isnull=False
-            ).exclude(photo='').order_by('-habit_date').first()
-            habit_data['latest_photo'] = request.build_absolute_uri(latest_photo_entry.photo.url) if latest_photo_entry else None
+                user=user_profile,
+                habit=habit
+            ).exclude(photo=None).exclude(photo='').order_by('-habit_date', '-id').first()
+            
+            habit_data['latest_photo'] = None
+            if latest_photo_entry and latest_photo_entry.photo:
+                try:
+                    habit_data['latest_photo'] = request.build_absolute_uri(latest_photo_entry.photo.url)
+                except Exception as e:
+                    print(f"Error generating photo URL: {e}")
             
             # Get statuses for the range (Monday to Sunday)
             statuses = []
