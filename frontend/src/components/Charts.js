@@ -25,7 +25,9 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                     date: formatDate(item.date, period),
                     fullDate: item.date,
                     dayMonth: getNumericDate(item.date),
-                    count: item.completed_count
+                    count: item.completed_count,
+                    countCapped: item.completed_days,
+                    countOverflow: item.extra_quantity
                 }));
                 setChartData(formattedData);
             }
@@ -84,7 +86,10 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
             return (
                 <div className="custom-tooltip">
                     <p className="tooltip-date">{data.fullDate}</p>
-                    <p className="tooltip-count">Выполнено: {data.count}</p>
+                    <p className="tooltip-count">Привычек: {data.countCapped}</p>
+                    {data.countOverflow > 0 && (
+                        <p className="tooltip-overflow">Повторений сверх 1: +{data.countOverflow}</p>
+                    )}
                 </div>
             );
         }
@@ -142,11 +147,23 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                 allowDecimals={false}
                             />
                             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }} />
+                            {/* Основной столбец — зелёный, ограничен до 7 */}
                             <Bar
-                                dataKey="count"
+                                dataKey="countCapped"
+                                stackId="a"
                                 fill="#CCFF00"
+                                radius={[0, 0, 0, 0]}
+                                animationDuration={500}
+                                name="До нормы"
+                            />
+                            {/* Фиолетовый столбец — переполнение свыше 7 */}
+                            <Bar
+                                dataKey="countOverflow"
+                                stackId="a"
+                                fill="#8B5CF6"
                                 radius={[8, 8, 0, 0]}
                                 animationDuration={500}
+                                name="Сверх нормы"
                             />
                         </BarChart>
                     </ResponsiveContainer>
