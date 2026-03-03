@@ -1485,11 +1485,6 @@ body {
   border-bottom: 12px solid #764ba2;
   border-left: 12px solid transparent;
   border-bottom-right-radius: 5px;
-  max-width: 90vw;
-  max-height: 82vh;
-  object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
 }
 
 /* Report and Print Styles */
