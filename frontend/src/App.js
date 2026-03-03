@@ -370,7 +370,7 @@ const App = () => {
       const formData = new FormData();
       formData.append('is_done', 'true');
       if (qty !== null) formData.append('quantity', qty);
-      if (commentValue) formData.append('comment', commentValue);
+      formData.append('comment', commentValue);
       if (photoFile) formData.append('photo', photoFile);
 
       if (dateId) {
@@ -843,7 +843,7 @@ const App = () => {
                 className="profile-menu-item profile-menu-action"
                 onClick={() => {
                   setShowProfileMenu(false);
-                  // TODO: Открыть настройки
+                  setActiveTab('Настройки');
                 }}
               >
                 ⚙️ Настройки
@@ -986,12 +986,20 @@ const App = () => {
           }).map((habit) => (
             <div key={habit.id} className="habit-row">
               <div className="habit-name">
-                {habit.name}
+                <span className="habit-text">{habit.name}</span>
                 {habit.latest_comment && (
                   <div className="habit-latest-comment" title={habit.latest_comment}>
                     <span className="comment-indicator-circle"></span>
                     <span className="comment-text">{habit.latest_comment}</span>
                   </div>
+                )}
+                {habit.latest_photo && (
+                  <img
+                    src={habit.latest_photo}
+                    alt=""
+                    className="habit-thumbnail"
+                    onClick={() => setLightboxUrl(habit.latest_photo)}
+                  />
                 )}
               </div>
               <div className="habit-row-content">
@@ -1026,7 +1034,8 @@ const App = () => {
                     const isFuture = slotDateStr > todayStr;
                     const isYesterday = slotDateStr === yesterdayStr;
                     const isMissed = isPast && !isDone;
-                    const hasAttachment = status && (status.comment || status.photo);
+                    const hasComment = status && status.comment;
+                    const hasPhoto = status && status.photo;
 
                     // Disable only IF it's in the future
                     const isDisabled = isFuture;
@@ -1034,7 +1043,7 @@ const App = () => {
                     return (
                       <button
                         key={slotDateStr}
-                        className={`check-box ${isDone ? 'checked' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && quantity > 1 ? 'with-quantity' : ''} ${hasAttachment ? 'has-attachment' : ''}`}
+                        className={`check-box ${isDone ? 'checked' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && quantity > 1 ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''}`}
                         onClick={() => {
                           if (!isDisabled && !longPressTimer) {
                             toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
@@ -1048,7 +1057,8 @@ const App = () => {
                         disabled={isDisabled}
                       >
                         {isDone && quantity > 1 && <span className="quantity-display">{quantity}</span>}
-                        {hasAttachment && <span className="attachment-indicator"></span>}
+                        {hasComment && <span className="attachment-indicator"></span>}
+                        {hasPhoto && <span className="photo-indicator"></span>}
                       </button>
                     );
                   })}

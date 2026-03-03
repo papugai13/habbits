@@ -149,6 +149,13 @@ class HabitViewSet(viewsets.ModelViewSet):
             ).exclude(comment__exact='').order_by('-habit_date').first()
             habit_data['latest_comment'] = latest_date_entry.comment if latest_date_entry else None
             
+            # Fetch latest photo
+            latest_photo_entry = Date.objects.filter(
+                habit=habit, 
+                photo__isnull=False
+            ).exclude(photo='').order_by('-habit_date').first()
+            habit_data['latest_photo'] = request.build_absolute_uri(latest_photo_entry.photo.url) if latest_photo_entry else None
+            
             # Get statuses for the range (Monday to Sunday)
             statuses = []
             for i in range(7):

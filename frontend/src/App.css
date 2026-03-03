@@ -425,7 +425,26 @@ body {
   color: #333;
   font-weight: 500;
   width: 100%;
-  word-wrap: break-word;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.habit-thumbnail {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 1px solid #E0E0E0;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.habit-thumbnail:hover {
+  transform: scale(1.1);
 }
 
 .habit-row-content {
@@ -452,6 +471,7 @@ body {
   transition: all 0.2s;
   padding: 0;
   min-width: 0;
+  position: relative;
   /* allows flex shrink if needed */
 }
 
@@ -1417,7 +1437,6 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: 8px;
   background-color: #F0F8FF;
   padding: 4px 8px;
   border-radius: 12px;
@@ -1444,9 +1463,7 @@ body {
   white-space: nowrap;
 }
 
-.check-box.has-attachment {
-  position: relative;
-}
+/* Removed .has-attachment positioning as it's now in .check-box by default */
 
 .attachment-indicator {
   position: absolute;
@@ -1457,6 +1474,17 @@ body {
   border-top: 12px solid #007AFF;
   border-left: 12px solid transparent;
   border-top-right-radius: 5px;
+}
+
+.photo-indicator {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-bottom: 12px solid #764ba2;
+  border-left: 12px solid transparent;
+  border-bottom-right-radius: 5px;
 }
 
 /* Report and Print Styles */

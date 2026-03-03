@@ -24,6 +24,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, isReportLoading }
                 const formattedData = data.map(item => ({
                     date: formatDate(item.date, period),
                     fullDate: item.date,
+                    dayMonth: getNumericDate(item.date),
                     count: item.completed_count
                 }));
                 setChartData(formattedData);
@@ -50,6 +51,31 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, isReportLoading }
             const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
             return months[date.getMonth()];
         }
+    };
+
+    const getNumericDate = (dateStr) => {
+        const date = new Date(dateStr);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        return `${day}.${month}`;
+    };
+
+    const CustomXAxisTick = ({ x, y, payload, index }) => {
+        const item = chartData[index];
+        if (!item) return null;
+
+        return (
+            <g transform={`translate(${x},${y})`}>
+                <text x={0} y={0} dy={16} textAnchor="middle" fill="#666" fontSize={12} fontWeight={period === 'week' ? 600 : 500}>
+                    {item.date}
+                </text>
+                {period === 'week' && (
+                    <text x={0} y={15} dy={16} textAnchor="middle" fill="#999" fontSize={10}>
+                        {item.dayMonth}
+                    </text>
+                )}
+            </g>
+        );
     };
 
     const CustomTooltip = ({ active, payload }) => {
@@ -101,13 +127,14 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, isReportLoading }
                     <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 400 : 600}>
                         <BarChart
                             data={chartData}
-                            margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                            margin={{ top: 20, right: 30, left: 0, bottom: period === 'week' ? 20 : 5 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                             <XAxis
                                 dataKey="date"
                                 stroke="#666"
-                                tick={{ fill: '#666', fontSize: 12 }}
+                                tick={<CustomXAxisTick />}
+                                height={period === 'week' ? 50 : 30}
                             />
                             <YAxis
                                 stroke="#666"
