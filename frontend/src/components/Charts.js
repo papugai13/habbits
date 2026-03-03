@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './Charts.css';
 
-const Charts = ({ getCookie, habitsData, handleGenerateReport, isReportLoading }) => {
+const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSummaryReport, isReportLoading }) => {
     const [period, setPeriod] = useState('week');
     const [chartData, setChartData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -162,6 +162,20 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, isReportLoading }
             <div className="reports-section">
                 <h3>Подробные отчеты (PDF)</h3>
                 <div className="reports-grid">
+                    <div className="report-card general-report-card">
+                        <div className="report-card-info">
+                            <div className="report-card-name">📊 Общий итог</div>
+                            <div className="report-card-category">Все привычки</div>
+                        </div>
+                        <button
+                            className="gen-report-btn general-report-btn"
+                            onClick={() => handleGenerateSummaryReport()}
+                            disabled={isReportLoading}
+                            title="Сгенерировать общий отчет"
+                        >
+                            {isReportLoading ? '⌛' : '📄 Отчет'}
+                        </button>
+                    </div>
                     {habitsData && habitsData.length > 0 ? (
                         habitsData.map(habit => (
                             <div key={habit.id} className="report-card">

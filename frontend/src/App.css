@@ -1485,41 +1485,76 @@ body {
   border-bottom: 12px solid #764ba2;
   border-left: 12px solid transparent;
   border-bottom-right-radius: 5px;
+  max-width: 90vw;
+  max-height: 82vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
 }
 
 /* Report and Print Styles */
 .report-modal-content {
   max-width: 800px !important;
-  width: 90% !important;
-  max-height: 90vh;
+  width: 90%;
+  max-height: 85vh;
   overflow-y: auto;
 }
 
+.general-report-card {
+  background: linear-gradient(135deg, #fdfcfb 0%, #e2d1c3 100%);
+  border: 1px solid #dcdcdc;
+}
+
+.general-report-btn {
+  background-color: #333 !important;
+  color: white !important;
+}
+
+.summary-table th {
+  background-color: #f5f5f5;
+}
+
 @media print {
-  body * {
-    visibility: hidden;
-  }
-
-  .printable-report,
-  .printable-report * {
-    visibility: visible;
-  }
-
-  .printable-report {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 20px;
-    background: white;
-  }
-
   .no-print {
     display: none !important;
   }
 
   .print-only {
     display: block !important;
+  }
+
+  .report-modal-overlay {
+    background: white !important;
+    position: static !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .report-modal-content {
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .printable-report {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .summary-table {
+    font-size: 14px;
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .summary-table th,
+  .summary-table td {
+    border-bottom: 1px solid #ddd !important;
+    padding: 8px !important;
   }
 
   .report-entry {
@@ -1529,16 +1564,6 @@ body {
     border: 1px solid #ddd;
     border-radius: 8px;
     padding: 15px;
-  }
-
-  .report-entry-photo {
-    max-height: 400px;
-    object-fit: contain;
-  }
-
-  .app {
-    box-shadow: none;
-    max-width: 100%;
   }
 }
 

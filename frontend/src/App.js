@@ -817,6 +817,29 @@ const App = () => {
     }
   };
 
+  const handleGenerateSummaryReport = async () => {
+    setIsReportLoading(true);
+    try {
+      const response = await fetch(`/api/v1/habits/summary_report/`, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setReportData(data);
+      } else {
+        alert('Ошибка при загрузке общего отчета');
+      }
+    } catch (error) {
+      console.error('Error fetching summary report:', error);
+      alert('Ошибка при загрузке общего отчета');
+    } finally {
+      setIsReportLoading(false);
+    }
+  };
+
   return (
     <div className="app">
       {/* Верхняя панель */}
@@ -1076,6 +1099,7 @@ const App = () => {
           getCookie={getCookie}
           habitsData={habitsData}
           handleGenerateReport={handleGenerateReport}
+          handleGenerateSummaryReport={handleGenerateSummaryReport}
           isReportLoading={isReportLoading}
         />
       )}
@@ -1629,37 +1653,76 @@ const App = () => {
               <div className="report-header print-only" style={{ display: 'none' }}>
                 <h2>{reportData.habit.name} - Отчет о прогрессе</h2>
               </div>
-              <div className="report-stats" style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '8px', marginBottom: '20px' }}>
-                <p><strong>Всего записей:</strong> {reportData.entries.length}</p>
-                <p><strong>Общая сумма действий:</strong> {reportData.entries.reduce((sum, e) => sum + (e.quantity || 1), 0)}</p>
-              </div>
 
-              <div className="report-entries" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {reportData.entries.length === 0 ? (
-                  <p>Нет данных для отчета.</p>
-                ) : (
-                  reportData.entries.map((entry, idx) => (
-                    <div key={idx} className="report-entry" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px' }}>
-                      <div className="report-entry-header" style={{ borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
-                        <strong>{new Date(entry.date).toLocaleDateString('ru-RU')}</strong>
-                        {(entry.quantity !== null && entry.quantity > 1) && <span style={{ marginLeft: '10px', color: '#666' }}>(Кол-во: {entry.quantity})</span>}
-                      </div>
-                      {entry.comment && <p className="report-entry-comment" style={{ fontStyle: 'italic', marginBottom: '10px' }}>{entry.comment}</p>}
-                      {entry.photo && (
-                        <div style={{ marginTop: '10px' }}>
-                          <img
-                            src={entry.photo}
-                            alt="Прогресс"
-                            className="report-entry-photo"
-                            style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', objectFit: 'contain', cursor: 'zoom-in' }}
-                            onClick={() => setLightboxUrl(entry.photo)}
-                          />
-                        </div>
-                      )}
+              {reportData.is_general ? (
+                <div className="summary-report-content">
+                  <div className="report-stats" style={{ padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px', marginBottom: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                    <div>
+                      <strong>Всего выполнений:</strong>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{reportData.total_completions}</div>
                     </div>
-                  ))
-                )}
-              </div>
+                    <div>
+                      <strong>Общая сумма действий:</strong>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{reportData.total_quantity}</div>
+                    </div>
+                  </div>
+
+                  <table className="summary-table" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                    <thead>
+                      <tr style={{ textAlign: 'left', borderBottom: '2px solid #eee' }}>
+                        <th style={{ padding: '10px' }}>Привычка</th>
+                        <th style={{ padding: '10px' }}>Категория</th>
+                        <th style={{ padding: '10px', textAlign: 'right' }}>Выполнено</th>
+                        <th style={{ padding: '10px', textAlign: 'right' }}>Сумма</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reportData.habits.map((h, i) => (
+                        <tr key={h.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                          <td style={{ padding: '10px' }}>{h.name}</td>
+                          <td style={{ padding: '10px', color: '#666', fontSize: '12px' }}>{h.category || '-'}</td>
+                          <td style={{ padding: '10px', textAlign: 'right' }}>{h.completions}</td>
+                          <td style={{ padding: '10px', textAlign: 'right' }}>{h.quantity}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <>
+                  <div className="report-stats" style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '8px', marginBottom: '20px' }}>
+                    <p><strong>Всего записей:</strong> {reportData.entries.length}</p>
+                    <p><strong>Общая сумма действий:</strong> {reportData.entries.reduce((sum, e) => sum + (e.quantity || 1), 0)}</p>
+                  </div>
+
+                  <div className="report-entries" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {reportData.entries.length === 0 ? (
+                      <p>Нет данных для отчета.</p>
+                    ) : (
+                      reportData.entries.map((entry, idx) => (
+                        <div key={idx} className="report-entry" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px' }}>
+                          <div className="report-entry-header" style={{ borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
+                            <strong>{new Date(entry.date).toLocaleDateString('ru-RU')}</strong>
+                            {(entry.quantity !== null && entry.quantity > 1) && <span style={{ marginLeft: '10px', color: '#666' }}>(Кол-во: {entry.quantity})</span>}
+                          </div>
+                          {entry.comment && <p className="report-entry-comment" style={{ fontStyle: 'italic', marginBottom: '10px' }}>{entry.comment}</p>}
+                          {entry.photo && (
+                            <div style={{ marginTop: '10px' }}>
+                              <img
+                                src={entry.photo}
+                                alt="Прогресс"
+                                className="report-entry-photo"
+                                style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', objectFit: 'contain', cursor: 'zoom-in' }}
+                                onClick={() => setLightboxUrl(entry.photo)}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
