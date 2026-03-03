@@ -223,7 +223,6 @@ class HabitViewSet(viewsets.ModelViewSet):
         current_date = start_date
         
         while current_date <= end_date:
-            # Подсчитываем сумму выполненных привычек за этот день с учетом количества
             day_dates = Date.objects.filter(
                 user=user_profile,
                 habit__in=habits,
@@ -231,19 +230,28 @@ class HabitViewSet(viewsets.ModelViewSet):
                 is_done=True
             )
             
-            completed_count = day_dates.aggregate(
+            # Количество выполненных привычек за день (по 1 за привычку)
+            completed_days = day_dates.count()
+            
+            # Сумма "лишних" выполнений (quantity - 1) для записей с quantity > 1
+            extra_quantity = day_dates.aggregate(
                 total=Sum(
                     Case(
-                        When(quantity__isnull=True, then=Value(1)),
-                        default=F('quantity'),
+                        When(quantity__gt=1, then=F('quantity') - Value(1)),
+                        default=Value(0),
                         output_field=IntegerField()
                     )
                 )
             )['total'] or 0
+
+            # Итоговое количество (количество привычек + лишние quantity)
+            completed_count = completed_days + extra_quantity
             
             statistics.append({
                 'date': current_date.isoformat(),
-                'completed_count': completed_count
+                'completed_count': completed_count,
+                'completed_days': completed_days,
+                'extra_quantity': extra_quantity,
             })
             
             current_date += timedelta(days=1)

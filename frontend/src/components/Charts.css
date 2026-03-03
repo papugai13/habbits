@@ -84,6 +84,13 @@
     font-size: 14px;
     font-weight: 600;
     color: #CCFF00;
+    margin: 0 0 4px 0;
+}
+
+.tooltip-overflow {
+    font-size: 13px;
+    font-weight: 600;
+    color: #8B5CF6;
     margin: 0;
 }
 

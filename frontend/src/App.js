@@ -420,10 +420,21 @@ const App = () => {
     }
   };
 
+  // Кол-во дней выполнения (по 1 за день, не зависимо от quantity)
   const getHabitCount = (habit) => {
     return habit.statuses.reduce((acc, s) => {
       if (s.is_done) {
-        return acc + (s.quantity || 1);
+        return acc + 1;
+      }
+      return acc;
+    }, 0);
+  };
+
+  // Сумма "лишних" выполнений: (quantity - 1) для дней где quantity > 1
+  const getHabitOverflow = (habit) => {
+    return habit.statuses.reduce((acc, s) => {
+      if (s.is_done && s.quantity && s.quantity > 1) {
+        return acc + (s.quantity - 1);
       }
       return acc;
     }, 0);
@@ -1031,7 +1042,12 @@ const App = () => {
                     );
                   })}
                 </div>
-                <div className="habit-count">{getHabitCount(habit)}</div>
+                <div className="habit-counts-wrapper">
+                  <div className="habit-count">{getHabitCount(habit)}</div>
+                  {getHabitOverflow(habit) > 0 && (
+                    <div className="habit-count habit-count-overflow">+{getHabitOverflow(habit)}</div>
+                  )}
+                </div>
               </div>
             </div>
           ))}

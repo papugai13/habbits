@@ -511,6 +511,27 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+/* Обёртка для основного и дополнительного счётчиков */
+.habit-counts-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Фиолетовый счётчик для выполнений свыше 7 */
+.habit-count-overflow {
+  background-color: #8B5CF6;
+  color: #FFFFFF;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  min-width: 40px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(139, 92, 246, 0.3);
+}
+
 /* Нижняя навигация */
 .bottom-nav {
   position: fixed;
@@ -695,6 +716,12 @@ body {
   .habit-count {
     padding: 4px 6px;
     font-size: 11px;
+    min-width: 28px;
+  }
+
+  .habit-count-overflow {
+    padding: 3px 5px;
+    font-size: 10px;
     min-width: 28px;
   }
 
