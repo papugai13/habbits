@@ -158,7 +158,12 @@ class HabitViewSet(viewsets.ModelViewSet):
             habit_data['latest_photo'] = None
             if latest_photo_entry and latest_photo_entry.photo:
                 try:
-                    habit_data['latest_photo'] = request.build_absolute_uri(latest_photo_entry.photo.url)
+                    photo_url = latest_photo_entry.photo.url
+                    # Robust check for server environment
+                    if photo_url.startswith('http'):
+                        habit_data['latest_photo'] = photo_url
+                    else:
+                        habit_data['latest_photo'] = request.build_absolute_uri(photo_url)
                 except Exception as e:
                     print(f"Error generating photo URL: {e}")
             
@@ -182,49 +187,55 @@ class HabitViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def summary_report(self, request):
-        user_profile, _ = UserAll.objects.get_or_create(
-            auth_user=request.user,
-            defaults={'name': request.user.username, 'age': ''}
-        )
-        habits = Habit.objects.filter(user=user_profile, is_archived=False)
-        
-        habit_summaries = []
-        total_completions = 0
-        total_quantity = 0
-        
-        for habit in habits:
-            dates = Date.objects.filter(habit=habit, is_done=True)
-            habit_completions = dates.count()
+        try:
+            user_profile, _ = UserAll.objects.get_or_create(
+                auth_user=request.user,
+                defaults={'name': request.user.username, 'age': ''}
+            )
+            habits = Habit.objects.filter(user=user_profile, is_archived=False)
             
-            # Calculate quantity for this habit
-            habit_quantity = dates.aggregate(
-                total=Sum(
-                    Case(
-                        When(quantity__isnull=True, then=Value(1)),
-                        default=F('quantity'),
-                        output_field=IntegerField()
+            habit_summaries = []
+            total_completions = 0
+            total_quantity = 0
+            
+            for habit in habits:
+                dates = Date.objects.filter(habit=habit, is_done=True)
+                habit_completions = dates.count()
+                
+                # Calculate quantity for this habit
+                habit_quantity = dates.aggregate(
+                    total=Sum(
+                        Case(
+                            When(quantity__isnull=True, then=Value(1)),
+                            default=F('quantity'),
+                            output_field=IntegerField()
+                        )
                     )
-                )
-            )['total'] or 0
-            
-            total_completions += habit_completions
-            total_quantity += habit_quantity
-            
-            habit_summaries.append({
-                "id": habit.id,
-                "name": habit.name,
-                "category": habit.category.name if habit.category else None,
-                "completions": habit_completions,
-                "quantity": habit_quantity
+                )['total'] or 0
+                
+                total_completions += habit_completions
+                total_quantity += habit_quantity
+                
+                habit_summaries.append({
+                    "id": habit.id,
+                    "name": habit.name,
+                    "category": habit.category.name if habit.category else None,
+                    "completions": habit_completions,
+                    "quantity": habit_quantity
+                })
+                
+            return Response({
+                "is_general": True,
+                "habit": {"name": "Общий итог"},
+                "total_completions": total_completions,
+                "total_quantity": total_quantity,
+                "habits": habit_summaries
             })
-            
-        return Response({
-            "is_general": True,
-            "habit": {"name": "Общий итог"},
-            "total_completions": total_completions,
-            "total_quantity": total_quantity,
-            "habits": habit_summaries
-        })
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=False, methods=['get'])
     def daily_statistics(self, request):
