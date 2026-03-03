@@ -472,7 +472,8 @@ body {
   padding: 0;
   min-width: 0;
   position: relative;
-  /* allows flex shrink if needed */
+  overflow: hidden;
+  /* Ensure corner indicators are clipped */
 }
 
 .check-box.checked {
