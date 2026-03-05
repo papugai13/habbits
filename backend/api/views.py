@@ -287,8 +287,9 @@ class HabitViewSet(viewsets.ModelViewSet):
         period = request.query_params.get('period', None)
         
         if period == 'week':
-            start_date = today - timedelta(days=6)
-            end_date = today
+            days_since_monday = today.weekday()  # 0=Пн, 6=Вс
+            start_date = today - timedelta(days=days_since_monday)
+            end_date = start_date + timedelta(days=6)
         elif period == 'month':
             start_date = today - timedelta(days=29)
             end_date = today
