@@ -1100,7 +1100,7 @@ const App = () => {
                 <div className="habit-counts-wrapper">
                   <div className="habit-count">{getHabitCount(habit)}</div>
                   {getHabitOverflow(habit) > 0 && (
-                    <div className="habit-count habit-count-overflow">+{getHabitOverflow(habit)}</div>
+                    <div className="habit-count habit-count-overflow">{getHabitCount(habit) + getHabitOverflow(habit)}</div>
                   )}
                 </div>
               </div>
