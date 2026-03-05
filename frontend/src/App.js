@@ -1548,7 +1548,7 @@ const App = () => {
         }}>
           <div className="modal-content quantity-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Детали выполнения</h2>
+              <h2>Детали выполнения {quantityModalData.dayDate && ` — ${new Date(quantityModalData.dayDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`}</h2>
               <button
                 className="modal-close"
                 onClick={() => {
