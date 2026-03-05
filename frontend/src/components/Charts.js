@@ -46,9 +46,9 @@ const CustomTooltip = ({ active, payload }) => {
         return (
             <div className="custom-tooltip">
                 <p className="tooltip-date">{data.fullDate}</p>
-                <p className="tooltip-count">Привычек: {data.countCapped}</p>
-                {data.countOverflow > 0 && (
-                    <p className="tooltip-overflow">Повторений сверх: +{data.countOverflow}</p>
+                <p className="tooltip-count">Привычки: {data.countCapped}</p>
+                {data.countExtra > 0 && (
+                    <p className="tooltip-overflow">Всего: {data.countTotal}</p>
                 )}
             </div>
         );
@@ -73,9 +73,9 @@ const SingleHabitChart = ({ habit, period }) => {
                         date: formatDate(item.date, period),
                         fullDate: item.date,
                         dayMonth: getNumericDate(item.date),
-                        count: item.completed_count,
+                        countTotal: item.completed_count,
                         countCapped: item.completed_days,
-                        countOverflow: item.extra_quantity
+                        countExtra: item.extra_quantity
                     }));
                     setData(formatted);
                 }
@@ -109,8 +109,8 @@ const SingleHabitChart = ({ habit, period }) => {
                             allowDecimals={false}
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0, 0, 0, 0.02)' }} />
-                        <Bar dataKey="countCapped" stackId="a" fill="#CCFF00" radius={[0, 0, 0, 0]} name="Привычек" />
-                        <Bar dataKey="countOverflow" stackId="a" fill="#8B5CF6" radius={[4, 4, 0, 0]} name="Повторений сверх" />
+                        <Bar dataKey="countCapped" stackId="a" fill="#CCFF00" radius={[0, 0, 0, 0]} name="Дней" />
+                        <Bar dataKey="countExtra" stackId="a" fill="#8B5CF6" radius={[4, 4, 0, 0]} name="Повторений сверх" />
                     </BarChart>
                 </ResponsiveContainer>
             </div>
@@ -140,9 +140,9 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                     date: formatDate(item.date, period),
                     fullDate: item.date,
                     dayMonth: getNumericDate(item.date),
-                    count: item.completed_count,
+                    countTotal: item.completed_count,
                     countCapped: item.completed_days,
-                    countOverflow: item.extra_quantity
+                    countExtra: item.extra_quantity
                 }));
                 setChartData(formattedData);
             }
@@ -213,7 +213,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                 name="Привычек"
                             />
                             <Bar
-                                dataKey="countOverflow"
+                                dataKey="countExtra"
                                 stackId="a"
                                 fill="#8B5CF6"
                                 radius={[8, 8, 0, 0]}
