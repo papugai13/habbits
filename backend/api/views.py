@@ -137,22 +137,26 @@ class HabitViewSet(viewsets.ModelViewSet):
             
         days_since_monday = reference_date.weekday()
         start_date = reference_date - timedelta(days=days_since_monday)
+        end_date = start_date + timedelta(days=6)
         
         result = []
         for habit in habits:
             habit_data = HabitSerializer(habit).data
             
-            # Fetch latest comment
+            # Fetch latest comment within the viewed week
             latest_date_entry = Date.objects.filter(
+                user=user_profile,
                 habit=habit, 
+                habit_date__range=[start_date, end_date],
                 comment__isnull=False
             ).exclude(comment__exact='').order_by('-habit_date').first()
             habit_data['latest_comment'] = latest_date_entry.comment if latest_date_entry else None
             
-            # Fetch latest photo
+            # Fetch latest photo within the viewed week
             latest_photo_entry = Date.objects.filter(
                 user=user_profile,
-                habit=habit
+                habit=habit,
+                habit_date__range=[start_date, end_date]
             ).exclude(photo=None).exclude(photo='').order_by('-habit_date', '-id').first()
             
             habit_data['latest_photo'] = None
