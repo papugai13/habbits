@@ -338,15 +338,18 @@ const App = () => {
     }
   };
 
+  const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto) => {
+    setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto });
+    setQuantityValue(currentQuantity && currentQuantity > 0 ? currentQuantity : 1);
+    setCommentValue(currentComment || '');
+    setPhotoFile(null);
+    setDeletePhoto(false);
+    setShowQuantityModal(true);
+  };
+
   const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto) => {
     const timer = setTimeout(() => {
-      // Open quantity modal
-      setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto });
-      setQuantityValue(currentQuantity && currentQuantity > 0 ? currentQuantity : 1);
-      setCommentValue(currentComment || '');
-      setPhotoFile(null);
-      setDeletePhoto(false);
-      setShowQuantityModal(true);
+      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto);
     }, 500); // 500ms for long press
     setLongPressTimer(timer);
   };
@@ -1022,7 +1025,17 @@ const App = () => {
               <div className="habit-name">
                 <span className="habit-text">{habit.name}</span>
                 {habit.latest_comment && (
-                  <div className="habit-latest-comment" title={habit.latest_comment}>
+                  <div
+                    className="habit-latest-comment"
+                    title={habit.latest_comment}
+                    onClick={() => {
+                      const d = habit.latest_comment_details;
+                      if (d) {
+                        openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo);
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <span className="comment-indicator-circle"></span>
                     <span className="comment-text">{habit.latest_comment}</span>
                   </div>

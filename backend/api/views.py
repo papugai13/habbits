@@ -150,7 +150,19 @@ class HabitViewSet(viewsets.ModelViewSet):
                 habit_date__range=[start_date, end_date],
                 comment__isnull=False
             ).exclude(comment__exact='').order_by('-habit_date').first()
-            habit_data['latest_comment'] = latest_date_entry.comment if latest_date_entry else None
+            
+            habit_data['latest_comment'] = None
+            habit_data['latest_comment_details'] = None
+            if latest_date_entry:
+                habit_data['latest_comment'] = latest_date_entry.comment
+                habit_data['latest_comment_details'] = {
+                    "id": latest_date_entry.id,
+                    "date": latest_date_entry.habit_date.isoformat(),
+                    "quantity": latest_date_entry.quantity,
+                    "is_done": latest_date_entry.is_done,
+                    "comment": latest_date_entry.comment,
+                    "photo": request.build_absolute_uri(latest_date_entry.photo.url) if latest_date_entry.photo else None
+                }
             
             # Fetch latest photo within the viewed week
             latest_photo_entry = Date.objects.filter(
@@ -160,7 +172,16 @@ class HabitViewSet(viewsets.ModelViewSet):
             ).exclude(photo=None).exclude(photo='').order_by('-habit_date', '-id').first()
             
             habit_data['latest_photo'] = None
-            if latest_photo_entry and latest_photo_entry.photo:
+            habit_data['latest_photo_details'] = None
+            if latest_photo_entry:
+                habit_data['latest_photo_details'] = {
+                    "id": latest_photo_entry.id,
+                    "date": latest_photo_entry.habit_date.isoformat(),
+                    "quantity": latest_photo_entry.quantity,
+                    "is_done": latest_photo_entry.is_done,
+                    "comment": latest_photo_entry.comment,
+                    "photo": request.build_absolute_uri(latest_photo_entry.photo.url) if latest_photo_entry.photo else None
+                }
                 try:
                     photo_url = latest_photo_entry.photo.url
                     # Robust check for server environment
