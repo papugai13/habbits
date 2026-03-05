@@ -43,6 +43,7 @@ class DateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Date
         fields = '__all__'  # Includes quantity field
+        read_only_fields = ('id', 'slug', 'name')
 
 class AchievementSerializer(serializers.ModelSerializer):
     class Meta:

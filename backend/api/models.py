@@ -213,6 +213,7 @@ class Date(models.Model):
     class Meta:
         verbose_name = "Дата"
         verbose_name_plural = "Даты"
+        unique_together = ('user', 'habit', 'habit_date')
 
 
 class Achievement(models.Model):

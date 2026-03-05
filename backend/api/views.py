@@ -285,8 +285,12 @@ class HabitViewSet(viewsets.ModelViewSet):
             else:
                 end_date = today
 
-        # Получаем все привычки пользователя
-        habits = Habit.objects.filter(user=user_profile)
+        # Получаем все привычки пользователя или одну конкретную
+        habit_id = request.query_params.get('habit_id')
+        if habit_id:
+            habits = Habit.objects.filter(user=user_profile, id=habit_id)
+        else:
+            habits = Habit.objects.filter(user=user_profile)
         
         # Собираем статистику по дням
         statistics = []
@@ -374,6 +378,9 @@ def dates_list(request):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            print(f"Serializer errors: {serializer.errors}")
+            print(f"Data received: {data}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     cats = Date.objects.all()
     serializer = DateSerializer(cats, many=True)
