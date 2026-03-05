@@ -326,7 +326,7 @@ const App = () => {
       }
 
       if (!response.ok) {
-        throw new Error('API request failed');
+        throw new Error(`API error ${response.status}`);
       }
 
       // Refetch to get correct IDs and sync state
@@ -417,7 +417,7 @@ const App = () => {
       }
 
       if (!response.ok) {
-        throw new Error('API request failed');
+        throw new Error(`API error ${response.status}`);
       }
 
       // Close modal and refresh
@@ -430,7 +430,7 @@ const App = () => {
 
     } catch (error) {
       console.error('Error saving data:', error);
-      alert('Ошибка при сохранении данных');
+      alert(`Ошибка при сохранении данных: ${error.message}`);
     } finally {
       // Always close modal and reset state
       setShowQuantityModal(false);

@@ -2,6 +2,122 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './Charts.css';
 
+const formatDate = (dateStr, periodType) => {
+    const date = new Date(dateStr);
+    if (periodType === 'week') {
+        const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+        return days[date.getDay()];
+    } else if (periodType === 'month') {
+        return date.getDate();
+    } else {
+        const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+        return months[date.getMonth()];
+    }
+};
+
+const getNumericDate = (dateStr) => {
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${day}.${month}`;
+};
+
+const CustomXAxisTick = ({ x, y, payload, index, data, period }) => {
+    const item = data[index];
+    if (!item) return null;
+
+    return (
+        <g transform={`translate(${x},${y})`}>
+            <text x={0} y={0} dy={16} textAnchor="middle" fill="#666" fontSize={10} fontWeight={period === 'week' ? 600 : 500}>
+                {item.date}
+            </text>
+            {period === 'week' && (
+                <text x={0} y={12} dy={16} textAnchor="middle" fill="#999" fontSize={8}>
+                    {item.dayMonth}
+                </text>
+            )}
+        </g>
+    );
+};
+
+const CustomTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+        const data = payload[0].payload;
+        return (
+            <div className="custom-tooltip">
+                <p className="tooltip-date">{data.fullDate}</p>
+                <p className="tooltip-count">Привычек: {data.countCapped}</p>
+                {data.countOverflow > 0 && (
+                    <p className="tooltip-overflow">Повторений сверх: +{data.countOverflow}</p>
+                )}
+            </div>
+        );
+    }
+    return null;
+};
+
+const SingleHabitChart = ({ habit, period }) => {
+    const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchHabitStats = async () => {
+            setLoading(true);
+            try {
+                const response = await fetch(`/api/v1/habits/daily_statistics/?period=${period}&habit_id=${habit.id}`, {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    const json = await response.json();
+                    const formatted = json.map(item => ({
+                        date: formatDate(item.date, period),
+                        fullDate: item.date,
+                        dayMonth: getNumericDate(item.date),
+                        count: item.completed_count,
+                        countCapped: item.completed_days,
+                        countOverflow: item.extra_quantity
+                    }));
+                    setData(formatted);
+                }
+            } catch (error) {
+                console.error(`Error fetching stats for habit ${habit.id}:`, error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchHabitStats();
+    }, [habit.id, period]);
+
+    if (loading) return <div className="mini-chart-loading">...</div>;
+
+    return (
+        <div className="single-habit-chart">
+            <h4>{habit.name}</h4>
+            <div className="mini-chart-wrapper">
+                <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={data} margin={{ top: 10, right: 10, left: -25, bottom: period === 'week' ? 20 : 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis
+                            dataKey="date"
+                            tick={<CustomXAxisTick data={data} period={period} />}
+                            height={period === 'week' ? 40 : 25}
+                            stroke="#eee"
+                        />
+                        <YAxis
+                            stroke="#eee"
+                            tick={{ fill: '#999', fontSize: 10 }}
+                            allowDecimals={false}
+                        />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0, 0, 0, 0.02)' }} />
+                        <Bar dataKey="countCapped" stackId="a" fill="#CCFF00" radius={[0, 0, 0, 0]} name="Привычек" />
+                        <Bar dataKey="countOverflow" stackId="a" fill="#8B5CF6" radius={[4, 4, 0, 0]} name="Повторений сверх" />
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    );
+};
+
 const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSummaryReport, isReportLoading }) => {
     const [period, setPeriod] = useState('week');
     const [chartData, setChartData] = useState([]);
@@ -20,7 +136,6 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
 
             if (response.ok) {
                 const data = await response.json();
-                // Форматируем данные для графика
                 const formattedData = data.map(item => ({
                     date: formatDate(item.date, period),
                     fullDate: item.date,
@@ -36,64 +151,6 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
         } finally {
             setLoading(false);
         }
-    };
-
-    const formatDate = (dateStr, periodType) => {
-        const date = new Date(dateStr);
-
-        if (periodType === 'week') {
-            // Для недели показываем день недели
-            const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-            return days[date.getDay()];
-        } else if (periodType === 'month') {
-            // Для месяца показываем день месяца
-            return date.getDate();
-        } else {
-            // Для года показываем месяц
-            const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-            return months[date.getMonth()];
-        }
-    };
-
-    const getNumericDate = (dateStr) => {
-        const date = new Date(dateStr);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        return `${day}.${month}`;
-    };
-
-    const CustomXAxisTick = ({ x, y, payload, index }) => {
-        const item = chartData[index];
-        if (!item) return null;
-
-        return (
-            <g transform={`translate(${x},${y})`}>
-                <text x={0} y={0} dy={16} textAnchor="middle" fill="#666" fontSize={12} fontWeight={period === 'week' ? 600 : 500}>
-                    {item.date}
-                </text>
-                {period === 'week' && (
-                    <text x={0} y={15} dy={16} textAnchor="middle" fill="#999" fontSize={10}>
-                        {item.dayMonth}
-                    </text>
-                )}
-            </g>
-        );
-    };
-
-    const CustomTooltip = ({ active, payload }) => {
-        if (active && payload && payload.length) {
-            const data = payload[0].payload;
-            return (
-                <div className="custom-tooltip">
-                    <p className="tooltip-date">{data.fullDate}</p>
-                    <p className="tooltip-count">Привычек: {data.countCapped}</p>
-                    {data.countOverflow > 0 && (
-                        <p className="tooltip-overflow">Повторений сверх 1: +{data.countOverflow}</p>
-                    )}
-                </div>
-            );
-        }
-        return null;
     };
 
     return (
@@ -138,7 +195,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                             <XAxis
                                 dataKey="date"
                                 stroke="#666"
-                                tick={<CustomXAxisTick />}
+                                tick={<CustomXAxisTick data={chartData} period={period} />}
                                 height={period === 'week' ? 50 : 30}
                             />
                             <YAxis
@@ -147,23 +204,21 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                 allowDecimals={false}
                             />
                             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }} />
-                            {/* Основной столбец — зелёный, ограничен до 7 */}
                             <Bar
                                 dataKey="countCapped"
                                 stackId="a"
                                 fill="#CCFF00"
                                 radius={[0, 0, 0, 0]}
                                 animationDuration={500}
-                                name="До нормы"
+                                name="Привычек"
                             />
-                            {/* Фиолетовый столбец — переполнение свыше 7 */}
                             <Bar
                                 dataKey="countOverflow"
                                 stackId="a"
                                 fill="#8B5CF6"
                                 radius={[8, 8, 0, 0]}
                                 animationDuration={500}
-                                name="Сверх нормы"
+                                name="Повторений сверх"
                             />
                         </BarChart>
                     </ResponsiveContainer>
@@ -176,6 +231,24 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                     )}
                 </div>
             )}
+
+            <div className="individual-charts-section">
+                <h3>Прогресс по привычкам</h3>
+                <div className="individual-charts-grid">
+                    {habitsData && habitsData.length > 0 ? (
+                        habitsData.map(habit => (
+                            <SingleHabitChart
+                                key={habit.id}
+                                habit={habit}
+                                period={period}
+                            />
+                        ))
+                    ) : (
+                        <p className="no-habits-text">Добавьте привычки, чтобы увидеть прогресс</p>
+                    )}
+                </div>
+            </div>
+
             <div className="reports-section">
                 <h3>Подробные отчеты (PDF)</h3>
                 <div className="reports-grid">
