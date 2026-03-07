@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import './Charts.css';
 
 const formatDate = (dateStr, periodType) => {
@@ -37,6 +37,28 @@ const CustomXAxisTick = ({ x, y, payload, index, data, period }) => {
                 </text>
             )}
         </g>
+    );
+};
+
+const CustomBarLabel = ({ x, y, width, height, value, color, baseSize = 14 }) => {
+    if (!value || value <= 0) return null;
+
+    // Adjust font size if bar is too small
+    const fontSize = height < 20 ? Math.max(8, baseSize - 4) : baseSize;
+
+    return (
+        <text
+            x={x + width / 2}
+            y={y + height / 2}
+            fill={color}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={fontSize}
+            fontWeight={800}
+            style={{ pointerEvents: 'none' }}
+        >
+            {value}
+        </text>
     );
 };
 
@@ -109,8 +131,18 @@ const SingleHabitChart = ({ habit, period }) => {
                             allowDecimals={false}
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0, 0, 0, 0.02)' }} />
-                        <Bar dataKey="countCapped" stackId="a" fill="#CCFF00" radius={[0, 0, 0, 0]} name="Дней" />
-                        <Bar dataKey="countExtra" stackId="a" fill="#8B5CF6" radius={[4, 4, 0, 0]} name="Повторений сверх" />
+                        <Bar dataKey="countCapped" stackId="a" fill="#CCFF00" radius={[0, 0, 0, 0]} name="Дней">
+                            <LabelList
+                                dataKey="countCapped"
+                                content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
+                            />
+                        </Bar>
+                        <Bar dataKey="countExtra" stackId="a" fill="#8B5CF6" radius={[4, 4, 0, 0]} name="Повторений сверх">
+                            <LabelList
+                                dataKey="countExtra"
+                                content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
+                            />
+                        </Bar>
                     </BarChart>
                 </ResponsiveContainer>
             </div>
@@ -211,7 +243,12 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                 radius={[0, 0, 0, 0]}
                                 animationDuration={500}
                                 name="Привычек"
-                            />
+                            >
+                                <LabelList
+                                    dataKey="countCapped"
+                                    content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
+                                />
+                            </Bar>
                             <Bar
                                 dataKey="countExtra"
                                 stackId="a"
@@ -219,7 +256,12 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                 radius={[8, 8, 0, 0]}
                                 animationDuration={500}
                                 name="Повторений сверх"
-                            />
+                            >
+                                <LabelList
+                                    dataKey="countExtra"
+                                    content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
+                                />
+                            </Bar>
                         </BarChart>
                     </ResponsiveContainer>
 
