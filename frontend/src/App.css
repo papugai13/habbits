@@ -1207,23 +1207,29 @@ body {
 
 .manage-habit-info {
   flex: 1;
+  min-width: 0;
+  /* Important for ellipsis in flex child */
 }
 
 .manage-habit-name {
-  font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 16px;
   color: #333;
-  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .manage-habit-category {
-  font-size: 12px;
+  font-size: 13px;
   color: #888;
 }
 
 .manage-habit-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
+  /* Don't allow buttons to shrink */
 }
 
 .manage-btn {
@@ -1259,11 +1265,16 @@ body {
   opacity: 0.8;
 }
 
-/* On mobile, make sure the handle is wide enough for a thumb */
-@media (max-width: 480px) {
+/* On small mobile, make the handle even more compact */
+@media (max-width: 360px) {
+  .manage-habit-item {
+    padding: 10px 12px;
+    gap: 4px;
+  }
+
   .drag-handle {
-    padding: 10px 15px;
-    font-size: 22px;
+    padding: 8px 10px;
+    font-size: 18px;
   }
 }
 
@@ -1273,12 +1284,8 @@ body {
 
 
 
-/* Hide drag handle on very small screens or prioritize arrows */
-@media (max-width: 400px) {
-  .drag-handle {
-    display: none;
-  }
-}
+
+
 
 .archive-btn:hover {
   background-color: #fff8e1;

@@ -220,7 +220,17 @@ const App = () => {
   // Блокировка прокрутки при мобильном перетаскивании (необходимы non-passive слушатели)
   useEffect(() => {
     const listElement = document.querySelector('.manage-habits-list');
-    if (!listElement || !draggedHabitId) return;
+    const modalContent = document.querySelector('.modal-content');
+
+    if (!listElement || !draggedHabitId) {
+      document.body.style.overflow = '';
+      document.body.style.height = '';
+      if (modalContent) {
+        modalContent.style.overflow = '';
+        modalContent.style.height = '';
+      }
+      return;
+    }
 
     const preventDefault = (e) => {
       if (isTouchDraggingInProgress.current && e.cancelable) {
@@ -228,9 +238,23 @@ const App = () => {
       }
     };
 
+    // Блокируем прокрутку всего экрана и модалки
+    document.body.style.overflow = 'hidden';
+    document.body.style.height = '100%';
+    if (modalContent) {
+      modalContent.style.overflow = 'hidden';
+      modalContent.style.height = '100%';
+    }
+
     // { passive: false } позволяет вызывать preventDefault() в Firefox/Safari
     listElement.addEventListener('touchmove', preventDefault, { passive: false });
     return () => {
+      document.body.style.overflow = '';
+      document.body.style.height = '';
+      if (modalContent) {
+        modalContent.style.overflow = '';
+        modalContent.style.height = '';
+      }
       listElement.removeEventListener('touchmove', preventDefault);
     };
   }, [draggedHabitId]);
