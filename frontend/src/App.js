@@ -217,6 +217,24 @@ const App = () => {
     lightboxTouchStartY.current = null;
   };
 
+  // Блокировка прокрутки при мобильном перетаскивании (необходимы non-passive слушатели)
+  useEffect(() => {
+    const listElement = document.querySelector('.manage-habits-list');
+    if (!listElement || !draggedHabitId) return;
+
+    const preventDefault = (e) => {
+      if (isTouchDraggingInProgress.current && e.cancelable) {
+        e.preventDefault();
+      }
+    };
+
+    // { passive: false } позволяет вызывать preventDefault() в Firefox/Safari
+    listElement.addEventListener('touchmove', preventDefault, { passive: false });
+    return () => {
+      listElement.removeEventListener('touchmove', preventDefault);
+    };
+  }, [draggedHabitId]);
+
   const handleLightboxTouchStart = (e) => {
     lightboxTouchStartY.current = e.touches[0].clientY;
     setLightboxTranslateY(0);
@@ -683,11 +701,11 @@ const App = () => {
   const handleDrop = async (e, targetHabitId) => {
     if (e) e.preventDefault();
 
-    // Reorder is already done in liveSwapHabits (via DragOver or TouchMove)
     // We just need to sync with backend now
-    const reorderPayload = habitsData.map((h, index) => ({ id: h.id, order: index }));
-    try {
-      await fetch('/api/v1/habits/reorder/', {
+    setHabitsData(currentList => {
+      const reorderPayload = currentList.map((h, index) => ({ id: h.id, order: index }));
+
+      fetch('/api/v1/habits/reorder/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -695,17 +713,22 @@ const App = () => {
         },
         credentials: 'include',
         body: JSON.stringify(reorderPayload)
+      }).catch(error => {
+        console.error('Error saving order:', error);
+        fetchHabits(); // revert on error
       });
-    } catch (error) {
-      console.error('Error saving order:', error);
-      fetchHabits(); // revert on error
-    }
+
+      return currentList;
+    });
 
     setDraggedHabitId(null);
     setDragOverHabitId(null);
   };
 
   const handleTouchStart = (e, habitId) => {
+    // Only handle single touch
+    if (e.touches.length > 1) return;
+
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
     isTouchDraggingInProgress.current = false;
@@ -726,16 +749,23 @@ const App = () => {
 
     // If moved more than 10px before long press, cancel it
     if (!isTouchDraggingInProgress.current && (distX > 10 || distY > 10)) {
-      clearTimeout(reorderLongPressTimer.current);
-      reorderLongPressTimer.current = null;
+      if (reorderLongPressTimer.current) {
+        clearTimeout(reorderLongPressTimer.current);
+        reorderLongPressTimer.current = null;
+      }
       return;
     }
 
     if (isTouchDraggingInProgress.current) {
-      e.preventDefault(); // Prevent scroll while dragging
-
       // Find element under touch
+      // We manually toggle pointer-events on the dragged element to "see through" it
+      const draggedEl = document.querySelector(`.manage-habit-item[data-habit-id="${draggedHabitId}"]`);
+      if (draggedEl) draggedEl.style.pointerEvents = 'none';
+
       const element = document.elementFromPoint(touch.clientX, touch.clientY);
+
+      if (draggedEl) draggedEl.style.pointerEvents = '';
+
       const habitItem = element?.closest('.manage-habit-item');
 
       if (habitItem) {
