@@ -432,6 +432,10 @@ body {
   gap: 8px;
 }
 
+.habit-text {
+  word-break: break-word;
+}
+
 .habit-thumbnail {
   width: 24px;
   height: 24px;
@@ -1215,9 +1219,7 @@ body {
   font-weight: 600;
   font-size: 16px;
   color: #333;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
 }
 
 .manage-habit-category {
@@ -1266,15 +1268,41 @@ body {
 }
 
 /* On small mobile, make the handle even more compact */
-@media (max-width: 360px) {
+@media (max-width: 400px) {
   .manage-habit-item {
-    padding: 10px 12px;
-    gap: 4px;
+    padding: 10px;
+    gap: 6px;
+  }
+
+  .manage-btn {
+    font-size: 16px;
+    padding: 6px;
   }
 
   .drag-handle {
-    padding: 8px 10px;
     font-size: 18px;
+    padding: 6px;
+  }
+
+  .manage-habit-actions {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 360px) {
+  .manage-habit-item {
+    padding: 8px 10px;
+    gap: 4px;
+  }
+
+  .manage-btn {
+    font-size: 14px;
+    padding: 4px;
+  }
+
+  .drag-handle {
+    padding: 4px;
+    font-size: 16px;
   }
 }
 
