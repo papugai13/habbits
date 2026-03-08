@@ -48,7 +48,7 @@ const App = () => {
   // Quantity modal state
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [quantityModalData, setQuantityModalData] = useState(null);
-  const [quantityValue, setQuantityValue] = useState(1);
+  const [quantityValue, setQuantityValue] = useState(null);
   const [commentValue, setCommentValue] = useState('');
   const [photoFile, setPhotoFile] = useState(null);
   const [deletePhoto, setDeletePhoto] = useState(false);
@@ -63,6 +63,9 @@ const App = () => {
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const lightboxTouchStartY = React.useRef(null);
   const [lightboxTranslateY, setLightboxTranslateY] = useState(0);
+  const reorderLongPressTimer = React.useRef(null);
+  const touchStartPos = React.useRef({ x: 0, y: 0 });
+  const isTouchDraggingInProgress = React.useRef(false);
 
   // Archive state
   const [archivedHabits, setArchivedHabits] = useState([]);
@@ -340,7 +343,8 @@ const App = () => {
 
   const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto) => {
     setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto });
-    setQuantityValue(currentQuantity && currentQuantity > 0 ? currentQuantity : 1);
+    // If quantity is explicitly null/undefined, set to null, otherwise use currentQuantity
+    setQuantityValue(currentQuantity !== null && currentQuantity !== undefined ? currentQuantity : null);
     setCommentValue(currentComment || '');
     setPhotoFile(null);
     setDeletePhoto(false);
@@ -370,16 +374,47 @@ const App = () => {
 
     try {
       let response;
-      const formData = new FormData();
-      formData.append('is_done', 'true');
-      if (qty !== null) formData.append('quantity', qty);
-      formData.append('comment', commentValue);
-      if (photoFile) formData.append('photo', photoFile);
+      const { habitId, dayDate, dateId } = quantityModalData;
 
-      if (dateId) {
-        // Update existing entry
-        // If photo should be deleted and NO new file is selected, we send JSON to set photo to null
-        if (deletePhoto && !photoFile) {
+      // Use FormData only if there's a photo being uploaded or the user wants to keep the photo while updating other fields
+      // If no new photo file is present, we prefer JSON to correctly send null values (like quantity)
+      if (photoFile) {
+        const formData = new FormData();
+        formData.append('is_done', 'true');
+        // FormData doesn't handle null well for numbers, so we only append if it's not null
+        // But if we want to CLEAR it, we have an issue with FormData on some backends.
+        // However, if we HAVE a photo, we are likely not clearing quantity to null.
+        if (qty !== null) formData.append('quantity', qty);
+        formData.append('comment', commentValue);
+        formData.append('photo', photoFile);
+
+        if (dateId) {
+          response = await fetch(`/api/v1/date/${dateId}/`, {
+            method: 'PATCH',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            credentials: 'include',
+            body: formData
+          });
+        } else {
+          formData.append('habit', habitId);
+          formData.append('habit_date', dayDate);
+          response = await fetch(`/api/v1/dates/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            credentials: 'include',
+            body: formData
+          });
+        }
+      } else {
+        // Use JSON for cleaner null handling
+        const payload = {
+          is_done: true,
+          quantity: qty,
+          comment: commentValue,
+          ...(deletePhoto && { photo: null })
+        };
+
+        if (dateId) {
           response = await fetch(`/api/v1/date/${dateId}/`, {
             method: 'PATCH',
             headers: {
@@ -387,36 +422,21 @@ const App = () => {
               'X-CSRFToken': getCookie('csrftoken')
             },
             credentials: 'include',
-            body: JSON.stringify({
-              is_done: true,
-              quantity: qty,
-              comment: commentValue,
-              photo: null
-            })
+            body: JSON.stringify(payload)
           });
         } else {
-          // Normal case or updating with new photo
-          response = await fetch(`/api/v1/date/${dateId}/`, {
-            method: 'PATCH',
+          payload.habit = habitId;
+          payload.habit_date = dayDate;
+          response = await fetch(`/api/v1/dates/`, {
+            method: 'POST',
             headers: {
+              'Content-Type': 'application/json',
               'X-CSRFToken': getCookie('csrftoken')
             },
             credentials: 'include',
-            body: formData
+            body: JSON.stringify(payload)
           });
         }
-      } else {
-        // Create new entry
-        formData.append('habit', habitId);
-        formData.append('habit_date', dayDate);
-        response = await fetch(`/api/v1/dates/`, {
-          method: 'POST',
-          headers: {
-            'X-CSRFToken': getCookie('csrftoken')
-          },
-          credentials: 'include',
-          body: formData
-        });
       }
 
       if (!response.ok) {
@@ -426,7 +446,7 @@ const App = () => {
       // Close modal and refresh
       setShowQuantityModal(false);
       setQuantityModalData(null);
-      setQuantityValue(1);
+      setQuantityValue(null);
       setCommentValue('');
       setPhotoFile(null);
       await fetchHabits();
@@ -438,7 +458,7 @@ const App = () => {
       // Always close modal and reset state
       setShowQuantityModal(false);
       setQuantityModalData(null);
-      setQuantityValue(1);
+      setQuantityValue(null);
       setCommentValue('');
       setPhotoFile(null);
       setDeletePhoto(false);
@@ -455,10 +475,10 @@ const App = () => {
     }, 0);
   };
 
-  // Сумма "лишних" выполнений: (quantity - 1) для дней где quantity > 1
+  // Сумма выполнений с явным указанием количества (quantity)
   const getHabitOverflow = (habit) => {
     return habit.statuses.reduce((acc, s) => {
-      if (s.is_done && s.quantity && s.quantity > 1) {
+      if (s.is_done && s.quantity !== null && s.quantity !== undefined) {
         return acc + s.quantity;
       }
       return acc;
@@ -627,32 +647,45 @@ const App = () => {
   const handleDragStart = (e, habitId) => {
     setDraggedHabitId(habitId);
     e.dataTransfer.effectAllowed = 'move';
+
+    // Create a transparent drag image to focus on our CSS styles
+    const img = new Image();
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(img, 0, 0);
+  };
+
+  const liveSwapHabits = (draggedId, targetId) => {
+    if (!draggedId || !targetId || draggedId === targetId) return;
+
+    setHabitsData(prevList => {
+      const draggedIndex = prevList.findIndex(h => h.id === draggedId);
+      const targetIndex = prevList.findIndex(h => h.id === targetId);
+
+      if (draggedIndex === -1 || targetIndex === -1) return prevList;
+      if (draggedIndex === targetIndex) return prevList;
+
+      const newList = [...prevList];
+      const [removed] = newList.splice(draggedIndex, 1);
+      newList.splice(targetIndex, 0, removed);
+      return newList;
+    });
   };
 
   const handleDragOver = (e, habitId) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    setDragOverHabitId(habitId);
+
+    if (draggedHabitId && draggedHabitId !== habitId) {
+      liveSwapHabits(draggedHabitId, habitId);
+    }
   };
 
   const handleDrop = async (e, targetHabitId) => {
-    e.preventDefault();
-    if (draggedHabitId === targetHabitId) {
-      setDraggedHabitId(null);
-      setDragOverHabitId(null);
-      return;
-    }
+    if (e) e.preventDefault();
 
-    // Reorder locally
-    const currentList = [...habitsData];
-    const draggedIndex = currentList.findIndex(h => h.id === draggedHabitId);
-    const targetIndex = currentList.findIndex(h => h.id === targetHabitId);
-    const [removed] = currentList.splice(draggedIndex, 1);
-    currentList.splice(targetIndex, 0, removed);
-    setHabitsData(currentList);
-
-    // Send new order to backend
-    const reorderPayload = currentList.map((h, index) => ({ id: h.id, order: index }));
+    // Reorder is already done in liveSwapHabits (via DragOver or TouchMove)
+    // We just need to sync with backend now
+    const reorderPayload = habitsData.map((h, index) => ({ id: h.id, order: index }));
     try {
       await fetch('/api/v1/habits/reorder/', {
         method: 'POST',
@@ -670,6 +703,60 @@ const App = () => {
 
     setDraggedHabitId(null);
     setDragOverHabitId(null);
+  };
+
+  const handleTouchStart = (e, habitId) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    isTouchDraggingInProgress.current = false;
+
+    reorderLongPressTimer.current = setTimeout(() => {
+      setDraggedHabitId(habitId);
+      isTouchDraggingInProgress.current = true;
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 500);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!reorderLongPressTimer.current && !isTouchDraggingInProgress.current) return;
+
+    const touch = e.touches[0];
+    const distX = Math.abs(touch.clientX - touchStartPos.current.x);
+    const distY = Math.abs(touch.clientY - touchStartPos.current.y);
+
+    // If moved more than 10px before long press, cancel it
+    if (!isTouchDraggingInProgress.current && (distX > 10 || distY > 10)) {
+      clearTimeout(reorderLongPressTimer.current);
+      reorderLongPressTimer.current = null;
+      return;
+    }
+
+    if (isTouchDraggingInProgress.current) {
+      e.preventDefault(); // Prevent scroll while dragging
+
+      // Find element under touch
+      const element = document.elementFromPoint(touch.clientX, touch.clientY);
+      const habitItem = element?.closest('.manage-habit-item');
+
+      if (habitItem) {
+        const targetId = parseInt(habitItem.getAttribute('data-habit-id'));
+        if (targetId && targetId !== draggedHabitId) {
+          liveSwapHabits(draggedHabitId, targetId);
+          if (navigator.vibrate) navigator.vibrate(20);
+        }
+      }
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    clearTimeout(reorderLongPressTimer.current);
+    reorderLongPressTimer.current = null;
+
+    if (isTouchDraggingInProgress.current) {
+      handleDrop(null, null); // Just sync with backend
+      setDraggedHabitId(null);
+      isTouchDraggingInProgress.current = false;
+    }
   };
 
   const handleDragEnd = () => {
@@ -1090,7 +1177,7 @@ const App = () => {
                     return (
                       <button
                         key={slotDateStr}
-                        className={`check-box ${isDone ? 'checked' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && quantity > 1 ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''}`}
+                        className={`check-box ${isDone ? 'checked' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''}`}
                         onClick={() => {
                           if (!isDisabled && !longPressTimer) {
                             toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
@@ -1103,7 +1190,7 @@ const App = () => {
                         onTouchEnd={handleLongPressEnd}
                         disabled={isDisabled}
                       >
-                        {isDone && quantity > 1 && <span className="quantity-display">{quantity}</span>}
+                        {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
                         {hasComment && <span className="attachment-indicator"></span>}
                         {hasPhoto && <span className="photo-indicator"></span>}
                       </button>
@@ -1186,26 +1273,12 @@ const App = () => {
                     onDragOver={(e) => handleDragOver(e, habit.id)}
                     onDrop={(e) => handleDrop(e, habit.id)}
                     onDragEnd={handleDragEnd}
+                    onTouchStart={(e) => handleTouchStart(e, habit.id)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    data-habit-id={habit.id}
                   >
                     <div className="drag-handle" title="Перетащить">⠿</div>
-                    <div className="reorder-arrows">
-                      <button
-                        className="reorder-btn up"
-                        onClick={() => handleMoveHabit(habit.id, 'up')}
-                        disabled={habitsData.indexOf(habit) === 0}
-                        title="Вверх"
-                      >
-                        ▲
-                      </button>
-                      <button
-                        className="reorder-btn down"
-                        onClick={() => handleMoveHabit(habit.id, 'down')}
-                        disabled={habitsData.indexOf(habit) === habitsData.length - 1}
-                        title="Вниз"
-                      >
-                        ▼
-                      </button>
-                    </div>
                     <div className="manage-habit-info">
                       <div className="manage-habit-name">{habit.name}</div>
                       <div className="manage-habit-category">{habit.category_name}</div>
@@ -1541,7 +1614,7 @@ const App = () => {
         <div className="modal-overlay" onClick={() => {
           setShowQuantityModal(false);
           setQuantityModalData(null);
-          setQuantityValue(1);
+          setQuantityValue(null);
           setCommentValue('');
           setPhotoFile(null);
           setDeletePhoto(false);
@@ -1554,7 +1627,7 @@ const App = () => {
                 onClick={() => {
                   setShowQuantityModal(false);
                   setQuantityModalData(null);
-                  setQuantityValue(1);
+                  setQuantityValue(null);
                   setCommentValue('');
                   setPhotoFile(null);
                   setDeletePhoto(false);
@@ -1574,6 +1647,8 @@ const App = () => {
                   value={quantityValue}
                   min={1}
                   max={999}
+                  allowNoQuantity={true}
+                  noQuantityLabel="Без количества"
                   onChange={(val) => setQuantityValue(val)}
                 />
               </div>
@@ -1645,7 +1720,7 @@ const App = () => {
                 onClick={() => {
                   setShowQuantityModal(false);
                   setQuantityModalData(null);
-                  setQuantityValue(1);
+                  setQuantityValue(null);
                   setCommentValue('');
                   setPhotoFile(null);
                   setDeletePhoto(false);

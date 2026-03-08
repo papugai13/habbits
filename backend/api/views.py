@@ -330,21 +330,15 @@ class HabitViewSet(viewsets.ModelViewSet):
                 is_done=True
             )
             
-            # Количество выполненных привычек за день (по 1 за привычку)
-            completed_days = day_dates.count()
+            # Количество привычек без указания кол-ва (простые галочки)
+            completed_days = day_dates.filter(quantity__isnull=True).count()
             
-            # Сумма "лишних" выполнений (quantity - 1) для записей с quantity > 1
-            extra_quantity = day_dates.aggregate(
-                total=Sum(
-                    Case(
-                        When(quantity__gt=1, then=F('quantity') - Value(1)),
-                        default=Value(0),
-                        output_field=IntegerField()
-                    )
-                )
+            # Сумма всех явных указаний количества (quantity)
+            extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
+                total=Sum('quantity')
             )['total'] or 0
 
-            # Итоговое количество (количество привычек + лишние quantity)
+            # Итоговое количество (простые + сумма всех чисел)
             completed_count = completed_days + extra_quantity
             
             statistics.append({

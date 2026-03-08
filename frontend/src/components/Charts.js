@@ -70,7 +70,7 @@ const CustomTooltip = ({ active, payload }) => {
                 <p className="tooltip-date">{data.fullDate}</p>
                 <p className="tooltip-count">Привычки: {data.countCapped}</p>
                 {data.countExtra > 0 && (
-                    <p className="tooltip-overflow">Всего: {data.countTotal}</p>
+                    <p className="tooltip-overflow">Количество: {data.countExtra}</p>
                 )}
             </div>
         );
@@ -137,7 +137,7 @@ const SingleHabitChart = ({ habit, period }) => {
                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
                             />
                         </Bar>
-                        <Bar dataKey="countExtra" stackId="a" fill="#8B5CF6" radius={[4, 4, 0, 0]} name="Повторений сверх">
+                        <Bar dataKey="countExtra" stackId="a" fill="#8B5CF6" radius={[4, 4, 0, 0]} name="Количество">
                             <LabelList
                                 dataKey="countExtra"
                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
@@ -255,7 +255,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                 fill="#8B5CF6"
                                 radius={[8, 8, 0, 0]}
                                 animationDuration={500}
-                                name="Повторений сверх"
+                                name="Количество"
                             >
                                 <LabelList
                                     dataKey="countExtra"

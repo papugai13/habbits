@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 
 const ITEM_HEIGHT = 44;
 
@@ -10,60 +10,86 @@ const ITEM_HEIGHT = 44;
  *   max     — максимум (по умолчанию 999)
  *   onChange — callback(newValue: number)
  */
-const DrumPicker = ({ value, min = 1, max = 999, onChange }) => {
+const DrumPicker = ({ value, min = 1, max = 999, allowNoQuantity = false, noQuantityLabel = "Без количества", onChange }) => {
     const listRef = useRef(null);
     const isDragging = useRef(false);
+    const isSnapping = useRef(false);
     const startY = useRef(0);
     const startScrollTop = useRef(0);
-    const animating = useRef(false);
 
-    const items = [];
-    for (let i = min; i <= max; i++) items.push(i);
+    // Local value for visual updates (opacity/scale) during scroll
+    // to avoid triggering expensive parent re-renders too often
+    const [localValue, setLocalValue] = useState(value);
+
+    const items = useMemo(() => {
+        const res = [];
+        if (allowNoQuantity) res.push(null);
+        for (let i = min; i <= max; i++) res.push(i);
+        return res;
+    }, [min, max, allowNoQuantity]);
 
     const scrollToValue = useCallback((val, smooth = false) => {
         if (!listRef.current) return;
-        const index = val - min;
+        const index = val === null ? 0 : (allowNoQuantity ? val - min + 1 : val - min);
         const targetY = index * ITEM_HEIGHT;
         if (smooth) {
+            isSnapping.current = true;
             listRef.current.scrollTo({ top: targetY, behavior: 'smooth' });
         } else {
             listRef.current.scrollTop = targetY;
         }
-    }, [min]);
+    }, [min, allowNoQuantity]);
 
-    // Init scroll position
+    // Update local value when prop value changes (e.g. modal opens)
     useEffect(() => {
+        setLocalValue(value);
         scrollToValue(value, false);
-    }, [scrollToValue, value]);
+    }, [value, scrollToValue]);
 
     const snapToNearest = useCallback(() => {
-        if (!listRef.current || animating.current) return;
+        if (!listRef.current) return;
         const scrollTop = listRef.current.scrollTop;
         const index = Math.round(scrollTop / ITEM_HEIGHT);
         const clampedIndex = Math.max(0, Math.min(index, items.length - 1));
-        const newValue = clampedIndex + min;
+        const newValue = items[clampedIndex];
+
+        isSnapping.current = true;
         scrollToValue(newValue, true);
+
+        // Final sync with parent
         if (newValue !== value) {
             onChange(newValue);
         }
-    }, [items.length, min, value, onChange, scrollToValue]);
+        setLocalValue(newValue);
+    }, [items, value, onChange, scrollToValue]);
 
     const handleScroll = useCallback(() => {
-        if (animating.current) return;
-        if (listRef.current) {
+        if (!listRef.current) return;
+
+        // During snapping, we let the ScrollTo animation finish
+        if (isSnapping.current) {
             const scrollTop = listRef.current.scrollTop;
             const index = Math.round(scrollTop / ITEM_HEIGHT);
             const clampedIndex = Math.max(0, Math.min(index, items.length - 1));
-            const newValue = clampedIndex + min;
-            if (newValue !== value) {
-                onChange(newValue);
-            }
+            const newValue = items[clampedIndex];
+            setLocalValue(newValue);
+            return;
         }
-    }, [items.length, min, value, onChange]);
+
+        const scrollTop = listRef.current.scrollTop;
+        const index = Math.round(scrollTop / ITEM_HEIGHT);
+        const clampedIndex = Math.max(0, Math.min(index, items.length - 1));
+        const newValue = items[clampedIndex];
+
+        if (newValue !== localValue) {
+            setLocalValue(newValue);
+        }
+    }, [items, localValue]);
 
     // Mouse drag support for desktop
     const onMouseDown = (e) => {
         isDragging.current = true;
+        isSnapping.current = false;
         startY.current = e.clientY;
         startScrollTop.current = listRef.current.scrollTop;
         e.preventDefault();
@@ -90,12 +116,12 @@ const DrumPicker = ({ value, min = 1, max = 999, onChange }) => {
         };
     }, [onMouseMove, onMouseUp]);
 
-    // Scroll end snap
-    let scrollEndTimer = useRef(null);
+    const scrollEndTimer = useRef(null);
     const handleScrollEvent = () => {
         handleScroll();
         clearTimeout(scrollEndTimer.current);
         scrollEndTimer.current = setTimeout(() => {
+            isSnapping.current = false; // Reset snapping flag after completion
             snapToNearest();
         }, 150);
     };
@@ -119,29 +145,44 @@ const DrumPicker = ({ value, min = 1, max = 999, onChange }) => {
                 >
                     {/* Отступ сверху для центрирования первого элемента */}
                     <div style={{ height: ITEM_HEIGHT * 2 }} />
-                    {items.map((item) => {
-                        const offset = Math.abs(item - value);
+                    {items.map((item, idx) => {
+                        const isSelected = item === localValue;
+                        let offset = 0;
+
+                        // Optimize offset calculation
+                        if (localValue === null) {
+                            offset = idx;
+                        } else if (item === null) {
+                            const valueIndex = allowNoQuantity ? localValue - min + 1 : localValue - min;
+                            offset = valueIndex;
+                        } else {
+                            const valueIndex = allowNoQuantity ? localValue - min + 1 : localValue - min;
+                            offset = Math.abs(idx - valueIndex);
+                        }
+
                         const opacity = offset === 0 ? 1 : offset === 1 ? 0.6 : offset === 2 ? 0.35 : 0.15;
                         const scale = offset === 0 ? 1 : offset === 1 ? 0.92 : 0.82;
-                        const isSelected = item === value;
+
                         return (
                             <div
-                                key={item}
+                                key={item === null ? 'null-item' : item}
                                 className={`drum-picker-item ${isSelected ? 'drum-picker-item-selected' : ''}`}
                                 style={{
                                     height: ITEM_HEIGHT,
                                     opacity,
                                     transform: `scale(${scale})`,
-                                    transition: 'opacity 0.1s, transform 0.1s',
+                                    transition: isSnapping.current ? 'opacity 0.2s, transform 0.2s' : 'none',
                                     fontWeight: isSelected ? 700 : 400,
-                                    fontSize: isSelected ? '28px' : '20px',
+                                    fontSize: isSelected ? (item === null ? '18px' : '28px') : (item === null ? '14px' : '20px'),
                                 }}
                                 onClick={() => {
-                                    onChange(item);
+                                    isSnapping.current = true;
+                                    setLocalValue(item);
                                     scrollToValue(item, true);
+                                    onChange(item);
                                 }}
                             >
-                                {item}
+                                {item === null ? noQuantityLabel : item}
                             </div>
                         );
                     })}
