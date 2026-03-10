@@ -527,6 +527,16 @@ const App = () => {
     }, 0);
   };
 
+  // Эмоджи-награда в зависимости от количества выполнений за неделю
+  const getWeeklyAward = (count) => {
+    if (count >= 7) return '🌟🌟🌟';
+    if (count === 6) return '⭐⭐';
+    if (count === 5) return '⭐';
+    if (count === 4) return '⚡⚡';
+    if (count === 3) return '⚡';
+    return null;
+  };
+
   // Calculate weekly stats
   const completedThisWeek = habitsData.reduce((acc, habit) => {
     return acc + habit.statuses.reduce((sum, status) => {
@@ -1161,105 +1171,113 @@ const App = () => {
           {habitsData.filter(habit => {
             if (selectedCategory === 'Все') return true;
             return habit.category_name === selectedCategory;
-          }).map((habit) => (
-            <div key={habit.id} className="habit-row">
-              <div className="habit-name">
-                <span className="habit-text">{habit.name}</span>
-                {habit.latest_comment && (
-                  <div
-                    className="habit-latest-comment"
-                    title={habit.latest_comment}
-                    onClick={() => {
-                      const d = habit.latest_comment_details;
-                      if (d) {
-                        openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo);
-                      }
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <span className="comment-indicator-circle"></span>
-                    <span className="comment-text">{habit.latest_comment}</span>
-                  </div>
-                )}
-                {habit.latest_photo && (
-                  <img
-                    src={habit.latest_photo}
-                    alt=""
-                    className="habit-thumbnail"
-                    onClick={() => setLightboxUrl(habit.latest_photo)}
-                  />
-                )}
-              </div>
-              <div className="habit-row-content">
-                <div className="habit-checks">
-                  {WEEK_DAYS.map((_, index) => {
-                    // Calculate date for this slot based on currentWeekDate
-                    const baseDate = new Date(currentWeekDate);
-                    const dayOfWeek = baseDate.getDay();
-                    const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                    const diff = index - currentDayIndex;
-
-                    const slotDate = new Date(baseDate);
-                    slotDate.setDate(baseDate.getDate() + diff);
-                    const slotDateStr = slotDate.toLocaleDateString('en-CA');
-
-                    const today = new Date();
-                    const todayStr = today.toLocaleDateString('en-CA');
-
-                    // Find status for this date
-                    const status = habit.statuses.find(s => s.date === slotDateStr);
-                    const isDone = status ? status.is_done : false;
-                    const statusId = status ? status.id : null;
-                    const quantity = status ? status.quantity : null;
-
-                    // Calculate yesterday date string
-                    const yesterday = new Date(today);
-                    yesterday.setDate(today.getDate() - 1);
-                    const yesterdayStr = yesterday.toLocaleDateString('en-CA');
-
-                    const isToday = slotDateStr === todayStr;
-                    const isPast = slotDateStr < todayStr;
-                    const isFuture = slotDateStr > todayStr;
-                    const isYesterday = slotDateStr === yesterdayStr;
-                    const isMissed = isPast && !isDone;
-                    const hasComment = status && status.comment;
-                    const hasPhoto = status && status.photo;
-
-                    // Disable only IF it's in the future
-                    const isDisabled = isFuture;
-
-                    return (
-                      <button
-                        key={slotDateStr}
-                        className={`check-box ${isDone ? 'checked' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''}`}
-                        onClick={() => {
-                          if (!isDisabled && !longPressTimer) {
-                            toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
-                          }
-                        }}
-                        onMouseDown={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
-                        onMouseUp={handleLongPressEnd}
-                        onMouseLeave={handleLongPressEnd}
-                        onTouchStart={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
-                        onTouchEnd={handleLongPressEnd}
-                        disabled={isDisabled}
-                      >
-                        {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
-                        {hasComment && <span className="attachment-indicator"></span>}
-                        {hasPhoto && <span className="photo-indicator"></span>}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="habit-counts-wrapper">
-                  <div className="habit-count">{getHabitCount(habit)}</div>
-                  {getHabitOverflow(habit) > 0 && (
-                    <div className="habit-count habit-count-overflow">+{getHabitOverflow(habit)}</div>
+          }).map((habit) => {
+            const weeklyCount = getHabitCount(habit);
+            const weeklyAward = getWeeklyAward(weeklyCount);
+            const hasActiveWeek = weeklyCount >= 3;
+            return (
+              <div key={habit.id} className="habit-row">
+                <div className="habit-name">
+                  <span className="habit-text">{habit.name}</span>
+                  {habit.latest_comment && (
+                    <div
+                      className="habit-latest-comment"
+                      title={habit.latest_comment}
+                      onClick={() => {
+                        const d = habit.latest_comment_details;
+                        if (d) {
+                          openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo);
+                        }
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <span className="comment-indicator-circle"></span>
+                      <span className="comment-text">{habit.latest_comment}</span>
+                    </div>
+                  )}
+                  {habit.latest_photo && (
+                    <img
+                      src={habit.latest_photo}
+                      alt=""
+                      className="habit-thumbnail"
+                      onClick={() => setLightboxUrl(habit.latest_photo)}
+                    />
                   )}
                 </div>
+                <div className="habit-row-content">
+                  <div className="habit-checks">
+                    {WEEK_DAYS.map((_, index) => {
+                      // Calculate date for this slot based on currentWeekDate
+                      const baseDate = new Date(currentWeekDate);
+                      const dayOfWeek = baseDate.getDay();
+                      const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                      const diff = index - currentDayIndex;
+
+                      const slotDate = new Date(baseDate);
+                      slotDate.setDate(baseDate.getDate() + diff);
+                      const slotDateStr = slotDate.toLocaleDateString('en-CA');
+
+                      const today = new Date();
+                      const todayStr = today.toLocaleDateString('en-CA');
+
+                      // Find status for this date
+                      const status = habit.statuses.find(s => s.date === slotDateStr);
+                      const isDone = status ? status.is_done : false;
+                      const statusId = status ? status.id : null;
+                      const quantity = status ? status.quantity : null;
+
+                      // Calculate yesterday date string
+                      const yesterday = new Date(today);
+                      yesterday.setDate(today.getDate() - 1);
+                      const yesterdayStr = yesterday.toLocaleDateString('en-CA');
+
+                      const isToday = slotDateStr === todayStr;
+                      const isPast = slotDateStr < todayStr;
+                      const isFuture = slotDateStr > todayStr;
+                      const isYesterday = slotDateStr === yesterdayStr;
+                      const isMissed = isPast && !isDone;
+                      const hasComment = status && status.comment;
+                      const hasPhoto = status && status.photo;
+
+                      // Disable only IF it's in the future
+                      const isDisabled = isFuture;
+
+                      return (
+                        <button
+                          key={slotDateStr}
+                          className={`check-box ${isDone ? 'checked' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''} ${hasActiveWeek ? 'active-week' : ''}`}
+                          onClick={() => {
+                            if (!isDisabled && !longPressTimer) {
+                              toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
+                            }
+                          }}
+                          onMouseDown={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
+                          onMouseUp={handleLongPressEnd}
+                          onMouseLeave={handleLongPressEnd}
+                          onTouchStart={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
+                          onTouchEnd={handleLongPressEnd}
+                          disabled={isDisabled}
+                        >
+                          {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
+                          {hasComment && <span className="attachment-indicator"></span>}
+                          {hasPhoto && <span className="photo-indicator"></span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="habit-counts-wrapper">
+                    {weeklyAward && (
+                      <div className="habit-award">{weeklyAward}</div>
+                    )}
+                    <div className="habit-count">{weeklyCount}</div>
+                    {getHabitOverflow(habit) > 0 && (
+                      <div className="habit-count habit-count-overflow">+{getHabitOverflow(habit)}</div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
