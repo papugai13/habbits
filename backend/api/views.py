@@ -330,16 +330,19 @@ class HabitViewSet(viewsets.ModelViewSet):
                 is_done=True
             )
             
-            # Количество привычек без указания кол-ва (простые галочки)
-            completed_days = day_dates.filter(quantity__isnull=True).count()
+            # Количество выполненных привычек (зеленый график)
+            completed_days = day_dates.count()
             
-            # Сумма всех явных указаний количества (quantity)
+            # Сумма всех явных указаний количества (фиолетовый график, как в журнале)
             extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
                 total=Sum('quantity')
             )['total'] or 0
 
-            # Итоговое количество (простые + сумма всех чисел)
-            completed_count = completed_days + extra_quantity
+            # Итоговое количество: (привычки без кол-ва) + (сумма всех кол-в)
+            completed_count = (
+                day_dates.filter(quantity__isnull=True).count() + 
+                extra_quantity
+            )
             
             statistics.append({
                 'date': current_date.isoformat(),
