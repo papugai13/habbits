@@ -503,7 +503,7 @@ body {
 
 .check-box.today {
   border: 1px solid #666;
-  /* Highlight current day */
+  opacity: 0.5;
 }
 
 /* Also styling the day header if it matches today */
