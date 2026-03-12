@@ -323,13 +323,22 @@ const App = () => {
   };
 
   const toggleHabitCheck = async (habitId, dayDate, currentStatus, dateId, quantity = null) => {
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const isPastDate = dayDate < todayStr;
+    const isMarkingDone = !currentStatus;
+
     // Optimistic update
     const updatedHabits = habitsData.map(habit => {
       if (habit.id === habitId) {
         return {
           ...habit,
           statuses: habit.statuses.map(status =>
-            status.date === dayDate ? { ...status, is_done: !status.is_done, quantity: quantity || status.quantity } : status
+            status.date === dayDate ? {
+              ...status,
+              is_done: isMarkingDone,
+              is_restored: isPastDate && isMarkingDone,
+              quantity: quantity !== null ? quantity : (isMarkingDone ? status.quantity : null)
+            } : status
           )
         };
       }
@@ -339,7 +348,9 @@ const App = () => {
 
     try {
       let response;
-      const payload = quantity !== null ? { is_done: !currentStatus, quantity } : { is_done: !currentStatus };
+      const payload = quantity !== null
+        ? { is_done: isMarkingDone, quantity, is_restored: isPastDate && isMarkingDone }
+        : { is_done: isMarkingDone, is_restored: isPastDate && isMarkingDone };
 
       if (dateId) {
         // Toggle existing date entry
@@ -365,6 +376,7 @@ const App = () => {
             habit: habitId,
             habit_date: dayDate,
             is_done: true,
+            is_restored: isPastDate,
             ...(quantity !== null && { quantity })
           })
         });
@@ -407,25 +419,27 @@ const App = () => {
     }
   };
 
+  const handleEntryRestored = async () => {
+    if (!quantityModalData) return;
+    await handleEntrySubmitInternal(true);
+  };
+
   const handleEntrySubmit = async () => {
+    await handleEntrySubmitInternal(false);
+  };
+
+  const handleEntrySubmitInternal = async (isRestored = false) => {
     if (!quantityModalData) return;
 
     const qty = typeof quantityValue === 'number' && quantityValue >= 1 ? quantityValue : null;
-
     const { habitId, dayDate, dateId } = quantityModalData;
 
     try {
       let response;
-      const { habitId, dayDate, dateId } = quantityModalData;
-
-      // Use FormData only if there's a photo being uploaded or the user wants to keep the photo while updating other fields
-      // If no new photo file is present, we prefer JSON to correctly send null values (like quantity)
       if (photoFile) {
         const formData = new FormData();
         formData.append('is_done', 'true');
-        // FormData doesn't handle null well for numbers, so we only append if it's not null
-        // But if we want to CLEAR it, we have an issue with FormData on some backends.
-        // However, if we HAVE a photo, we are likely not clearing quantity to null.
+        formData.append('is_restored', isRestored ? 'true' : 'false');
         if (qty !== null) formData.append('quantity', qty);
         formData.append('comment', commentValue);
         formData.append('photo', photoFile);
@@ -448,9 +462,9 @@ const App = () => {
           });
         }
       } else {
-        // Use JSON for cleaner null handling
         const payload = {
           is_done: true,
+          is_restored: isRestored,
           quantity: qty,
           comment: commentValue,
           ...(deletePhoto && { photo: null })
@@ -481,23 +495,17 @@ const App = () => {
         }
       }
 
-      if (!response.ok) {
-        throw new Error(`API error ${response.status}`);
-      }
-
-      // Close modal and refresh
+      if (!response.ok) throw new Error(`API error ${response.status}`);
       setShowQuantityModal(false);
       setQuantityModalData(null);
       setQuantityValue(null);
       setCommentValue('');
       setPhotoFile(null);
       await fetchHabits();
-
     } catch (error) {
       console.error('Error saving data:', error);
       alert(`Ошибка при сохранении данных: ${error.message}`);
     } finally {
-      // Always close modal and reset state
       setShowQuantityModal(false);
       setQuantityModalData(null);
       setQuantityValue(null);
@@ -1209,6 +1217,7 @@ const App = () => {
                     // Find status for this date
                     const status = habit.statuses.find(s => s.date === slotDateStr);
                     const isDone = status ? status.is_done : false;
+                    const isRestored = status ? status.is_restored : false;
                     const statusId = status ? status.id : null;
                     const quantity = status ? status.quantity : null;
 
@@ -1231,7 +1240,7 @@ const App = () => {
                     return (
                       <button
                         key={slotDateStr}
-                        className={`check-box ${isDone ? 'checked' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''}`}
+                        className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''}`}
                         onClick={() => {
                           if (!isDisabled && !longPressTimer) {
                             toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
@@ -1271,6 +1280,7 @@ const App = () => {
           handleGenerateReport={handleGenerateReport}
           handleGenerateSummaryReport={handleGenerateSummaryReport}
           isReportLoading={isReportLoading}
+          currentWeekDate={currentWeekDate}
         />
       )}
 
@@ -1787,8 +1797,17 @@ const App = () => {
                 className="btn-primary"
                 onClick={handleEntrySubmit}
               >
-                Сохранить
+                Выполнен
               </button>
+              {quantityModalData.dayDate < new Date().toLocaleDateString('en-CA') && (
+                <button
+                  type="button"
+                  className="btn-primary btn-restored"
+                  onClick={handleEntryRestored}
+                >
+                  Восполнен
+                </button>
+              )}
             </div>
           </div>
         </div>
