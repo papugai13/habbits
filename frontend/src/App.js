@@ -1276,80 +1276,9 @@ const App = () => {
                     <div className="habit-count habit-count-overflow">+{getHabitOverflow(habit)}</div>
                   )}
                 </div>
-                <div className="habit-row-content">
-                  <div className="habit-checks">
-                    {WEEK_DAYS.map((_, index) => {
-                      // Calculate date for this slot based on currentWeekDate
-                      const baseDate = new Date(currentWeekDate);
-                      const dayOfWeek = baseDate.getDay();
-                      const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                      const diff = index - currentDayIndex;
-
-                      const slotDate = new Date(baseDate);
-                      slotDate.setDate(baseDate.getDate() + diff);
-                      const slotDateStr = slotDate.toLocaleDateString('en-CA');
-
-                      const today = new Date();
-                      const todayStr = today.toLocaleDateString('en-CA');
-
-                      // Find status for this date
-                      const status = habit.statuses.find(s => s.date === slotDateStr);
-                      const isDone = status ? status.is_done : false;
-                      const statusId = status ? status.id : null;
-                      const quantity = status ? status.quantity : null;
-
-                      // Calculate yesterday date string
-                      const yesterday = new Date(today);
-                      yesterday.setDate(today.getDate() - 1);
-                      const yesterdayStr = yesterday.toLocaleDateString('en-CA');
-
-                      const isToday = slotDateStr === todayStr;
-                      const isPast = slotDateStr < todayStr;
-                      const isFuture = slotDateStr > todayStr;
-                      const isYesterday = slotDateStr === yesterdayStr;
-                      const isMissed = isPast && !isDone;
-                      const hasComment = status && status.comment;
-                      const hasPhoto = status && status.photo;
-
-                      // Disable only IF it's in the future
-                      const isDisabled = isFuture;
-
-                      return (
-                        <button
-                          key={slotDateStr}
-                          className={`check-box ${isDone ? 'checked' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''} ${hasActiveWeek ? 'active-week' : ''}`}
-                          onClick={() => {
-                            if (!isDisabled && !longPressTimer) {
-                              toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
-                            }
-                          }}
-                          onMouseDown={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
-                          onMouseUp={handleLongPressEnd}
-                          onMouseLeave={handleLongPressEnd}
-                          onTouchStart={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
-                          onTouchEnd={handleLongPressEnd}
-                          disabled={isDisabled}
-                        >
-                          {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
-                          {hasComment && <span className="attachment-indicator"></span>}
-                          {hasPhoto && <span className="photo-indicator"></span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="habit-counts-wrapper">
-                    {weeklyAward && (
-                      <div className="habit-award">{weeklyAward}</div>
-                    )}
-                    <div className="habit-count">{weeklyCount}</div>
-                    {getHabitOverflow(habit) > 0 && (
-                      <div className="habit-count habit-count-overflow">+{getHabitOverflow(habit)}</div>
-                    )}
-                  </div>
-                </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
 
