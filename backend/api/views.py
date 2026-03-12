@@ -296,16 +296,29 @@ class HabitViewSet(viewsets.ModelViewSet):
 
         period = request.query_params.get('period', None)
         
+        MONTHS_RU = {
+            1: 'Январь', 2: 'Февраль', 3: 'Март', 4: 'Апрель',
+            5: 'Май', 6: 'Июнь', 7: 'Июль', 8: 'Август',
+            9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
+        }
+
         if period == 'week':
             days_since_monday = today.weekday()  # 0=Пн, 6=Вс
             start_date = today - timedelta(days=days_since_monday)
             end_date = start_date + timedelta(days=6)
+            label = f"{start_date.strftime('%d.%m')} - {end_date.strftime('%d.%m')}"
         elif period == 'month':
-            start_date = today - timedelta(days=29)
-            end_date = today
+            start_date = date(today.year, today.month, 1)
+            if today.month == 12:
+                next_month = date(today.year + 1, 1, 1)
+            else:
+                next_month = date(today.year, today.month + 1, 1)
+            end_date = next_month - timedelta(days=1)
+            label = f"{MONTHS_RU[start_date.month]} {start_date.year}"
         elif period == 'year':
-            start_date = today - timedelta(days=364)
-            end_date = today
+            start_date = date(today.year, 1, 1)
+            end_date = date(today.year, 12, 31)
+            label = f"{start_date.year}"
         else:
             # Используем параметры start_date и end_date
             start_date_str = request.query_params.get('start_date')
@@ -328,47 +341,128 @@ class HabitViewSet(viewsets.ModelViewSet):
         else:
             habits = Habit.objects.filter(user=user_profile)
         
-        # Собираем статистику по дням
+        # Собираем статистику по дням или агрегированным периодам
         statistics = []
         current_date = start_date
         
-        while current_date <= end_date:
-            day_dates = Date.objects.filter(
-                user=user_profile,
-                habit__in=habits,
-                habit_date=current_date,
-                is_done=True
-            )
-            
-            # Количество выполненных привычек (зеленый график)
-            completed_days = day_dates.filter(is_restored=False).count()
-            
-            # Количество восполненных привычек (светло-зеленый график)
-            restored_days = day_dates.filter(is_restored=True).count()
-            
-            # Сумма всех явных указаний количества (фиолетовый график, как в журнале)
-            extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
-                total=Sum('quantity')
-            )['total'] or 0
+        if period == 'week' or not period:
+            # Daily bars
+            while current_date <= end_date:
+                day_dates = Date.objects.filter(
+                    user=user_profile,
+                    habit__in=habits,
+                    habit_date=current_date,
+                    is_done=True
+                )
+                
+                completed_days = day_dates.filter(is_restored=False).count()
+                restored_days = day_dates.filter(is_restored=True).count()
+                extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
+                    total=Sum('quantity')
+                )['total'] or 0
 
-            # Итоговое количество: (привычки без кол-ва) + (сумма всех кол-в)
-            # В completed_count включаем и обычные, и восполненные
-            completed_count = (
-                day_dates.filter(quantity__isnull=True).count() + 
-                extra_quantity
-            )
-            
-            statistics.append({
-                'date': current_date.isoformat(),
-                'completed_count': completed_count,
-                'completed_days': completed_days,
-                'restored_days': restored_days,
-                'extra_quantity': extra_quantity,
-            })
-            
-            current_date += timedelta(days=1)
+                completed_count = (
+                    day_dates.filter(quantity__isnull=True).count() + 
+                    extra_quantity
+                )
+                
+                statistics.append({
+                    'date': current_date.isoformat(),
+                    'label': current_date.isoformat(),
+                    'days_in_period': 1,
+                    'completed_count': completed_count,
+                    'completed_days': completed_days,
+                    'restored_days': restored_days,
+                    'extra_quantity': extra_quantity,
+                })
+                current_date += timedelta(days=1)
         
-        return Response(statistics)
+        elif period == 'month':
+            # Weekly bars (7 days chunks)
+            while current_date <= end_date:
+                period_end = min(current_date + timedelta(days=6), end_date)
+                day_dates = Date.objects.filter(
+                    user=user_profile,
+                    habit__in=habits,
+                    habit_date__range=[current_date, period_end],
+                    is_done=True
+                )
+                
+                completed_days = day_dates.filter(is_restored=False).count()
+                restored_days = day_dates.filter(is_restored=True).count()
+                extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
+                    total=Sum('quantity')
+                )['total'] or 0
+
+                completed_count = (
+                    day_dates.filter(quantity__isnull=True).count() + 
+                    extra_quantity
+                )
+                
+                days_in_period = (period_end - current_date).days + 1
+                
+                statistics.append({
+                    'date': current_date.isoformat(),
+                    'label': f"{current_date.strftime('%d.%m')} - {period_end.strftime('%d.%m')}",
+                    'days_in_period': days_in_period,
+                    'completed_count': completed_count,
+                    'completed_days': completed_days,
+                    'restored_days': restored_days,
+                    'extra_quantity': extra_quantity,
+                })
+                current_date = period_end + timedelta(days=1)
+
+        elif period == 'year':
+            # Monthly bars (calendar months)
+            while current_date <= end_date:
+                # Get last day of current month
+                if current_date.month == 12:
+                    period_end = date(current_date.year, 12, 31)
+                else:
+                    period_end = date(current_date.year, current_date.month + 1, 1) - timedelta(days=1)
+                
+                period_end = min(period_end, end_date)
+                
+                day_dates = Date.objects.filter(
+                    user=user_profile,
+                    habit__in=habits,
+                    habit_date__range=[current_date, period_end],
+                    is_done=True
+                )
+                
+                completed_days = day_dates.filter(is_restored=False).count()
+                restored_days = day_dates.filter(is_restored=True).count()
+                extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
+                    total=Sum('quantity')
+                )['total'] or 0
+
+                completed_count = (
+                    day_dates.filter(quantity__isnull=True).count() + 
+                    extra_quantity
+                )
+                
+                days_in_period = (period_end - current_date).days + 1
+                
+                months_ru = {
+                    1: 'Янв', 2: 'Фев', 3: 'Мар', 4: 'Апр', 5: 'Май', 6: 'Июн',
+                    7: 'Июл', 8: 'Авг', 9: 'Сен', 10: 'Окт', 11: 'Ноя', 12: 'Дек'
+                }
+                
+                statistics.append({
+                    'date': current_date.isoformat(),
+                    'label': months_ru[current_date.month],
+                    'days_in_period': days_in_period,
+                    'completed_count': completed_count,
+                    'completed_days': completed_days,
+                    'restored_days': restored_days,
+                    'extra_quantity': extra_quantity,
+                })
+                current_date = period_end + timedelta(days=1)
+        
+        return Response({
+            'data': statistics,
+            'period_label': label
+        })
 
     @action(detail=False, methods=['get'])
     def habit_comparison(self, request):
@@ -405,13 +499,22 @@ class HabitViewSet(viewsets.ModelViewSet):
             month_name = MONTHS_RU[start_date.month]
             label = f"Неделя {start_date.strftime('%d')} - {end_date.strftime('%d')} {month_name}"
         elif period == 'month':
-            start_date = today - timedelta(days=29)
-            end_date = today
-            label = f"Месяц ({start_date.strftime('%d.%m')} - {end_date.strftime('%d.%m')})"
+            start_date = date(today.year, today.month, 1)
+            if today.month == 12:
+                next_month = date(today.year + 1, 1, 1)
+            else:
+                next_month = date(today.year, today.month + 1, 1)
+            end_date = next_month - timedelta(days=1)
+            months_ru_full = {
+                1: 'Январь', 2: 'Февраль', 3: 'Март', 4: 'Апрель',
+                5: 'Май', 6: 'Июнь', 7: 'Июль', 8: 'Август',
+                9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
+            }
+            label = f"{months_ru_full[start_date.month]} {start_date.year}"
         elif period == 'year':
-            start_date = today - timedelta(days=364)
-            end_date = today
-            label = f"Год ({start_date.year})"
+            start_date = date(today.year, 1, 1)
+            end_date = date(today.year, 12, 31)
+            label = f"Год ({today.year})"
         else:
             start_date = today - timedelta(days=6)
             end_date = today

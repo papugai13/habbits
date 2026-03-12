@@ -95,11 +95,11 @@ const CustomTooltip = ({ active, payload, viewType }) => {
                 {viewType === 'habits' ? (
                     <div className="tooltip-details">
                         <p className="tooltip-row">
-                            <span className="dot" style={{ backgroundColor: '#2ecc71' }}></span>
+                            <span className="dot" style={{ backgroundColor: '#00FF7F' }}></span>
                             Выполнено: <strong>{data.countCapped}</strong>
                         </p>
                         <p className="tooltip-row">
-                            <span className="dot" style={{ backgroundColor: '#00FF7F' }}></span>
+                            <span className="dot" style={{ backgroundColor: '#94fcd0' }}></span>
                             Восполнено: <strong>{data.countRestored}</strong>
                         </p>
                         <p className="tooltip-row">
@@ -141,10 +141,19 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
 
-                    const totalDaysInPeriod = period === 'week' ? 7 : period === 'month' ? 30 : 365;
+                    const totalDaysInPeriod = period === 'week' ? 7 : period === 'month' ? new Date(periodStartDate.getFullYear(), periodStartDate.getMonth() + 1, 0).getDate() : 365;
 
                     // Calculate how many days have passed in the viewed period
                     const periodStartDate = new Date(currentWeekDate);
+                    if (period === 'week') {
+                        const day = periodStartDate.getDay();
+                        const diff = periodStartDate.getDate() - (day === 0 ? 6 : day - 1);
+                        periodStartDate.setDate(diff);
+                    } else if (period === 'month') {
+                        periodStartDate.setDate(1);
+                    } else if (period === 'year') {
+                        periodStartDate.setMonth(0, 1);
+                    }
                     periodStartDate.setHours(0, 0, 0, 0);
 
                     let passedDays;
@@ -259,13 +268,13 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
                                 />
                                 {viewType === 'habits' ? (
                                     <>
-                                        <Bar dataKey="countCapped" stackId="a" fill="#2ecc71" radius={[4, 4, 0, 0]} name="Выполнено" isAnimationActive={false} shape={<CustomBarShape />}>
+                                        <Bar dataKey="countCapped" stackId="a" fill="#00FF7F" radius={[4, 4, 0, 0]} name="Выполнено" isAnimationActive={false} shape={<CustomBarShape />}>
                                             <LabelList
                                                 dataKey="countCapped"
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
                                             />
                                         </Bar>
-                                        <Bar dataKey="countRestored" stackId="a" fill="#00FF7F" radius={[4, 4, 0, 0]} name="Восполнено" isAnimationActive={false} shape={<CustomBarShape />}>
+                                        <Bar dataKey="countRestored" stackId="a" fill="#94fcd0" radius={[4, 4, 0, 0]} name="Восполнено" isAnimationActive={false} shape={<CustomBarShape />}>
                                             <LabelList
                                                 dataKey="countRestored"
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
@@ -309,33 +318,60 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
     const [viewType, setViewType] = useState('habits'); // 'habits' or 'quantity'
     const [chartData, setChartData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [chartDate, setChartDate] = useState(currentWeekDate);
+    const [periodLabel, setPeriodLabel] = useState('');
 
     useEffect(() => {
         fetchStatistics();
-    }, [period, currentWeekDate]);
+    }, [period, chartDate]);
+
+    const handlePrevPeriod = () => {
+        const date = new Date(chartDate);
+        if (period === 'week') {
+            date.setDate(date.getDate() - 7);
+        } else if (period === 'month') {
+            date.setMonth(date.getMonth() - 1);
+        } else if (period === 'year') {
+            date.setFullYear(date.getFullYear() - 1);
+        }
+        setChartDate(date.toISOString().split('T')[0]);
+    };
+
+    const handleNextPeriod = () => {
+        const date = new Date(chartDate);
+        if (period === 'week') {
+            date.setDate(date.getDate() + 7);
+        } else if (period === 'month') {
+            date.setMonth(date.getMonth() + 1);
+        } else if (period === 'year') {
+            date.setFullYear(date.getFullYear() + 1);
+        }
+        setChartDate(date.toISOString().split('T')[0]);
+    };
 
     const fetchStatistics = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/v1/habits/daily_statistics/?period=${period}&date=${currentWeekDate}`, {
+            const response = await fetch(`/api/v1/habits/daily_statistics/?period=${period}&date=${chartDate}`, {
                 credentials: 'include'
             });
 
             if (response.ok) {
-                const data = await response.json();
+                const json = await response.json();
+                setPeriodLabel(json.period_label);
                 const totalHabits = habitsData.length;
                 const todayStr = new Date().toISOString().split('T')[0];
-                const formattedData = data.map(item => {
+                const formattedData = json.data.map(item => {
                     const isFuture = item.date > todayStr;
                     return {
-                        date: formatDate(item.date, period),
+                        date: item.label, // Use the pre-formatted label from backend
                         fullDate: item.date,
                         dayMonth: getNumericDate(item.date),
                         countTotal: item.completed_count,
                         countCapped: item.completed_days,
                         countRestored: item.restored_days || 0,
                         countExtra: item.extra_quantity,
-                        countRemaining: isFuture ? 0 : Math.max(0, totalHabits - item.completed_days - (item.restored_days || 0))
+                        countRemaining: isFuture ? 0 : Math.max(0, (totalHabits * item.days_in_period) - item.completed_days - (item.restored_days || 0))
                     };
                 });
                 setChartData(formattedData);
@@ -351,6 +387,17 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
         <div className="charts-container">
             <div className="charts-header">
                 <h2>Статистика выполнения</h2>
+                
+                <div className="chart-navigation-controls">
+                    <button className="nav-arrow-btn" onClick={handlePrevPeriod}>←</button>
+                    <div className="navigation-labels">
+                        <span className="current-period-label">
+                            {periodLabel}
+                        </span>
+                    </div>
+                    <button className="nav-arrow-btn" onClick={handleNextPeriod}>→</button>
+                </div>
+
                 <div className="selectors-container">
                     <div className="view-selector">
                             <button
@@ -419,7 +466,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                     <Bar
                                         dataKey="countCapped"
                                         stackId="a"
-                                        fill="#2ecc71"
+                                        fill="#00FF7F"
                                         radius={[8, 8, 0, 0]}
                                         isAnimationActive={false}
                                         name="Выполнено"
@@ -433,7 +480,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                     <Bar
                                         dataKey="countRestored"
                                         stackId="a"
-                                        fill="#00FF7F"
+                                        fill="#94fcd0"
                                         radius={[8, 8, 0, 0]}
                                         isAnimationActive={false}
                                         name="Восполнено"
@@ -491,7 +538,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
             <HabitsComparisonChart
                 period={period}
                 viewType={viewType}
-                currentWeekDate={currentWeekDate}
+                currentWeekDate={chartDate}
             />
 
             <div className="reports-section">
