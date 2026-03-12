@@ -481,6 +481,11 @@ body {
 }
 
 .check-box.checked {
+  background-color: #2ecc71;
+  border-color: #2ecc71;
+}
+
+.check-box.restored {
   background-color: #00FF7F;
   border-color: #00FF7F;
 }
@@ -501,9 +506,15 @@ body {
   cursor: pointer;
 }
 
-.check-box.today {
+.check-box.today:not(.checked):not(.restored) {
   border: 1px solid #666;
   opacity: 0.5;
+}
+
+.check-box.checked,
+.check-box.restored {
+  opacity: 1 !important;
+  border: none;
 }
 
 /* Also styling the day header if it matches today */
@@ -1073,14 +1084,14 @@ body {
 }
 
 .btn-primary {
-  background-color: #00FF7F;
+  background-color: #2ecc71;
   color: #FFFFFF;
 }
 
 .btn-primary:hover {
-  background-color: #00E070;
+  background-color: #27ae60;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 255, 127, 0.3);
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
 }
 
 .btn-primary:active {
@@ -1859,4 +1870,14 @@ body {
     max-height: 78vh;
     border-radius: 12px;
   }
+}
+
+.btn-restored {
+  background-color: #00FF7F !important;
+  color: #fff !important;
+}
+
+.btn-restored:hover {
+  background-color: #00e672 !important;
+  box-shadow: 0 4px 12px rgba(0, 255, 127, 0.3) !important;
 }

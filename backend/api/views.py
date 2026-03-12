@@ -7,7 +7,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from django.db.models import Sum, Case, When, Value, F, IntegerField, Max
 
 from . models import Achievement, Date, Habit, UserAll, Category
@@ -127,7 +127,6 @@ class HabitViewSet(viewsets.ModelViewSet):
         # Determine the start of the week
         date_param = request.query_params.get('date')
         if date_param:
-            from datetime import datetime
             try:
                 reference_date = datetime.strptime(date_param, '%Y-%m-%d').date()
             except ValueError:
@@ -196,14 +195,19 @@ class HabitViewSet(viewsets.ModelViewSet):
             statuses = []
             for i in range(7):
                 current_date = start_date + timedelta(days=i)
-                date_entry = Date.objects.filter(habit=habit, habit_date=current_date).first()
+                date_entry = Date.objects.filter(
+                    user=user_profile,
+                    habit=habit,
+                    habit_date=current_date
+                ).first()
                 statuses.append({
                     "date": current_date.isoformat(),
                     "is_done": date_entry.is_done if date_entry else False,
+                    "is_restored": date_entry.is_restored if date_entry else False,
                     "id": date_entry.id if date_entry else None,
                     "quantity": date_entry.quantity if date_entry else None,
                     "comment": date_entry.comment if date_entry else None,
-                    "photo": request.build_absolute_uri(date_entry.photo.url) if (date_entry and date_entry.photo) else None
+                    "photo": (request.build_absolute_uri(date_entry.photo.url) if (date_entry and date_entry.photo) else None)
                 })
             habit_data['statuses'] = statuses
             result.append(habit_data)
@@ -271,8 +275,6 @@ class HabitViewSet(viewsets.ModelViewSet):
         - end_date: конечная дата (формат YYYY-MM-DD), по умолчанию - сегодня
         - period: предустановленный период ('week', 'month', 'year'), переопределяет start_date/end_date
         """
-        from datetime import datetime
-        
         # Get or create UserAll profile for authenticated user
         user_profile, created = UserAll.objects.get_or_create(
             auth_user=request.user,
@@ -283,7 +285,15 @@ class HabitViewSet(viewsets.ModelViewSet):
         )
 
         # Определяем период
-        today = date.today()
+        date_param = request.query_params.get('date')
+        if date_param:
+            try:
+                today = datetime.strptime(date_param, '%Y-%m-%d').date()
+            except ValueError:
+                today = date.today()
+        else:
+            today = date.today()
+
         period = request.query_params.get('period', None)
         
         if period == 'week':
@@ -331,7 +341,10 @@ class HabitViewSet(viewsets.ModelViewSet):
             )
             
             # Количество выполненных привычек (зеленый график)
-            completed_days = day_dates.count()
+            completed_days = day_dates.filter(is_restored=False).count()
+            
+            # Количество восполненных привычек (светло-зеленый график)
+            restored_days = day_dates.filter(is_restored=True).count()
             
             # Сумма всех явных указаний количества (фиолетовый график, как в журнале)
             extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
@@ -339,6 +352,7 @@ class HabitViewSet(viewsets.ModelViewSet):
             )['total'] or 0
 
             # Итоговое количество: (привычки без кол-ва) + (сумма всех кол-в)
+            # В completed_count включаем и обычные, и восполненные
             completed_count = (
                 day_dates.filter(quantity__isnull=True).count() + 
                 extra_quantity
@@ -348,12 +362,94 @@ class HabitViewSet(viewsets.ModelViewSet):
                 'date': current_date.isoformat(),
                 'completed_count': completed_count,
                 'completed_days': completed_days,
+                'restored_days': restored_days,
                 'extra_quantity': extra_quantity,
             })
             
             current_date += timedelta(days=1)
         
         return Response(statistics)
+
+    @action(detail=False, methods=['get'])
+    def habit_comparison(self, request):
+        """
+        Returns aggregated stats for each habit over the specified period.
+        """
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=request.user,
+            defaults={'name': request.user.username}
+        )
+
+        # Period logic
+        date_param = request.query_params.get('date')
+        if date_param:
+            try:
+                today = datetime.strptime(date_param, '%Y-%m-%d').date()
+            except ValueError:
+                today = date.today()
+        else:
+            today = date.today()
+
+        period = request.query_params.get('period', 'week')
+        
+        MONTHS_RU = {
+            1: 'Январь', 2: 'Февраль', 3: 'Март', 4: 'Апрель',
+            5: 'Май', 6: 'Июнь', 7: 'Июль', 8: 'Август',
+            9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
+        }
+        
+        if period == 'week':
+            days_since_monday = today.weekday()
+            start_date = today - timedelta(days=days_since_monday)
+            end_date = start_date + timedelta(days=6)
+            month_name = MONTHS_RU[start_date.month]
+            label = f"Неделя {start_date.strftime('%d')} - {end_date.strftime('%d')} {month_name}"
+        elif period == 'month':
+            start_date = today - timedelta(days=29)
+            end_date = today
+            label = f"Месяц ({start_date.strftime('%d.%m')} - {end_date.strftime('%d.%m')})"
+        elif period == 'year':
+            start_date = today - timedelta(days=364)
+            end_date = today
+            label = f"Год ({start_date.year})"
+        else:
+            start_date = today - timedelta(days=6)
+            end_date = today
+            label = "Произвольный период"
+
+        habits = Habit.objects.filter(user=user_profile, is_archived=False)
+        statistics = []
+
+        for habit in habits:
+            day_dates = Date.objects.filter(
+                user=user_profile,
+                habit=habit,
+                habit_date__range=[start_date, end_date],
+                is_done=True
+            )
+            
+            # Count days
+            completed_days = day_dates.filter(is_restored=False).count()
+            restored_days = day_dates.filter(is_restored=True).count()
+            
+            # Sum quantity
+            extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
+                total=Sum('quantity')
+            )['total'] or 0
+
+            # Show all active habits (user request: "показывать привычку даже если она не отмечена")
+            statistics.append({
+                'id': habit.id,
+                'name': habit.name,
+                'completed_days': completed_days,
+                'restored_days': restored_days,
+                'extra_quantity': extra_quantity,
+            })
+
+        return Response({
+            'period_label': label,
+            'habits': statistics
+        })
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
