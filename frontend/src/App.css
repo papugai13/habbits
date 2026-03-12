@@ -481,13 +481,13 @@ body {
 }
 
 .check-box.checked {
-  background-color: #2ecc71;
-  border-color: #2ecc71;
+  background-color: #00FF7F;
+  border-color: #00FF7F;
 }
 
 .check-box.restored {
-  background-color: #00FF7F;
-  border-color: #00FF7F;
+  background-color: #94fcd0;
+  border-color: #94fcd0;
 }
 
 .check-box.missed {
