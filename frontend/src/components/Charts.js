@@ -93,7 +93,20 @@ const CustomTooltip = ({ active, payload, viewType }) => {
             <div className="custom-tooltip">
                 <p className="tooltip-date">{data.fullDate}</p>
                 {viewType === 'habits' ? (
-                    <p className="tooltip-count">Привычки: {data.countCapped}</p>
+                    <div className="tooltip-details">
+                        <p className="tooltip-row">
+                            <span className="dot" style={{ backgroundColor: '#2ecc71' }}></span>
+                            Выполнено: <strong>{data.countCapped}</strong>
+                        </p>
+                        <p className="tooltip-row">
+                            <span className="dot" style={{ backgroundColor: '#00FF7F' }}></span>
+                            Восполнено: <strong>{data.countRestored}</strong>
+                        </p>
+                        <p className="tooltip-row">
+                            <span className="dot" style={{ backgroundColor: '#D0D0D0' }}></span>
+                            Пропущено: <strong>{data.countRemaining}</strong>
+                        </p>
+                    </div>
                 ) : (
                     <p className="tooltip-overflow">Количество: {data.countExtra}</p>
                 )}
@@ -246,7 +259,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
                                 />
                                 {viewType === 'habits' ? (
                                     <>
-                                        <Bar dataKey="countCapped" stackId="a" fill="#2ecc71" radius={[4, 4, 0, 0]} name="Дней" isAnimationActive={false} shape={<CustomBarShape />}>
+                                        <Bar dataKey="countCapped" stackId="a" fill="#2ecc71" radius={[4, 4, 0, 0]} name="Выполнено" isAnimationActive={false} shape={<CustomBarShape />}>
                                             <LabelList
                                                 dataKey="countCapped"
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
@@ -258,7 +271,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
                                             />
                                         </Bar>
-                                        <Bar dataKey="countRemaining" stackId="a" fill="#D0D0D0" radius={[4, 4, 0, 0]} name="Не отмечено" isAnimationActive={false} shape={<CustomBarShape />}>
+                                        <Bar dataKey="countRemaining" stackId="a" fill="#D0D0D0" radius={[4, 4, 0, 0]} name="Пропущено" isAnimationActive={false} shape={<CustomBarShape />}>
                                             <LabelList
                                                 dataKey="countRemaining"
                                                 content={(props) => <CustomBarLabel {...props} color="#666" baseSize={12} />}
@@ -340,12 +353,12 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                 <h2>Статистика выполнения</h2>
                 <div className="selectors-container">
                     <div className="view-selector">
-                        <button
-                            className={`view-btn habits ${viewType === 'habits' ? 'active' : ''}`}
-                            onClick={() => setViewType('habits')}
-                        >
-                            Привычки
-                        </button>
+                            <button
+                                className={`view-btn habits ${viewType === 'habits' ? 'active' : ''}`}
+                                onClick={() => setViewType('habits')}
+                            >
+                                Выполнено
+                            </button>
                         <button
                             className={`view-btn quantity ${viewType === 'quantity' ? 'active' : ''}`}
                             onClick={() => setViewType('quantity')}
@@ -409,7 +422,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                         fill="#2ecc71"
                                         radius={[8, 8, 0, 0]}
                                         isAnimationActive={false}
-                                        name="Привычек"
+                                        name="Выполнено"
                                         shape={<CustomBarShape />}
                                     >
                                         <LabelList
@@ -437,7 +450,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                         fill="#D0D0D0"
                                         radius={[8, 8, 0, 0]}
                                         isAnimationActive={false}
-                                        name="Не отмечено"
+                                        name="Пропущено"
                                         shape={<CustomBarShape />}
                                     >
                                         <LabelList
