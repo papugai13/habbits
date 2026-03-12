@@ -1179,106 +1179,119 @@ const App = () => {
           {habitsData.filter(habit => {
             if (selectedCategory === 'Все') return true;
             return habit.category_name === selectedCategory;
-          }).map((habit) => (
-            <div key={habit.id} className="habit-row">
-              <div className="habit-name">
-                <span className="habit-text">{habit.name}</span>
-                {habit.latest_comment && (
-                  <div
-                    className="habit-latest-comment"
-                    title={habit.latest_comment}
-                    onClick={() => {
-                      const d = habit.latest_comment_details;
-                      if (d) {
-                        openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo);
-                      }
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <span className="comment-indicator-circle"></span>
-                    <span className="comment-text">{habit.latest_comment}</span>
-                  </div>
-                )}
-                {habit.latest_photo && (
-                  <img
-                    src={habit.latest_photo}
-                    alt=""
-                    className="habit-thumbnail"
-                    onClick={() => setLightboxUrl(habit.latest_photo)}
-                  />
-                )}
-              </div>
-              <div className="habit-row-content">
-                <div className="habit-checks">
-                  {WEEK_DAYS.map((_, index) => {
-                    // Calculate date for this slot based on currentWeekDate
-                    const baseDate = new Date(currentWeekDate);
-                    const dayOfWeek = baseDate.getDay();
-                    const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                    const diff = index - currentDayIndex;
-
-                    const slotDate = new Date(baseDate);
-                    slotDate.setDate(baseDate.getDate() + diff);
-                    const slotDateStr = slotDate.toLocaleDateString('en-CA');
-
-                    const today = new Date();
-                    const todayStr = today.toLocaleDateString('en-CA');
-
-                    // Find status for this date
-                    const status = habit.statuses.find(s => s.date === slotDateStr);
-                    const isDone = status ? status.is_done : false;
-                    const isRestored = status ? status.is_restored : false;
-                    const statusId = status ? status.id : null;
-                    const quantity = status ? status.quantity : null;
-
-                    // Calculate yesterday date string
-                    const yesterday = new Date(today);
-                    yesterday.setDate(today.getDate() - 1);
-                    const yesterdayStr = yesterday.toLocaleDateString('en-CA');
-
-                    const isToday = slotDateStr === todayStr;
-                    const isPast = slotDateStr < todayStr;
-                    const isFuture = slotDateStr > todayStr;
-                    const isYesterday = slotDateStr === yesterdayStr;
-                    const isMissed = isPast && !isDone;
-                    const hasComment = status && status.comment;
-                    const hasPhoto = status && status.photo;
-
-                    // Disable only IF it's in the future
-                    const isDisabled = isFuture;
-
-                    return (
-                      <button
-                        key={slotDateStr}
-                        className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''}`}
-                        onClick={() => {
-                          if (!isDisabled && !longPressTimer) {
-                            toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
-                          }
-                        }}
-                        onMouseDown={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
-                        onMouseUp={handleLongPressEnd}
-                        onMouseLeave={handleLongPressEnd}
-                        onTouchStart={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
-                        onTouchEnd={handleLongPressEnd}
-                        disabled={isDisabled}
-                      >
-                        {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
-                        {hasComment && <span className="attachment-indicator"></span>}
-                        {hasPhoto && <span className="photo-indicator"></span>}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="habit-counts-wrapper">
-                  <div className="habit-count">{getHabitCount(habit)}</div>
-                  {getHabitOverflow(habit) > 0 && (
-                    <div className="habit-count habit-count-overflow">+{getHabitOverflow(habit)}</div>
+          }).map((habit) => {
+            const weeklyCount = getHabitCount(habit);
+            const weeklyRealCount = habit.statuses.reduce((acc, s) => s.is_done && !s.is_restored ? acc + 1 : acc, 0);
+            const weeklyAward = getWeeklyAward(weeklyRealCount);
+            const hasActiveWeek = weeklyRealCount >= 3;
+            return (
+              <div key={habit.id} className="habit-row">
+                <div className="habit-name">
+                  <span className="habit-text">{habit.name}</span>
+                  {(habit.latest_comment || habit.latest_photo) && (
+                    <div className="habit-meta-row">
+                      {habit.latest_comment && (
+                        <div
+                          className="habit-latest-comment"
+                          title={habit.latest_comment}
+                          onClick={() => {
+                            const d = habit.latest_comment_details;
+                            if (d) {
+                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo);
+                            }
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <span className="comment-indicator-circle"></span>
+                          <span className="comment-text">{habit.latest_comment}</span>
+                        </div>
+                      )}
+                      {habit.latest_photo && (
+                        <img
+                          src={habit.latest_photo}
+                          alt=""
+                          className="habit-thumbnail"
+                          onClick={() => setLightboxUrl(habit.latest_photo)}
+                        />
+                      )}
+                    </div>
                   )}
                 </div>
+                <div className="habit-row-content">
+                  <div className="habit-checks">
+                    {WEEK_DAYS.map((_, index) => {
+                      // Calculate date for this slot based on currentWeekDate
+                      const baseDate = new Date(currentWeekDate);
+                      const dayOfWeek = baseDate.getDay();
+                      const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                      const diff = index - currentDayIndex;
+
+                      const slotDate = new Date(baseDate);
+                      slotDate.setDate(baseDate.getDate() + diff);
+                      const slotDateStr = slotDate.toLocaleDateString('en-CA');
+
+                      const today = new Date();
+                      const todayStr = today.toLocaleDateString('en-CA');
+
+                      // Find status for this date
+                      const status = habit.statuses.find(s => s.date === slotDateStr);
+                      const isDone = status ? status.is_done : false;
+                      const isRestored = status ? status.is_restored : false;
+                      const statusId = status ? status.id : null;
+                      const quantity = status ? status.quantity : null;
+
+                      // Calculate yesterday date string
+                      const yesterday = new Date(today);
+                      yesterday.setDate(today.getDate() - 1);
+                      const yesterdayStr = yesterday.toLocaleDateString('en-CA');
+
+                      const isToday = slotDateStr === todayStr;
+                      const isPast = slotDateStr < todayStr;
+                      const isFuture = slotDateStr > todayStr;
+                      const isYesterday = slotDateStr === yesterdayStr;
+                      const isMissed = isPast && !isDone;
+                      const hasComment = status && status.comment;
+                      const hasPhoto = status && status.photo;
+
+                      // Disable only IF it's in the future
+                      const isDisabled = isFuture;
+
+                      return (
+                        <button
+                          key={slotDateStr}
+                          className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''} ${hasActiveWeek ? 'active-week' : ''}`}
+                          onClick={() => {
+                            if (!isDisabled && !longPressTimer) {
+                              toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
+                            }
+                          }}
+                          onMouseDown={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
+                          onMouseUp={handleLongPressEnd}
+                          onMouseLeave={handleLongPressEnd}
+                          onTouchStart={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
+                          onTouchEnd={handleLongPressEnd}
+                          disabled={isDisabled}
+                        >
+                          {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
+                          {hasComment && <span className="attachment-indicator"></span>}
+                          {hasPhoto && <span className="photo-indicator"></span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="habit-counts-wrapper">
+                    {weeklyAward && (
+                      <div className="habit-award">{weeklyAward}</div>
+                    )}
+                    <div className="habit-count">{weeklyCount}</div>
+                    {getHabitOverflow(habit) > 0 && (
+                      <div className="habit-count habit-count-overflow">+{getHabitOverflow(habit)}</div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -1727,64 +1740,67 @@ const App = () => {
                 />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="comment-input">Комментарий</label>
-                <textarea
-                  id="comment-input"
-                  className="form-input"
-                  placeholder="Добавьте заметку..."
-                  value={commentValue}
-                  onChange={(e) => setCommentValue(e.target.value)}
-                  rows="3"
-                ></textarea>
+              <div className="form-group-row">
+                <div className="form-group form-group-flex">
+                  <label htmlFor="comment-input">Комментарий</label>
+                  <textarea
+                    id="comment-input"
+                    className="form-input"
+                    placeholder="Добавьте заметку..."
+                    value={commentValue}
+                    onChange={(e) => setCommentValue(e.target.value)}
+                    rows="2"
+                  ></textarea>
+                </div>
+
+                <div className="form-group form-group-flex">
+                  <label htmlFor="photo-input">Фото</label>
+                  {quantityModalData.currentPhoto && !photoFile && !deletePhoto && (
+                    <div className="current-photo-preview">
+                      <img
+                        src={quantityModalData.currentPhoto}
+                        alt="Текущее фото"
+                        className="photo-thumbnail"
+                        style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', borderRadius: '8px', cursor: 'zoom-in' }}
+                        onClick={() => setLightboxUrl(quantityModalData.currentPhoto)}
+                      />
+                      <button
+                        className="delete-photo-btn"
+                        type="button"
+                        onClick={() => setDeletePhoto(true)}
+                      >
+                        🗑️ Удалить фото
+                      </button>
+                    </div>
+                  )}
+                  {deletePhoto && !photoFile && (
+                    <div className="photo-deletion-notice">
+                      Фото будет удалено при сохранении
+                      <button
+                        className="btn-link"
+                        type="button"
+                        onClick={() => setDeletePhoto(false)}
+                        style={{ marginLeft: '10px', fontSize: '12px' }}
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    id="photo-input"
+                    type="file"
+                    accept="image/*"
+                    className="form-input"
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files && files.length > 0) {
+                        setPhotoFile(files[0]);
+                      }
+                    }}
+                  />
+                </div>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="photo-input">Фото</label>
-                {quantityModalData.currentPhoto && !photoFile && !deletePhoto && (
-                  <div className="current-photo-preview">
-                    <img
-                      src={quantityModalData.currentPhoto}
-                      alt="Текущее фото"
-                      className="photo-thumbnail"
-                      style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', borderRadius: '8px', cursor: 'zoom-in' }}
-                      onClick={() => setLightboxUrl(quantityModalData.currentPhoto)}
-                    />
-                    <button
-                      className="delete-photo-btn"
-                      type="button"
-                      onClick={() => setDeletePhoto(true)}
-                    >
-                      🗑️ Удалить фото
-                    </button>
-                  </div>
-                )}
-                {deletePhoto && !photoFile && (
-                  <div className="photo-deletion-notice">
-                    Фото будет удалено при сохранении
-                    <button
-                      className="btn-link"
-                      type="button"
-                      onClick={() => setDeletePhoto(false)}
-                      style={{ marginLeft: '10px', fontSize: '12px' }}
-                    >
-                      Отмена
-                    </button>
-                  </div>
-                )}
-                <input
-                  id="photo-input"
-                  type="file"
-                  accept="image/*"
-                  className="form-input"
-                  onChange={(e) => {
-                    const files = e.target.files;
-                    if (files && files.length > 0) {
-                      setPhotoFile(files[0]);
-                    }
-                  }}
-                />
-              </div>
             </div>
 
             <div className="form-actions">
