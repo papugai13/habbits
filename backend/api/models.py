@@ -178,6 +178,10 @@ class Date(models.Model):
         verbose_name="Сделано",
         default=False
     )
+    is_restored = models.BooleanField(
+        verbose_name="Восполнено",
+        default=False
+    )
 
     quantity = models.IntegerField(
         verbose_name="Количество",
