@@ -276,6 +276,11 @@ const App = () => {
     const newDate = new Date(currentDate);
     newDate.setDate(currentDate.getDate() + (direction === 'right' ? -1 : 1));
     const newDateStr = newDate.toLocaleDateString('en-CA');
+    const todayStr = new Date().toLocaleDateString('en-CA');
+
+    if (direction === 'left' && newDateStr > todayStr) {
+      return;
+    }
 
     // Find the habit and its status for the new date
     const habit = habitsData.find(h => h.id === quantityModalData.habitId);
