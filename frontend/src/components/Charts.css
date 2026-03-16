@@ -244,8 +244,7 @@
         font-size: 13px;
     }
 
-    .chart-wrapper,
-    .main-chart-outer {
+    .chart-wrapper {
         padding: 10px;
         min-height: 300px;
     }
@@ -440,56 +439,6 @@
 
 .comparison-chart-wrapper {
     margin: 0 -10px;
-}
-
-/* Main Chart Scroll Styles */
-.main-chart-outer {
-    background: white;
-    border-radius: 12px;
-    padding: 30px 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    position: relative;
-    flex: 1;
-    min-height: 400px;
-    display: flex;
-    flex-direction: column;
-}
-
-.main-chart-layout {
-    display: flex;
-    align-items: stretch;
-    overflow: hidden;
-    flex: 1;
-}
-
-.main-yaxis-fixed {
-    flex-shrink: 0;
-    position: relative;
-    z-index: 10;
-    background: white;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.02);
-    overflow: hidden;
-}
-
-.main-scroll-wrapper {
-    flex: 1;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-bottom: 10px;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-
-.main-scroll-wrapper::-webkit-scrollbar {
-    display: none;
-}
-
-.main-chart-inner {
-    transition: min-width 0.3s ease;
-}
-
-.main-chart-scroll {
-    margin: 5px auto 15px;
 }
 
 .comparison-chart-loading {
