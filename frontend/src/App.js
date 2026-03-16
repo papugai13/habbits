@@ -73,6 +73,12 @@ const App = () => {
   const [swipeDirection, setSwipeDirection] = useState(null);
   const habitsContainerRef = React.useRef(null);
 
+  // Modal swipe navigation refs
+  const modalSwipeStartPos = React.useRef({ x: 0, y: 0 });
+  const isModalSwiping = React.useRef(false);
+  const [modalSwipeDirection, setModalSwipeDirection] = useState(null);
+  const modalContentRef = React.useRef(null);
+
   // Archive state
   const [archivedHabits, setArchivedHabits] = useState([]);
   const [showArchive, setShowArchive] = useState(false);
@@ -229,6 +235,85 @@ const App = () => {
     swipeStartPos.current = { x: 0, y: 0 };
     isSwiping.current = false;
   };
+
+  // Modal swipe handlers
+  const handleModalSwipeStart = (e) => {
+    if (e.touches.length > 1) return;
+    const touch = e.touches[0];
+    modalSwipeStartPos.current = { x: touch.clientX, y: touch.clientY };
+    isModalSwiping.current = false;
+  };
+
+  const handleModalSwipeMove = (e) => {
+    if (!modalSwipeStartPos.current.x) return;
+    const touch = e.touches[0];
+    const distX = Math.abs(touch.clientX - modalSwipeStartPos.current.x);
+    const distY = Math.abs(touch.clientY - modalSwipeStartPos.current.y);
+    if (distX > 30 && distX > distY) {
+      isModalSwiping.current = true;
+      if (e.cancelable) e.preventDefault();
+    }
+  };
+
+  const handleModalSwipeEnd = (e) => {
+    if (!isModalSwiping.current) {
+      modalSwipeStartPos.current = { x: 0, y: 0 };
+      return;
+    }
+    const touch = e.changedTouches[0];
+    const diffX = touch.clientX - modalSwipeStartPos.current.x;
+    if (Math.abs(diffX) >= 50) {
+      const direction = diffX > 0 ? 'right' : 'left';
+      changeModalDate(direction);
+    }
+    modalSwipeStartPos.current = { x: 0, y: 0 };
+    isModalSwiping.current = false;
+  };
+
+  const changeModalDate = (direction) => {
+    if (!quantityModalData) return;
+    const currentDate = new Date(quantityModalData.dayDate);
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() + (direction === 'right' ? -1 : 1));
+    const newDateStr = newDate.toLocaleDateString('en-CA');
+
+    // Find the habit and its status for the new date
+    const habit = habitsData.find(h => h.id === quantityModalData.habitId);
+    if (!habit) return;
+
+    const status = habit.statuses.find(s => s.date === newDateStr);
+    const isDone = status ? status.is_done : false;
+    const statusId = status ? status.id : null;
+    const quantity = status ? status.quantity : null;
+    const comment = status ? status.comment : '';
+    const photo = status ? status.photo : null;
+
+    setModalSwipeDirection(direction);
+    setQuantityModalData({
+      ...quantityModalData,
+      dayDate: newDateStr,
+      currentStatus: isDone,
+      dateId: statusId,
+      currentPhoto: photo
+    });
+    setQuantityValue(quantity !== null && quantity !== undefined ? quantity : null);
+    setCommentValue(comment || '');
+    setPhotoFile(null);
+    setDeletePhoto(false);
+    
+    // Clear animation class after it finishes
+    setTimeout(() => {
+      setModalSwipeDirection(null);
+    }, 300);
+  };
+
+  // Non-passive touchmove for modal content
+  useEffect(() => {
+    const el = modalContentRef.current;
+    if (!el) return;
+    el.addEventListener('touchmove', handleModalSwipeMove, { passive: false });
+    return () => el.removeEventListener('touchmove', handleModalSwipeMove);
+  }, [showQuantityModal]);
 
   const currentWeekRange = () => {
     const curr = new Date(currentWeekDate);
@@ -1764,7 +1849,14 @@ const App = () => {
           setPhotoFile(null);
           setDeletePhoto(false);
         }}>
-          <div className="modal-content quantity-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content quantity-modal"
+            ref={modalContentRef}
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={handleModalSwipeStart}
+            onTouchEnd={handleModalSwipeEnd}
+            style={{ overflowX: 'hidden' }}
+          >
+            <div className={`modal-swipe-container ${modalSwipeDirection ? 'swipe-' + modalSwipeDirection : ''}`} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <div className="modal-header">
               <h2>Детали выполнения {quantityModalData.dayDate && ` — ${new Date(quantityModalData.dayDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`}</h2>
               <button
@@ -1892,6 +1984,7 @@ const App = () => {
                   Восполнен
                 </button>
               )}
+            </div>
             </div>
           </div>
         </div>
