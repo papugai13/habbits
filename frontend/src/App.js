@@ -67,6 +67,10 @@ const App = () => {
   const touchStartPos = React.useRef({ x: 0, y: 0 });
   const isTouchDraggingInProgress = React.useRef(false);
 
+  // Swipe navigation refs
+  const swipeStartPos = React.useRef({ x: 0, y: 0 });
+  const isSwiping = React.useRef(false);
+
   // Archive state
   const [archivedHabits, setArchivedHabits] = useState([]);
   const [showArchive, setShowArchive] = useState(false);
@@ -174,6 +178,42 @@ const App = () => {
     const nextDate = new Date(currentWeekDate);
     nextDate.setDate(nextDate.getDate() + 7);
     setCurrentWeekDate(nextDate.toLocaleDateString('en-CA'));
+  };
+
+  // Swipe handlers for week navigation
+  const handleSwipeStart = (e) => {
+    if (e.touches.length > 1) return;
+    const touch = e.touches[0];
+    swipeStartPos.current = { x: touch.clientX, y: touch.clientY };
+    isSwiping.current = false;
+  };
+
+  const handleSwipeMove = (e) => {
+    if (!swipeStartPos.current.x) return;
+    const touch = e.touches[0];
+    const distX = Math.abs(touch.clientX - swipeStartPos.current.x);
+    const distY = Math.abs(touch.clientY - swipeStartPos.current.y);
+    if (distX > 30 && distX > distY) {
+      isSwiping.current = true;
+    }
+  };
+
+  const handleSwipeEnd = (e) => {
+    if (!isSwiping.current) {
+      swipeStartPos.current = { x: 0, y: 0 };
+      return;
+    }
+    const touch = e.changedTouches[0];
+    const diffX = touch.clientX - swipeStartPos.current.x;
+    if (Math.abs(diffX) >= 50) {
+      if (diffX > 0) {
+        handlePrevWeek();
+      } else {
+        handleNextWeek();
+      }
+    }
+    swipeStartPos.current = { x: 0, y: 0 };
+    isSwiping.current = false;
   };
 
   const currentWeekRange = () => {
@@ -1175,7 +1215,11 @@ const App = () => {
 
       {/* Список привычек - только для вкладки Журналы */}
       {activeTab === 'Журналы' && (
-        <div className="habits-container">
+        <div className="habits-container"
+          onTouchStart={handleSwipeStart}
+          onTouchMove={handleSwipeMove}
+          onTouchEnd={handleSwipeEnd}
+        >
           {habitsData.filter(habit => {
             if (selectedCategory === 'Все') return true;
             return habit.category_name === selectedCategory;
