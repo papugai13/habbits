@@ -215,8 +215,8 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
 
     if (data.length === 0) return null;
 
-    const chartMinWidth = data.length > 7 ? data.length * 80 : '100%';
-    const showScroll = data.length > 7;
+    const chartMinWidth = data.length > 5 ? `${data.length * 80}px` : '100%';
+    const showScroll = data.length > 5;
 
     const activeKey = viewType === 'habits' ? 'countCapped' : 'countExtra';
     
