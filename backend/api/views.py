@@ -368,7 +368,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                 
                 statistics.append({
                     'date': current_date.isoformat(),
-                    'label': current_date.isoformat(),
+                    'label': str(current_date.day),
                     'days_in_period': 1,
                     'completed_count': completed_count,
                     'completed_days': completed_days,

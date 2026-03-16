@@ -22,12 +22,10 @@ const getNumericDate = (dateStr) => {
     return `${day}.${month}`;
 };
 
-const CustomXAxisTick = ({ x, y, payload, index, data, period }) => {
-    const item = data[index];
-    if (!item) return null;
+const CustomXAxisTick = ({ x, y, payload, period }) => {
+    if (!payload || !payload.value) return null;
 
-    // For weekly period, show only the day of the month
-    const displayValue = period === 'week' ? item.dayMonth.split('.')[0] : item.date;
+    const displayValue = payload.value;
     const fontSize = period === 'year' ? 9 : 10;
 
     return (
@@ -335,6 +333,27 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
     const [chartDate, setChartDate] = useState(currentWeekDate);
     const [periodLabel, setPeriodLabel] = useState('');
 
+    const mainScrollRef = useRef(null);
+    const mainIndicatorRef = useRef(null);
+
+    const handleMainScroll = (e) => {
+        if (!mainIndicatorRef.current) return;
+        const { scrollLeft, scrollWidth, clientWidth } = e.target;
+        const left = (scrollLeft / scrollWidth) * 100;
+        mainIndicatorRef.current.style.left = `${left}%`;
+    };
+
+    useEffect(() => {
+        if (mainScrollRef.current && mainIndicatorRef.current) {
+            const { scrollWidth, clientWidth } = mainScrollRef.current;
+            const width = (clientWidth / scrollWidth) * 100;
+            mainIndicatorRef.current.style.width = `${width}%`;
+            // Reset scroll on period change
+            mainScrollRef.current.scrollLeft = 0;
+            mainIndicatorRef.current.style.left = '0%';
+        }
+    }, [chartData.length, period]);
+
     useEffect(() => {
         fetchStatistics();
     }, [period, chartDate]);
@@ -457,16 +476,21 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                 </div>
             ) : (
                 <div className="chart-wrapper">
-                    <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 400 : 600}>
+                    <div className="main-chart-scroll-wrapper" onScroll={handleMainScroll} ref={mainScrollRef}>
+                        <div className="main-chart-inner" style={{ 
+                            minWidth: period === 'year' ? '600px' : period === 'month' ? '800px' : '100%',
+                            transition: 'min-width 0.3s ease'
+                        }}>
+                    <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 400 : 500}>
                         <BarChart
                             data={chartData}
-                            margin={{ top: 20, right: 30, left: 0, bottom: period === 'week' ? 20 : 5 }}
+                            margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                             <XAxis
                                 dataKey="date"
                                 stroke="#666"
-                                tick={<CustomXAxisTick data={chartData} period={period} />}
+                                tick={<CustomXAxisTick period={period} />}
                                 height={period === 'week' ? 50 : 30}
                                 interval={0}
                             />
@@ -540,6 +564,14 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                             )}
                         </BarChart>
                     </ResponsiveContainer>
+                    </div>
+                </div>
+
+                    {(period === 'year' || period === 'month') && chartData.length > 0 && (
+                        <div className="main-scroll-indicator-container">
+                            <div className="main-scroll-indicator-bar" ref={mainIndicatorRef}></div>
+                        </div>
+                    )}
 
                     {chartData.length === 0 && (
                         <div className="no-data-message">

@@ -141,6 +141,34 @@
     min-height: 400px;
 }
 
+.main-chart-scroll-wrapper {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.main-chart-scroll-wrapper::-webkit-scrollbar {
+    display: none;
+}
+
+.main-scroll-indicator-container {
+    height: 4px;
+    background: #f0f0f0;
+    margin: 15px auto 0;
+    width: 60%;
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+}
+
+.main-scroll-indicator-bar {
+    position: absolute;
+    height: 100%;
+    background: #CCFF00;
+    border-radius: 2px;
+}
+
 .custom-tooltip {
     background: white;
     border: 1px solid #e0e0e0;
