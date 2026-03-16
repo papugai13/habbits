@@ -408,7 +408,7 @@ const App = () => {
   const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto) => {
     const timer = setTimeout(() => {
       openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto);
-    }, 500); // 500ms for long press
+    }, 200); // 200ms for long press
     setLongPressTimer(timer);
   };
 
@@ -779,7 +779,7 @@ const App = () => {
       setDraggedHabitId(habitId);
       isTouchDraggingInProgress.current = true;
       if (navigator.vibrate) navigator.vibrate(50);
-    }, 500);
+    }, 200);
   };
 
   const handleTouchMove = (e) => {
