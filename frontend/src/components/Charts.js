@@ -478,7 +478,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                 <div className="chart-wrapper">
                     <div className="main-chart-scroll-wrapper" onScroll={handleMainScroll} ref={mainScrollRef}>
                         <div className="main-chart-inner" style={{ 
-                            minWidth: period === 'year' ? '600px' : period === 'month' ? '800px' : '100%',
+                            minWidth: period === 'year' ? '600px' : '100%',
                             transition: 'min-width 0.3s ease'
                         }}>
                     <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 400 : 500}>
@@ -567,7 +567,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                     </div>
                 </div>
 
-                    {(period === 'year' || period === 'month') && chartData.length > 0 && (
+                    {period === 'year' && chartData.length > 0 && (
                         <div className="main-scroll-indicator-container">
                             <div className="main-scroll-indicator-bar" ref={mainIndicatorRef}></div>
                         </div>
