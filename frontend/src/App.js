@@ -71,6 +71,7 @@ const App = () => {
   const swipeStartPos = React.useRef({ x: 0, y: 0 });
   const isSwiping = React.useRef(false);
   const [swipeDirection, setSwipeDirection] = useState(null);
+  const habitsContainerRef = React.useRef(null);
 
   // Archive state
   const [archivedHabits, setArchivedHabits] = useState([]);
@@ -196,8 +197,17 @@ const App = () => {
     const distY = Math.abs(touch.clientY - swipeStartPos.current.y);
     if (distX > 30 && distX > distY) {
       isSwiping.current = true;
+      if (e.cancelable) e.preventDefault();
     }
   };
+
+  // Non-passive touchmove listener for swipe (allows preventDefault)
+  useEffect(() => {
+    const el = habitsContainerRef.current;
+    if (!el) return;
+    el.addEventListener('touchmove', handleSwipeMove, { passive: false });
+    return () => el.removeEventListener('touchmove', handleSwipeMove);
+  });
 
   const handleSwipeEnd = (e) => {
     if (!isSwiping.current) {
@@ -1220,8 +1230,8 @@ const App = () => {
       {/* Список привычек - только для вкладки Журналы */}
       {activeTab === 'Журналы' && (
         <div className={`habits-container ${swipeDirection ? 'swipe-' + swipeDirection : ''}`}
+          ref={habitsContainerRef}
           onTouchStart={handleSwipeStart}
-          onTouchMove={handleSwipeMove}
           onTouchEnd={handleSwipeEnd}
         >
           {habitsData.filter(habit => {
