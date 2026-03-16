@@ -26,16 +26,14 @@ const CustomXAxisTick = ({ x, y, payload, index, data, period }) => {
     const item = data[index];
     if (!item) return null;
 
+    // For weekly period, show only the day of the month
+    const displayValue = period === 'week' ? item.dayMonth.split('.')[0] : item.date;
+
     return (
         <g transform={`translate(${x},${y})`}>
             <text x={0} y={0} dy={16} textAnchor="middle" fill="#666" fontSize={10} fontWeight={period === 'week' ? 600 : 500}>
-                {item.date}
+                {displayValue}
             </text>
-            {period === 'week' && (
-                <text x={0} y={12} dy={16} textAnchor="middle" fill="#999" fontSize={8}>
-                    {item.dayMonth}
-                </text>
-            )}
         </g>
     );
 };
@@ -141,9 +139,6 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
 
-                    const totalDaysInPeriod = period === 'week' ? 7 : period === 'month' ? new Date(periodStartDate.getFullYear(), periodStartDate.getMonth() + 1, 0).getDate() : 365;
-
-                    // Calculate how many days have passed in the viewed period
                     const periodStartDate = new Date(currentWeekDate);
                     if (period === 'week') {
                         const day = periodStartDate.getDay();
@@ -155,6 +150,12 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
                         periodStartDate.setMonth(0, 1);
                     }
                     periodStartDate.setHours(0, 0, 0, 0);
+
+                    const totalDaysInPeriod = period === 'week' 
+                        ? 7 
+                        : period === 'month' 
+                            ? new Date(periodStartDate.getFullYear(), periodStartDate.getMonth() + 1, 0).getDate() 
+                            : (periodStartDate.getFullYear() % 4 === 0 ? 366 : 365);
 
                     let passedDays;
                     if (periodStartDate > today) {
@@ -219,9 +220,20 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
     const showScroll = data.length > 7;
 
     const activeKey = viewType === 'habits' ? 'countCapped' : 'countExtra';
-    const maxVal = data.reduce((m, d) => Math.max(m, d[activeKey] || 0), 0);
+    
+    // Calculate the maximum height of the bars
+    const maxHeight = data.reduce((m, d) => {
+        const height = viewType === 'habits' 
+            ? (d.countCapped || 0) + (d.countRestored || 0) + (d.countRemaining || 0)
+            : (d.countExtra || 0);
+        return Math.max(m, height);
+    }, 0);
+
+    // To have exactly 7 integer divisions, the max value must be a multiple of 7 and at least 7.
+    const effectiveMax = Math.max(7, Math.ceil(maxHeight / 7) * 7);
+
     // Build a minimal dummy dataset with the same max value for the Y-axis ghost chart
-    const yAxisData = [{ [activeKey]: maxVal }];
+    const yAxisData = [{ [activeKey]: effectiveMax }];
 
     return (
         <div className="habits-comparison-section">
@@ -240,7 +252,8 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
                                 tick={{ fill: '#999', fontSize: 10 }}
                                 allowDecimals={false}
                                 width={Y_AXIS_WIDTH}
-                                domain={[0, maxVal || 'auto']}
+                                domain={[0, effectiveMax]}
+                                tickCount={8}
                             />
                             <Bar dataKey={activeKey} fill="transparent" isAnimationActive={false} />
                         </BarChart>
@@ -261,7 +274,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
                                     angle={0}
                                     textAnchor="middle"
                                 />
-                                <YAxis hide domain={[0, maxVal || 'auto']} />
+                                <YAxis hide domain={[0, effectiveMax]} tickCount={8} />
                                 <Tooltip
                                     content={<CustomTooltip viewType={viewType} />}
                                     cursor={{ fill: 'rgba(0, 0, 0, 0.02)' }}

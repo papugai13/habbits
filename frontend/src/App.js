@@ -1735,7 +1735,7 @@ const App = () => {
                   min={1}
                   max={999}
                   allowNoQuantity={true}
-                  noQuantityLabel="<1"
+                  noQuantityLabel="≤1"
                   onChange={(val) => setQuantityValue(val)}
                 />
               </div>

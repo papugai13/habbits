@@ -536,12 +536,14 @@ body {
 .habit-count {
   background-color: #00FF7F;
   color: #FFFFFF;
-  padding: 6px 10px;
+  height: 32px;
+  /* Match .check-box height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 10px;
   font-size: 15px;
-  /* Slightly larger */
   font-weight: 800;
-  /* Extra bold */
   min-width: 40px;
   text-align: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -558,29 +560,49 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  position: relative;
+  /* For absolute award */
+  min-height: 32px;
+  /* Match .check-box height */
 }
 
 /* Эмоджи-награда над счётчиком */
 .habit-award {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 2px;
   font-size: 13px;
   line-height: 1;
   letter-spacing: -1px;
   text-align: center;
   min-width: 40px;
   user-select: none;
+  pointer-events: none;
 }
 
 /* Фиолетовый счётчик для выполнений свыше 7 */
 .habit-count-overflow {
   background-color: #8B5CF6;
   color: #FFFFFF;
-  padding: 4px 8px;
+  height: 24px;
+  /* Slightly smaller than main count */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 2px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 800;
   min-width: 40px;
   text-align: center;
   box-shadow: 0 1px 3px rgba(139, 92, 246, 0.3);
+  pointer-events: none;
 }
 
 /* Нижняя навигация */
@@ -700,6 +722,14 @@ body {
     /* width handled by flex */
   }
 
+  .habit-count {
+    height: 30px;
+  }
+
+  .habit-counts-wrapper {
+    min-height: 30px;
+  }
+
   .categories-buttons {
     flex-wrap: wrap;
   }
@@ -765,13 +795,17 @@ body {
   }
 
   .habit-count {
-    padding: 4px 6px;
+    height: 26px;
     font-size: 11px;
     min-width: 28px;
   }
 
+  .habit-counts-wrapper {
+    min-height: 26px;
+  }
+
   .habit-count-overflow {
-    padding: 3px 5px;
+    height: 20px;
     font-size: 10px;
     min-width: 28px;
   }
@@ -1450,8 +1484,8 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 13px;
-  /* Slightly larger */
+  font-size: 16px;
+  /* Increased from 13px */
   font-weight: 800;
   /* Bolder */
   color: #FFFFFF !important;
@@ -1471,7 +1505,7 @@ body {
 
 @media (max-width: 480px) {
   .quantity-display {
-    font-size: 10px;
+    font-size: 13px; /* Increased from 10px */
   }
 }
 
