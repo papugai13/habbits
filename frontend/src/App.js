@@ -70,6 +70,7 @@ const App = () => {
   // Swipe navigation refs
   const swipeStartPos = React.useRef({ x: 0, y: 0 });
   const isSwiping = React.useRef(false);
+  const [swipeDirection, setSwipeDirection] = useState(null);
 
   // Archive state
   const [archivedHabits, setArchivedHabits] = useState([]);
@@ -207,10 +208,13 @@ const App = () => {
     const diffX = touch.clientX - swipeStartPos.current.x;
     if (Math.abs(diffX) >= 50) {
       if (diffX > 0) {
+        setSwipeDirection('right');
         handlePrevWeek();
       } else {
+        setSwipeDirection('left');
         handleNextWeek();
       }
+      setTimeout(() => setSwipeDirection(null), 300);
     }
     swipeStartPos.current = { x: 0, y: 0 };
     isSwiping.current = false;
@@ -1215,7 +1219,7 @@ const App = () => {
 
       {/* Список привычек - только для вкладки Журналы */}
       {activeTab === 'Журналы' && (
-        <div className="habits-container"
+        <div className={`habits-container ${swipeDirection ? 'swipe-' + swipeDirection : ''}`}
           onTouchStart={handleSwipeStart}
           onTouchMove={handleSwipeMove}
           onTouchEnd={handleSwipeEnd}

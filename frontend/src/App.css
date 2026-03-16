@@ -413,6 +413,25 @@ body {
   overflow-y: auto;
 }
 
+/* Swipe animation */
+@keyframes slideFromLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideFromRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.habits-container.swipe-right {
+  animation: slideFromLeft 0.3s ease-out;
+}
+
+.habits-container.swipe-left {
+  animation: slideFromRight 0.3s ease-out;
+}
+
 .habit-row {
   display: flex;
   flex-direction: column;
