@@ -333,6 +333,24 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
     const [loading, setLoading] = useState(true);
     const [chartDate, setChartDate] = useState(currentWeekDate);
     const [periodLabel, setPeriodLabel] = useState('');
+    const mainScrollRef = useRef(null);
+    const mainIndicatorRef = useRef(null);
+
+    const handleMainScroll = (e) => {
+        if (!mainIndicatorRef.current) return;
+        const { scrollLeft, scrollWidth, clientWidth } = e.target;
+        const left = (scrollLeft / scrollWidth) * 100;
+        mainIndicatorRef.current.style.left = `${left}%`;
+    };
+
+    // Initialize indicator width for main chart
+    useEffect(() => {
+        if (mainScrollRef.current && mainIndicatorRef.current) {
+            const { scrollWidth, clientWidth } = mainScrollRef.current;
+            const width = Math.min(100, (clientWidth / scrollWidth) * 100);
+            mainIndicatorRef.current.style.width = `${width}%`;
+        }
+    }, [chartData.length]);
 
     useEffect(() => {
         fetchStatistics();
@@ -455,90 +473,119 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                     <p>Загрузка данных...</p>
                 </div>
             ) : (
-                <div className="chart-wrapper">
-                    <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 400 : 600}>
-                        <BarChart
-                            data={chartData}
-                            margin={{ top: 20, right: 30, left: 0, bottom: period === 'week' ? 20 : 5 }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                            <XAxis
-                                dataKey="date"
-                                stroke="#666"
-                                tick={<CustomXAxisTick data={chartData} period={period} />}
-                                height={period === 'week' ? 50 : 30}
-                            />
-                            <YAxis
-                                stroke="#666"
-                                tick={{ fill: '#666', fontSize: 12 }}
-                                allowDecimals={false}
-                            />
-                            <Tooltip content={<CustomTooltip viewType={viewType} />} cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }} />
-                            {viewType === 'habits' ? (
-                                <>
-                                    <Bar
-                                        dataKey="countCapped"
-                                        stackId="a"
-                                        fill="#00FF7F"
-                                        radius={[8, 8, 0, 0]}
-                                        isAnimationActive={false}
-                                        name="Выполнено"
-                                        shape={<CustomBarShape />}
-                                    >
-                                        <LabelList
-                                            dataKey="countCapped"
-                                            content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
-                                        />
-                                    </Bar>
-                                    <Bar
-                                        dataKey="countRestored"
-                                        stackId="a"
-                                        fill="#94fcd0"
-                                        radius={[8, 8, 0, 0]}
-                                        isAnimationActive={false}
-                                        name="Восполнено"
-                                        shape={<CustomBarShape />}
-                                    >
-                                        <LabelList
-                                            dataKey="countRestored"
-                                            content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
-                                        />
-                                    </Bar>
-                                    <Bar
-                                        dataKey="countRemaining"
-                                        stackId="a"
-                                        fill="#D0D0D0"
-                                        radius={[8, 8, 0, 0]}
-                                        isAnimationActive={false}
-                                        name="Пропущено"
-                                        shape={<CustomBarShape />}
-                                    >
-                                        <LabelList
-                                            dataKey="countRemaining"
-                                            content={(props) => <CustomBarLabel {...props} color="#666" baseSize={18} />}
-                                        />
-                                    </Bar>
-                                </>
-                            ) : (
-                                <Bar
-                                    dataKey="countExtra"
-                                    stackId="a"
-                                    fill="#8B5CF6"
-                                    radius={[8, 8, 0, 0]}
-                                    animationDuration={500}
-                                    isAnimationActive={false}
-                                    name="Количество"
-                                    shape={<CustomBarShape />}
-                                >
-                                    <LabelList
-                                        dataKey="countExtra"
-                                        content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
-                                    />
-                                </Bar>
-                            )}
-                        </BarChart>
-                    </ResponsiveContainer>
+                <div className="main-chart-outer">
+                <div className="main-chart-layout">
+                    {/* Fixed Y-axis */}
+                    <div className="main-yaxis-fixed">
+                        <ResponsiveContainer width={40} height={window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 400 : 600}>
+                            <BarChart 
+                                data={[{ countCapped: Math.max(...chartData.map(d => (d.countCapped || 0) + (d.countRestored || 0) + (d.countRemaining || 0))) }]} 
+                                margin={{ top: 20, right: 0, left: 0, bottom: period === 'week' ? 20 : 5 }}
+                            >
+                                <YAxis
+                                    stroke="#666"
+                                    tick={{ fill: '#666', fontSize: 12 }}
+                                    allowDecimals={false}
+                                    width={40}
+                                />
+                                <Bar dataKey="countCapped" fill="transparent" isAnimationActive={false} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
 
+                    {/* Scrollable area */}
+                    <div className="main-scroll-wrapper" onScroll={handleMainScroll} ref={mainScrollRef}>
+                        <div className="main-chart-inner" style={{ minWidth: period === 'year' ? '700px' : '100%' }}>
+                            <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 400 : 600}>
+                                <BarChart
+                                    data={chartData}
+                                    margin={{ top: 20, right: 30, left: 10, bottom: period === 'week' ? 20 : 5 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" vertical={false} />
+                                    <XAxis
+                                        dataKey="date"
+                                        stroke="#666"
+                                        tick={<CustomXAxisTick data={chartData} period={period} />}
+                                        height={period === 'week' ? 50 : 30}
+                                        interval={0}
+                                    />
+                                    <YAxis hide />
+                                    <Tooltip content={<CustomTooltip viewType={viewType} />} cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }} />
+                                    {viewType === 'habits' ? (
+                                        <>
+                                            <Bar
+                                                dataKey="countCapped"
+                                                stackId="a"
+                                                fill="#00FF7F"
+                                                radius={[8, 8, 0, 0]}
+                                                isAnimationActive={false}
+                                                name="Выполнено"
+                                                shape={<CustomBarShape />}
+                                            >
+                                                <LabelList
+                                                    dataKey="countCapped"
+                                                    content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
+                                                />
+                                            </Bar>
+                                            <Bar
+                                                dataKey="countRestored"
+                                                stackId="a"
+                                                fill="#94fcd0"
+                                                radius={[8, 8, 0, 0]}
+                                                isAnimationActive={false}
+                                                name="Восполнено"
+                                                shape={<CustomBarShape />}
+                                            >
+                                                <LabelList
+                                                    dataKey="countRestored"
+                                                    content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
+                                                />
+                                            </Bar>
+                                            <Bar
+                                                dataKey="countRemaining"
+                                                stackId="a"
+                                                fill="#D0D0D0"
+                                                radius={[8, 8, 0, 0]}
+                                                isAnimationActive={false}
+                                                name="Пропущено"
+                                                shape={<CustomBarShape />}
+                                            >
+                                                <LabelList
+                                                    dataKey="countRemaining"
+                                                    content={(props) => <CustomBarLabel {...props} color="#666" baseSize={18} />}
+                                                />
+                                            </Bar>
+                                        </>
+                                    ) : (
+                                        <Bar
+                                            dataKey="countExtra"
+                                            stackId="a"
+                                            fill="#8B5CF6"
+                                            radius={[8, 8, 0, 0]}
+                                            isAnimationActive={false}
+                                            name="Количество"
+                                            shape={<CustomBarShape />}
+                                        >
+                                            <LabelList
+                                                dataKey="countExtra"
+                                                content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
+                                            />
+                                        </Bar>
+                                    )}
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+                
+                {period === 'year' && (
+                    <div className="scroll-indicator-container main-chart-scroll">
+                        <div
+                            className="scroll-indicator-bar"
+                            ref={mainIndicatorRef}
+                        ></div>
+                    </div>
+                )}
                     {chartData.length === 0 && (
                         <div className="no-data-message">
                             <p>📊 Нет данных за выбранный период</p>
