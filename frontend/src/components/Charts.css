@@ -46,7 +46,8 @@
 }
 
 .nav-arrow-btn:hover {
-    background: #CCFF00;
+    background: #1F663B;
+    color: #fff;
     transform: scale(1.1);
 }
 
@@ -89,8 +90,8 @@
 }
 
 .view-btn.habits:not(.active) {
-    background: rgba(168, 213, 0, 0.05);
-    color: #8fa500;
+    background: rgba(31, 102, 59, 0.05);
+    color: #1F663B;
 }
 
 .view-btn.quantity:not(.active) {
@@ -113,8 +114,8 @@
 }
 
 .view-btn.active.habits {
-    background: #CCFF00;
-    color: #333;
+    background: #1F663B;
+    color: #fff;
 }
 
 .view-btn.active.quantity {
@@ -165,7 +166,7 @@
 .main-scroll-indicator-bar {
     position: absolute;
     height: 100%;
-    background: #CCFF00;
+    background: #1F663B;
     border-radius: 2px;
 }
 
@@ -213,7 +214,7 @@
 .tooltip-count {
     font-size: 14px;
     font-weight: 600;
-    color: #CCFF00;
+    color: #1F663B;
     margin: 0 0 4px 0;
 }
 
@@ -319,7 +320,7 @@
 }
 
 .report-card:hover {
-    border-color: #CCFF00;
+    border-color: #1F663B;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
@@ -344,7 +345,7 @@
 
 .gen-report-btn {
     background: white;
-    border: 1px solid #CCFF00;
+    border: 1px solid #1F663B;
     color: #333;
     padding: 6px 10px;
     border-radius: 8px;
@@ -357,7 +358,8 @@
 }
 
 .gen-report-btn:hover:not(:disabled) {
-    background: #CCFF00;
+    background: #1F663B;
+    color: #fff;
 }
 
 .gen-report-btn:disabled {
@@ -402,7 +404,7 @@
     margin: 0;
     color: #333;
     font-size: 1.25rem;
-    border-left: 5px solid #CCFF00;
+    border-left: 5px solid #1F663B;
     padding-left: 15px;
 }
 
@@ -457,7 +459,7 @@
 .scroll-indicator-bar {
     position: absolute;
     height: 100%;
-    background: #CCFF00;
+    background: #1F663B;
     border-radius: 2px;
 }
 
@@ -483,7 +485,7 @@
     width: 30px;
     height: 30px;
     border: 3px solid #f3f3f3;
-    border-top: 3px solid #CCFF00;
+    border-top: 3px solid #1F663B;
     border-radius: 50%;
     margin: 0 auto 15px;
     animation: spin 1s linear infinite;
