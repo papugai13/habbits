@@ -301,7 +301,7 @@ const App = () => {
       dateId: statusId,
       currentPhoto: photo
     });
-    setQuantityValue(quantity !== null && quantity !== undefined ? quantity : null);
+    setQuantityValue(quantity !== null && quantity !== undefined ? quantity : 1);
     setCommentValue(comment || '');
     setPhotoFile(null);
     setDeletePhoto(false);
@@ -542,7 +542,7 @@ const App = () => {
   const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto) => {
     setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto });
     // If quantity is explicitly null/undefined, set to null, otherwise use currentQuantity
-    setQuantityValue(currentQuantity !== null && currentQuantity !== undefined ? currentQuantity : null);
+    setQuantityValue(currentQuantity !== null && currentQuantity !== undefined ? currentQuantity : 1);
     setCommentValue(currentComment || '');
     setPhotoFile(null);
     setDeletePhoto(false);
