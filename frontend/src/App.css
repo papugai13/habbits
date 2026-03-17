@@ -582,9 +582,18 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* Жирный контур квадратиков — когда привычка выполнена 3+ раз за неделю */
-.check-box.active-week {
-  box-shadow: 0 0 0 2.5px #00cc66;
+/* Зеленая точка внутри квадратика — когда есть серия 2+ дня */
+.check-box.has-dot::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  background-color: #00FF7F;
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 /* Обёртка для основного и дополнительного счётчиков */
