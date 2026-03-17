@@ -1475,10 +1475,24 @@ const App = () => {
                     })}
                   </div>
                   <div className="habit-counts-wrapper">
-                    {weeklyAward && (
+                    {weeklyAward && (weeklyAward.includes('⭐') || weeklyAward.includes('🌟')) && (
                       <div className="habit-award">{weeklyAward}</div>
                     )}
-                    <div className="habit-count">{weeklyCount}</div>
+                    <div className={`habit-count ${weeklyAward && weeklyAward.includes('⚡⚡') ? 'has-double-lightning' : (weeklyAward && weeklyAward.includes('⚡') ? 'has-single-lightning' : '')}`}>
+                      {weeklyAward && weeklyAward.includes('⚡') && (
+                        <div className="lightning-behind">
+                          {weeklyAward === '⚡⚡' ? (
+                            <>
+                              <span className="lightning-item">⚡</span>
+                              <span className="lightning-item second-lightning">⚡</span>
+                            </>
+                          ) : (
+                            <span className="lightning-item">⚡</span>
+                          )}
+                        </div>
+                      )}
+                      <span className="habit-count-number">{weeklyCount}</span>
+                    </div>
                     {getHabitOverflow(habit) > 0 && (
                       <div className="habit-count habit-count-overflow">+{getHabitOverflow(habit)}</div>
                     )}
