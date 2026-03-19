@@ -3,9 +3,10 @@ from django.conf.urls.static import static
 
 from django.urls import path
 from django.contrib.auth.views import LogoutView
-from main import views
 
-app_name = "urls"
+
+
+app_name = "user"
 
 urlpatterns = [
     path('logout/', LogoutView.as_view(template_name='users/logget_out.html'), name='logout')

@@ -132,6 +132,11 @@ class Habit(models.Model):
         verbose_name="В архиве",
     )
 
+    created_at = models.DateField(
+        auto_now_add=True,
+        verbose_name="Дата создания",
+    )
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = unique_slugify(self, slugify(self.name))

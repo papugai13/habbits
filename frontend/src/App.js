@@ -305,7 +305,7 @@ const App = () => {
     setCommentValue(comment || '');
     setPhotoFile(null);
     setDeletePhoto(false);
-    
+
     // Clear animation class after it finishes
     setTimeout(() => {
       setModalSwipeDirection(null);
@@ -496,13 +496,16 @@ const App = () => {
         ? { is_done: isMarkingDone, quantity, is_restored: isPastDate && isMarkingDone }
         : { is_done: isMarkingDone, is_restored: isPastDate && isMarkingDone };
 
+      const csrf = getCookie('csrftoken');
+      console.log('ToggleHabit: habitId:', habitId, 'dateId:', dateId, 'payload:', payload, 'csrf:', csrf);
+
       if (dateId) {
         // Toggle existing date entry
         response = await fetch(`/api/v1/date/${dateId}/`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
+            'X-CSRFToken': csrf
           },
           credentials: 'include',
           body: JSON.stringify(payload)
@@ -513,7 +516,7 @@ const App = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
+            'X-CSRFToken': csrf
           },
           credentials: 'include',
           body: JSON.stringify({
@@ -527,6 +530,7 @@ const App = () => {
       }
 
       if (!response.ok) {
+        console.error('ToggleHabit response error:', response.status, response.statusText);
         throw new Error(`API error ${response.status}`);
       }
 
@@ -580,6 +584,9 @@ const App = () => {
 
     try {
       let response;
+      const csrf = getCookie('csrftoken');
+      console.log('EntrySubmit: data:', { habitId, dayDate, dateId, qty, commentValue }, 'csrf:', csrf);
+
       if (photoFile) {
         const formData = new FormData();
         formData.append('is_done', 'true');
@@ -591,7 +598,7 @@ const App = () => {
         if (dateId) {
           response = await fetch(`/api/v1/date/${dateId}/`, {
             method: 'PATCH',
-            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            headers: { 'X-CSRFToken': csrf },
             credentials: 'include',
             body: formData
           });
@@ -600,7 +607,7 @@ const App = () => {
           formData.append('habit_date', dayDate);
           response = await fetch(`/api/v1/dates/`, {
             method: 'POST',
-            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            headers: { 'X-CSRFToken': csrf },
             credentials: 'include',
             body: formData
           });
@@ -619,7 +626,7 @@ const App = () => {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
-              'X-CSRFToken': getCookie('csrftoken')
+              'X-CSRFToken': csrf
             },
             credentials: 'include',
             body: JSON.stringify(payload)
@@ -631,7 +638,7 @@ const App = () => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-CSRFToken': getCookie('csrftoken')
+              'X-CSRFToken': csrf
             },
             credentials: 'include',
             body: JSON.stringify(payload)
@@ -639,7 +646,12 @@ const App = () => {
         }
       }
 
-      if (!response.ok) throw new Error(`API error ${response.status}`);
+      if (!response.ok) {
+        console.error('EntrySubmit response error:', response.status, response.statusText);
+        const errData = await response.json().catch(() => ({}));
+        console.error('Error detail:', errData);
+        throw new Error(`API error ${response.status}`);
+      }
       setShowQuantityModal(false);
       setQuantityModalData(null);
       setQuantityValue(null);
@@ -763,11 +775,14 @@ const App = () => {
     }
 
     try {
+      const csrf = getCookie('csrftoken');
+      console.log('CreateHabit: data:', { name: newHabitName.trim(), category: newHabitCategory }, 'csrf:', csrf);
+
       const response = await fetch('/api/v1/habits/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCookie('csrftoken')
+          'X-CSRFToken': csrf
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -777,8 +792,10 @@ const App = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Не удалось создать привычку');
+        console.error('CreateHabit response error:', response.status, response.statusText);
+        const errData = await response.json().catch(() => ({}));
+        console.error('Error detail:', errData);
+        throw new Error(errData.detail || 'Не удалось создать привычку');
       }
 
       // Reset form and close modal
@@ -797,10 +814,13 @@ const App = () => {
     if (!window.confirm('Вы уверены, что хотите удалить эту привычку? Все данные о выполнении будут удалены.')) return;
 
     try {
+      const csrf = getCookie('csrftoken');
+      console.log('DeleteHabit: id:', habitId, 'csrf:', csrf);
+
       const response = await fetch(`/api/v1/habits/${habitId}/`, {
         method: 'DELETE',
         headers: {
-          'X-CSRFToken': getCookie('csrftoken')
+          'X-CSRFToken': csrf
         },
         credentials: 'include'
       });
@@ -890,12 +910,14 @@ const App = () => {
     // We just need to sync with backend now
     setHabitsData(currentList => {
       const reorderPayload = currentList.map((h, index) => ({ id: h.id, order: index }));
+      const csrf = getCookie('csrftoken');
+      console.log('ReorderHabits: payload:', reorderPayload, 'csrf:', csrf);
 
       fetch('/api/v1/habits/reorder/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCookie('csrftoken')
+          'X-CSRFToken': csrf
         },
         credentials: 'include',
         body: JSON.stringify(reorderPayload)
@@ -1001,11 +1023,14 @@ const App = () => {
     // Send to backend
     const reorderPayload = currentList.map((h, index) => ({ id: h.id, order: index }));
     try {
+      const csrf = getCookie('csrftoken');
+      console.log('MoveHabit: payload:', reorderPayload, 'csrf:', csrf);
+
       await fetch('/api/v1/habits/reorder/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCookie('csrftoken')
+          'X-CSRFToken': csrf
         },
         credentials: 'include',
         body: JSON.stringify(reorderPayload)
@@ -1021,11 +1046,14 @@ const App = () => {
     if (!editingHabit) return;
 
     try {
+      const csrf = getCookie('csrftoken');
+      console.log('UpdateHabit: data:', { name: editingHabit.name, category: editingHabit.category }, 'csrf:', csrf);
+
       const response = await fetch(`/api/v1/habits/${editingHabit.id}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCookie('csrftoken')
+          'X-CSRFToken': csrf
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -1059,11 +1087,14 @@ const App = () => {
     }
 
     try {
+      const csrf = getCookie('csrftoken');
+      console.log('UpdateProfile: data:', editProfileData, 'csrf:', csrf);
+
       const response = await fetch('/api/auth/me/', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCookie('csrftoken')
+          'X-CSRFToken': csrf
         },
         credentials: 'include',
         body: JSON.stringify(editProfileData)
@@ -1331,7 +1362,7 @@ const App = () => {
             const weeklyCount = getHabitCount(habit);
             const weeklyRealCount = habit.statuses.reduce((acc, s) => s.is_done && !s.is_restored ? acc + 1 : acc, 0);
             const weeklyAward = getWeeklyAward(weeklyRealCount);
-            
+
             // Calculate streak for dots: if 2+ consecutive completions in the current week
             const sortedStatuses = [...habit.statuses].sort((a, b) => a.date.localeCompare(b.date));
             const completionMap = sortedStatuses.reduce((acc, s) => {
@@ -1343,35 +1374,35 @@ const App = () => {
             const dayOfWeekRef = baseDateRef.getDay();
             const currentDayIndexRef = dayOfWeekRef === 0 ? 6 : dayOfWeekRef - 1;
             const todayStr = new Date().toLocaleDateString('en-CA');
-            
+
             const weekCompletions = WEEK_DAYS.map((_, i) => {
-                const d = new Date(baseDateRef);
-                const diff = i - currentDayIndexRef;
-                d.setDate(baseDateRef.getDate() + diff);
-                const dStr = d.toLocaleDateString('en-CA');
-                const status = completionMap[dStr] || { done: false, restored: false };
-                return { done: status.done, restored: status.restored, date: dStr };
+              const d = new Date(baseDateRef);
+              const diff = i - currentDayIndexRef;
+              d.setDate(baseDateRef.getDate() + diff);
+              const dStr = d.toLocaleDateString('en-CA');
+              const status = completionMap[dStr] || { done: false, restored: false };
+              return { done: status.done, restored: status.restored, date: dStr };
             });
 
             let latestStreakEnd = -1;
             let currentStreakCount = 0;
             let hasAnyGapThisWeek = false;
-            
+
             for (let i = 0; i < 7; i++) {
-                const day = weekCompletions[i];
-                // Real completion is one that is done and NOT restored
-                const isRealDone = day.done && !day.restored;
-                
-                if (isRealDone) {
-                    currentStreakCount++;
-                    if (currentStreakCount >= 2) latestStreakEnd = i;
-                } else {
-                    currentStreakCount = 0;
-                    // A gap is if it's not done OR it was restored (retroactive)
-                    if (day.date < todayStr) {
-                        hasAnyGapThisWeek = true;
-                    }
+              const day = weekCompletions[i];
+              // Real completion is one that is done and NOT restored
+              const isRealDone = day.done && !day.restored;
+
+              if (isRealDone) {
+                currentStreakCount++;
+                if (currentStreakCount >= 2) latestStreakEnd = i;
+              } else {
+                currentStreakCount = 0;
+                // A gap is if it's not done OR it was restored (retroactive)
+                if (day.date < todayStr) {
+                  hasAnyGapThisWeek = true;
                 }
+              }
             }
             return (
               <div key={habit.id} className="habit-row">
@@ -1923,134 +1954,134 @@ const App = () => {
             style={{ overflowX: 'hidden' }}
           >
             <div className={`modal-swipe-container ${modalSwipeDirection ? 'swipe-' + modalSwipeDirection : ''}`} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div className="modal-header">
-              <h2>Детали выполнения {quantityModalData.dayDate && ` — ${new Date(quantityModalData.dayDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`}</h2>
-              <button
-                className="modal-close"
-                onClick={() => {
-                  setShowQuantityModal(false);
-                  setQuantityModalData(null);
-                  setQuantityValue(null);
-                  setCommentValue('');
-                  setPhotoFile(null);
-                  setDeletePhoto(false);
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="quantity-modal-body">
-              <p className="habit-info">
-                <strong>{quantityModalData.habitName}</strong>
-              </p>
-              <div className="form-group">
-                <label>Количество</label>
-                <DrumPicker
-                  value={quantityValue}
-                  min={1}
-                  max={999}
-                  allowNoQuantity={true}
-                  noQuantityLabel="≤1"
-                  onChange={(val) => setQuantityValue(val)}
-                />
+              <div className="modal-header">
+                <h2>Детали выполнения {quantityModalData.dayDate && ` — ${new Date(quantityModalData.dayDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`}</h2>
+                <button
+                  className="modal-close"
+                  onClick={() => {
+                    setShowQuantityModal(false);
+                    setQuantityModalData(null);
+                    setQuantityValue(null);
+                    setCommentValue('');
+                    setPhotoFile(null);
+                    setDeletePhoto(false);
+                  }}
+                >
+                  ×
+                </button>
               </div>
 
-              <div className="form-group-row">
-                <div className="form-group form-group-flex">
-                  <label htmlFor="comment-input">Комментарий</label>
-                  <textarea
-                    id="comment-input"
-                    className="form-input"
-                    placeholder="Добавьте заметку..."
-                    value={commentValue}
-                    onChange={(e) => setCommentValue(e.target.value)}
-                    rows="2"
-                  ></textarea>
-                </div>
-
-                <div className="form-group form-group-flex">
-                  <label htmlFor="photo-input">Фото</label>
-                  {quantityModalData.currentPhoto && !photoFile && !deletePhoto && (
-                    <div className="current-photo-preview">
-                      <img
-                        src={quantityModalData.currentPhoto}
-                        alt="Текущее фото"
-                        className="photo-thumbnail"
-                        style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', borderRadius: '8px', cursor: 'zoom-in' }}
-                        onClick={() => setLightboxUrl(quantityModalData.currentPhoto)}
-                      />
-                      <button
-                        className="delete-photo-btn"
-                        type="button"
-                        onClick={() => setDeletePhoto(true)}
-                      >
-                        🗑️ Удалить фото
-                      </button>
-                    </div>
-                  )}
-                  {deletePhoto && !photoFile && (
-                    <div className="photo-deletion-notice">
-                      Фото будет удалено при сохранении
-                      <button
-                        className="btn-link"
-                        type="button"
-                        onClick={() => setDeletePhoto(false)}
-                        style={{ marginLeft: '10px', fontSize: '12px' }}
-                      >
-                        Отмена
-                      </button>
-                    </div>
-                  )}
-                  <input
-                    id="photo-input"
-                    type="file"
-                    accept="image/*"
-                    className="form-input"
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (files && files.length > 0) {
-                        setPhotoFile(files[0]);
-                      }
-                    }}
+              <div className="quantity-modal-body">
+                <p className="habit-info">
+                  <strong>{quantityModalData.habitName}</strong>
+                </p>
+                <div className="form-group">
+                  <label>Количество</label>
+                  <DrumPicker
+                    value={quantityValue}
+                    min={1}
+                    max={999}
+                    allowNoQuantity={true}
+                    noQuantityLabel="≤1"
+                    onChange={(val) => setQuantityValue(val)}
                   />
                 </div>
+
+                <div className="form-group-row">
+                  <div className="form-group form-group-flex">
+                    <label htmlFor="comment-input">Комментарий</label>
+                    <textarea
+                      id="comment-input"
+                      className="form-input"
+                      placeholder="Добавьте заметку..."
+                      value={commentValue}
+                      onChange={(e) => setCommentValue(e.target.value)}
+                      rows="2"
+                    ></textarea>
+                  </div>
+
+                  <div className="form-group form-group-flex">
+                    <label htmlFor="photo-input">Фото</label>
+                    {quantityModalData.currentPhoto && !photoFile && !deletePhoto && (
+                      <div className="current-photo-preview">
+                        <img
+                          src={quantityModalData.currentPhoto}
+                          alt="Текущее фото"
+                          className="photo-thumbnail"
+                          style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', borderRadius: '8px', cursor: 'zoom-in' }}
+                          onClick={() => setLightboxUrl(quantityModalData.currentPhoto)}
+                        />
+                        <button
+                          className="delete-photo-btn"
+                          type="button"
+                          onClick={() => setDeletePhoto(true)}
+                        >
+                          🗑️ Удалить фото
+                        </button>
+                      </div>
+                    )}
+                    {deletePhoto && !photoFile && (
+                      <div className="photo-deletion-notice">
+                        Фото будет удалено при сохранении
+                        <button
+                          className="btn-link"
+                          type="button"
+                          onClick={() => setDeletePhoto(false)}
+                          style={{ marginLeft: '10px', fontSize: '12px' }}
+                        >
+                          Отмена
+                        </button>
+                      </div>
+                    )}
+                    <input
+                      id="photo-input"
+                      type="file"
+                      accept="image/*"
+                      className="form-input"
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        if (files && files.length > 0) {
+                          setPhotoFile(files[0]);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
               </div>
 
-            </div>
-
-            <div className="form-actions">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => {
-                  setShowQuantityModal(false);
-                  setQuantityModalData(null);
-                  setQuantityValue(null);
-                  setCommentValue('');
-                  setPhotoFile(null);
-                  setDeletePhoto(false);
-                }}
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={handleEntrySubmit}
-              >
-                Выполнен
-              </button>
-              {quantityModalData.dayDate < new Date().toLocaleDateString('en-CA') && (
+              <div className="form-actions">
                 <button
                   type="button"
-                  className="btn-primary btn-restored"
-                  onClick={handleEntryRestored}
+                  className="btn-secondary"
+                  onClick={() => {
+                    setShowQuantityModal(false);
+                    setQuantityModalData(null);
+                    setQuantityValue(null);
+                    setCommentValue('');
+                    setPhotoFile(null);
+                    setDeletePhoto(false);
+                  }}
                 >
-                  Восполнен
+                  Отмена
                 </button>
-              )}
-            </div>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleEntrySubmit}
+                >
+                  Выполнен
+                </button>
+                {quantityModalData.dayDate < new Date().toLocaleDateString('en-CA') && (
+                  <button
+                    type="button"
+                    className="btn-primary btn-restored"
+                    onClick={handleEntryRestored}
+                  >
+                    Восполнен
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -1,27 +1,95 @@
-from rest_framework.decorators import api_view, action
-from rest_framework.response import Response
-from rest_framework import generics, status, viewsets
-from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from datetime import date, datetime, timedelta
+
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.shortcuts import get_object_or_404
+from django.db.models import Case, F, IntegerField, Max, Sum, Value, When
 from django.http import HttpResponse
-from datetime import date, timedelta, datetime
-from django.db.models import Sum, Case, When, Value, F, IntegerField, Max
+from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 
-from . models import Achievement, Date, Habit, UserAll, Category
+from rest_framework import status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .models import Achievement, Category, Date, Habit, UserAll
 from .serializers import (
-    AchievementSerializer, DateSerializer, HabitSerializer, 
-    UserAllSerializer, UserSerializer, RegisterSerializer, LoginSerializer,
-    CategorySerializer
+    AchievementSerializer, CategorySerializer, DateSerializer, HabitSerializer,
+    LoginSerializer, RegisterSerializer, UserAllSerializer, UserSerializer
 )
+
+
+class AchievementViewSet(viewsets.ModelViewSet):
+    queryset = Achievement.objects.all()
+    serializer_class = AchievementSerializer
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(ensure_csrf_cookie)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(ensure_csrf_cookie)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
+    def get_queryset(self):
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=self.request.user,
+            defaults={'name': self.request.user.username, 'age': ''}
+        )
+        return Category.objects.filter(user=user_profile)
+
+    def perform_create(self, serializer):
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=self.request.user,
+            defaults={'name': self.request.user.username, 'age': ''}
+        )
+        serializer.save(user=user_profile)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@ensure_csrf_cookie
+def dates_list(request):
+    print(f"DEBUG: dates_list method={request.method} user={request.user}")
+    user_profile, _ = UserAll.objects.get_or_create(
+        auth_user=request.user,
+        defaults={'name': request.user.username, 'age': ''}
+    )
+    
+    if request.method == 'POST':
+        # Add user to request data
+        data = request.data.copy()
+        data['user'] = user_profile.id
+            
+        serializer = DateSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    # GET request: filter by user
+    dates = Date.objects.filter(user=user_profile)
+    serializer = DateSerializer(dates, many=True)
+    return Response(serializer.data)
 
 
 class HabitViewSet(viewsets.ModelViewSet):
     queryset = Habit.objects.all()
     serializer_class = HabitSerializer
     permission_classes = [IsAuthenticated]
+
+    @method_decorator(ensure_csrf_cookie)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
     def get_queryset(self):
         user_profile, _ = UserAll.objects.get_or_create(
@@ -34,18 +102,25 @@ class HabitViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        user_profile, _ = UserAll.objects.get_or_create(
-            auth_user=self.request.user,
-            defaults={
-                'name': self.request.user.username,
-                'age': ''
-            }
-        )
-        # Assign order = max existing order + 1
-        max_order = Habit.objects.filter(user=user_profile).aggregate(
-            max_order=Max('order')
-        )['max_order'] or 0
-        serializer.save(user=user_profile, order=max_order + 1)
+        try:
+            user_profile, _ = UserAll.objects.get_or_create(
+                auth_user=self.request.user,
+                defaults={
+                    'name': self.request.user.username,
+                    'age': ''
+                }
+            )
+            print(f"DEBUG: HabitViewSet.perform_create user_profile={user_profile}, data={self.request.data}")
+            # Assign order = max existing order + 1
+            max_order = Habit.objects.filter(user=user_profile).aggregate(
+                max_order=Max('order')
+            )['max_order'] or 0
+            serializer.save(user=user_profile, order=max_order + 1)
+        except Exception as e:
+            import traceback
+            print(f"DEBUG: perform_create EXCEPTION: {e}")
+            traceback.print_exc()
+            raise
 
     @action(detail=False, methods=['post'])
     def reorder(self, request):
@@ -111,6 +186,7 @@ class HabitViewSet(viewsets.ModelViewSet):
         })
 
     @action(detail=False, methods=['get'])
+    @method_decorator(ensure_csrf_cookie)
     def weekly_status(self, request):
         # Get or create UserAll profile for authenticated user
         user_profile, created = UserAll.objects.get_or_create(
@@ -365,11 +441,15 @@ class HabitViewSet(viewsets.ModelViewSet):
                     day_dates.filter(quantity__isnull=True).count() + 
                     extra_quantity
                 )
+
+                # Count habits that existed by this date
+                habit_count = habits.filter(created_at__lte=current_date).count()
                 
                 statistics.append({
                     'date': current_date.isoformat(),
                     'label': str(current_date.day),
                     'days_in_period': 1,
+                    'habit_count': habit_count,
                     'completed_count': completed_count,
                     'completed_days': completed_days,
                     'restored_days': restored_days,
@@ -400,11 +480,15 @@ class HabitViewSet(viewsets.ModelViewSet):
                 )
                 
                 days_in_period = (period_end - current_date).days + 1
+
+                # Count habits that existed by end of this chunk
+                habit_count = habits.filter(created_at__lte=period_end).count()
                 
                 statistics.append({
                     'date': current_date.isoformat(),
                     'label': f"{current_date.day}-{period_end.day}",
                     'days_in_period': days_in_period,
+                    'habit_count': habit_count,
                     'completed_count': completed_count,
                     'completed_days': completed_days,
                     'restored_days': restored_days,
@@ -442,6 +526,9 @@ class HabitViewSet(viewsets.ModelViewSet):
                 )
                 
                 days_in_period = (period_end - current_date).days + 1
+
+                # Count habits that existed by end of this month
+                habit_count = habits.filter(created_at__lte=period_end).count()
                 
                 months_ru = {
                     1: 'Янв', 2: 'Фев', 3: 'Мар', 4: 'Апр', 5: 'Май', 6: 'Июн',
@@ -452,6 +539,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                     'date': current_date.isoformat(),
                     'label': months_ru[current_date.month],
                     'days_in_period': days_in_period,
+                    'habit_count': habit_count,
                     'completed_count': completed_count,
                     'completed_days': completed_days,
                     'restored_days': restored_days,
@@ -554,64 +642,27 @@ class HabitViewSet(viewsets.ModelViewSet):
             'habits': statistics
         })
 
-
-class CategoryViewSet(viewsets.ModelViewSet):
-    queryset = Category.objects.all()
-    serializer_class = CategorySerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user_profile, _ = UserAll.objects.get_or_create(
-            auth_user=self.request.user,
-            defaults={'name': self.request.user.username, 'age': ''}
-        )
-        return Category.objects.filter(user=user_profile)
-
-    def perform_create(self, serializer):
-        user_profile, _ = UserAll.objects.get_or_create(
-            auth_user=self.request.user,
-            defaults={'name': self.request.user.username, 'age': ''}
-        )
-        serializer.save(user=user_profile)
-
-class AchievementViewSet(viewsets.ModelViewSet):
-    queryset = Achievement.objects.all()
-    serializer_class = AchievementSerializer
-
-@api_view(['GET', 'POST'])
-def dates_list(request):
-    if request.method == 'POST':
-        # Get or create UserAll profile for authenticated user
-        if request.user.is_authenticated:
-            user_profile, _ = UserAll.objects.get_or_create(
-                auth_user=request.user,
-                defaults={
-                    'name': request.user.username,
-                    'age': ''
-                }
-            )
-            # Add user to request data
-            data = request.data.copy()
-            data['user'] = user_profile.id
-        else:
-            data = request.data
-            
-        serializer = DateSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            print(f"Serializer errors: {serializer.errors}")
-            print(f"Data received: {data}")
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    cats = Date.objects.all()
-    serializer = DateSerializer(cats, many=True)
-    return Response(serializer.data)
-
-
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@ensure_csrf_cookie
 def api_dates_detail(request, pk):
+    print(f"DEBUG: api_dates_detail pk={pk} method={request.method} user={request.user}")
+    # Ensure user profile exists
+    user_profile, _ = UserAll.objects.get_or_create(
+        auth_user=request.user,
+        defaults={'name': request.user.username, 'age': ''}
+    )
+    
     post = get_object_or_404(Date, id=pk)
+    
+    # Check ownership
+    if post.user != user_profile:
+        print(f"DEBUG: Ownership mismatch! post.user={post.user.id} user_profile={user_profile.id}")
+        return Response(
+            {"detail": "У вас нет прав для изменения этой записи."}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
     if request.method == 'PUT' or request.method == 'PATCH':
         serializer = DateSerializer(post, data=request.data, partial=True)
         if serializer.is_valid():
@@ -621,6 +672,7 @@ def api_dates_detail(request, pk):
     elif request.method == 'DELETE':
         post.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
     serializer = DateSerializer(post)
     return Response(serializer.data)
 
@@ -662,6 +714,10 @@ class RegisterView(APIView):
     """Регистрация нового пользователя"""
     permission_classes = [AllowAny]
     
+    @method_decorator(ensure_csrf_cookie)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
@@ -679,6 +735,10 @@ class LoginView(APIView):
     """Вход в систему"""
     permission_classes = [AllowAny]
     
+    @method_decorator(ensure_csrf_cookie)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
@@ -715,6 +775,10 @@ class CurrentUserView(APIView):
     """Получение и обновление данных текущего пользователя"""
     permission_classes = [IsAuthenticated]
     
+    @method_decorator(ensure_csrf_cookie)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
