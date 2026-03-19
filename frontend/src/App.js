@@ -1360,26 +1360,30 @@ const App = () => {
             return habit.category_name === selectedCategory;
           }).map((habit) => {
             const weeklyCount = getHabitCount(habit);
-            const weeklyRealCount = habit.statuses.reduce((acc, s) => s.is_done && !s.is_restored ? acc + 1 : acc, 0);
+            // Безопасное получение статусов
+            const statuses = habit.statuses || [];
+            const weeklyRealCount = statuses.reduce((acc, s) => s && s.is_done && !s.is_restored ? acc + 1 : acc, 0);
             const weeklyAward = getWeeklyAward(weeklyRealCount);
             // Show dots based on weekly completions (user request: "при двух отмеченых... точки... на все неделю")
             // Проверяем, является ли последняя отметка частью серии 2+
-            const getStreakInfo = (statuses) => {
+            const getStreakInfo = (stats) => {
               let lastMark = -1;
-              for (let i = statuses.length - 1; i >= 0; i--) {
-                if (statuses[i].is_done) {
+              if (!stats || !Array.isArray(stats)) return { lastMark: -1, isLastMarkInStreak: false };
+              
+              for (let i = stats.length - 1; i >= 0; i--) {
+                if (stats[i] && stats[i].is_done) {
                   lastMark = i;
                   break;
                 }
               }
               
               const isLastMarkInStreak = lastMark >= 1 && 
-                (statuses[lastMark].is_done && !statuses[lastMark].is_restored) && 
-                (statuses[lastMark - 1].is_done && !statuses[lastMark - 1].is_restored);
+                stats[lastMark] && (stats[lastMark].is_done && !stats[lastMark].is_restored) && 
+                stats[lastMark - 1] && (stats[lastMark - 1].is_done && !stats[lastMark - 1].is_restored);
                 
               return { lastMark, isLastMarkInStreak };
             };
-            const { lastMark, isLastMarkInStreak } = getStreakInfo(habit.statuses);
+            const { lastMark, isLastMarkInStreak } = getStreakInfo(statuses);
             return (
               <div key={habit.id} className="habit-row">
                 <div className="habit-name">
@@ -1430,7 +1434,7 @@ const App = () => {
                       const todayStr = today.toLocaleDateString('en-CA');
 
                       // Find status for this date
-                      const status = habit.statuses.find(s => s.date === slotDateStr);
+                      const status = statuses.find(s => s && s.date === slotDateStr);
                       const isDone = status ? status.is_done : false;
                       const isRestored = status ? status.is_restored : false;
                       const statusId = status ? status.id : null;
