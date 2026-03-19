@@ -214,6 +214,14 @@ class HabitViewSet(viewsets.ModelViewSet):
         start_date = reference_date - timedelta(days=days_since_monday)
         end_date = start_date + timedelta(days=6)
         
+        # Monthly range
+        start_of_month = date(reference_date.year, reference_date.month, 1)
+        if reference_date.month == 12:
+            next_month = date(reference_date.year + 1, 1, 1)
+        else:
+            next_month = date(reference_date.year, reference_date.month + 1, 1)
+        end_of_month = next_month - timedelta(days=1)
+        
         result = []
         for habit in habits:
             habit_data = HabitSerializer(habit).data
@@ -269,6 +277,7 @@ class HabitViewSet(viewsets.ModelViewSet):
             
             # Get statuses for the range (Monday to Sunday)
             statuses = []
+            weekly_overflow = 0
             for i in range(7):
                 current_date = start_date + timedelta(days=i)
                 date_entry = Date.objects.filter(
@@ -276,16 +285,34 @@ class HabitViewSet(viewsets.ModelViewSet):
                     habit=habit,
                     habit_date=current_date
                 ).first()
+                is_done = date_entry.is_done if date_entry else False
+                qty = date_entry.quantity if date_entry else None
+                
+                if is_done and qty is not None:
+                    weekly_overflow += qty
+                
                 statuses.append({
                     "date": current_date.isoformat(),
-                    "is_done": date_entry.is_done if date_entry else False,
+                    "is_done": is_done,
                     "is_restored": date_entry.is_restored if date_entry else False,
                     "id": date_entry.id if date_entry else None,
-                    "quantity": date_entry.quantity if date_entry else None,
+                    "quantity": qty,
                     "comment": date_entry.comment if date_entry else None,
                     "photo": (request.build_absolute_uri(date_entry.photo.url) if (date_entry and date_entry.photo) else None)
                 })
             habit_data['statuses'] = statuses
+            habit_data['weekly_overflow'] = weekly_overflow
+            
+            # Calculate monthly overflow
+            monthly_overflow = Date.objects.filter(
+                user=user_profile,
+                habit=habit,
+                habit_date__range=[start_of_month, end_of_month],
+                is_done=True,
+                quantity__isnull=False
+            ).aggregate(total=Sum('quantity'))['total'] or 0
+            
+            habit_data['monthly_overflow'] = monthly_overflow
             result.append(habit_data)
             
         return Response(result)

@@ -1524,9 +1524,14 @@ const App = () => {
                       )}
                       <span className="habit-count-number">{weeklyCount}</span>
                     </div>
-                    {getHabitOverflow(habit) > 0 && (
-                      <div className="habit-count habit-count-overflow">+{getHabitOverflow(habit)}</div>
-                    )}
+                    <div className="habit-overflow-container">
+                      {(habit.weekly_overflow > 0) && (
+                        <div className="habit-count-overflow weekly">+{habit.weekly_overflow}</div>
+                      )}
+                      {(habit.monthly_overflow > 0) && (
+                        <div className="habit-count-overflow monthly">{habit.monthly_overflow}</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
