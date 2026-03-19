@@ -549,11 +549,29 @@ const App = () => {
     setShowQuantityModal(true);
   };
 
-  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto) => {
+  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, e) => {
+    // If it's a touch event, store the start position
+    if (e && e.touches && e.touches[0]) {
+      touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+
     const timer = setTimeout(() => {
       openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto);
-    }, 200); // 200ms for long press
+    }, 450); // Increased delay to avoid accidental triggers during scroll
     setLongPressTimer(timer);
+  };
+
+  const handleLongPressMove = (e) => {
+    if (!longPressTimer || !e.touches || !e.touches[0]) return;
+
+    const touch = e.touches[0];
+    const distX = Math.abs(touch.clientX - touchStartPos.current.x);
+    const distY = Math.abs(touch.clientY - touchStartPos.current.y);
+
+    // If moved more than 10 pixels, cancel the long press to allow scrolling
+    if (distX > 10 || distY > 10) {
+      handleLongPressEnd();
+    }
   };
 
   const handleLongPressEnd = () => {
@@ -1460,10 +1478,11 @@ const App = () => {
                               toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
                             }
                           }}
-                          onMouseDown={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
+                          onMouseDown={(e) => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, e)}
                           onMouseUp={handleLongPressEnd}
                           onMouseLeave={handleLongPressEnd}
-                          onTouchStart={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
+                          onTouchStart={(e) => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, e)}
+                          onTouchMove={handleLongPressMove}
                           onTouchEnd={handleLongPressEnd}
                           disabled={isDisabled}
                         >
