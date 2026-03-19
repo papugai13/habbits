@@ -392,10 +392,10 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
             if (response.ok) {
                 const json = await response.json();
                 setPeriodLabel(json.period_label);
-                const totalHabits = habitsData.length;
                 const todayStr = new Date().toISOString().split('T')[0];
                 const formattedData = json.data.map(item => {
                     const isFuture = item.date > todayStr;
+                    const habitCount = item.habit_count || 0;
                     return {
                         date: item.label, // Use the pre-formatted label from backend
                         fullDate: item.date,
@@ -404,7 +404,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                         countCapped: item.completed_days,
                         countRestored: item.restored_days || 0,
                         countExtra: item.extra_quantity,
-                        countRemaining: isFuture ? 0 : Math.max(0, (totalHabits * item.days_in_period) - item.completed_days - (item.restored_days || 0))
+                        countRemaining: isFuture ? 0 : Math.max(0, (habitCount * item.days_in_period) - item.completed_days - (item.restored_days || 0))
                     };
                 });
                 setChartData(formattedData);

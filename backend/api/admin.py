@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from api.models import Achievement, Date, Habit, UserAll
+from .models import Achievement, Category, Date, Habit, UserAll
 
 
 class UserAllAdmin(admin.ModelAdmin):
@@ -25,7 +25,6 @@ class DateAdmin(admin.ModelAdmin):
     )
     search_fields = (
         'name',
-        'description',
     )
     empty_value_display = (
         '-пусто-'
@@ -40,7 +39,6 @@ class HabitAdmin(admin.ModelAdmin):
     )
     search_fields = (
         'name',
-        'description',
     )
     empty_value_display = (
         '-пусто-'
@@ -56,7 +54,6 @@ class AchievementAdmin(admin.ModelAdmin):
     )
     search_fields = (
         'name',
-        'description',
     )
     empty_value_display = (
         '-пусто-'
@@ -70,3 +67,4 @@ admin.site.register(Achievement, AchievementAdmin)
 admin.site.register(Habit, HabitAdmin)
 admin.site.register(Date, DateAdmin)
 admin.site.register(UserAll, UserAllAdmin)
+admin.site.register(Category)

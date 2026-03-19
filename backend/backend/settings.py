@@ -22,17 +22,19 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
-    'api',
-    'main',
-    'backend',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'rest_framework',
     'corsheaders',
+
+    'api',
+    'main',
+    'user',
 ]
 
 MIDDLEWARE = [
@@ -164,6 +166,7 @@ SESSION_SAVE_EVERY_REQUEST = True  # Extend session on every request
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Keep session after browser close
 
 # CSRF settings
+CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
 CSRF_TRUSTED_ORIGINS = [
@@ -171,6 +174,10 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "http://localhost:3000/",
+    "http://127.0.0.1:3000/",
+    "http://localhost:8000/",
+    "http://127.0.0.1:8000/",
 ]
 
 # Proxy settings for correct absolute URLs on server

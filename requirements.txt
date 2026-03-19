@@ -4,3 +4,5 @@ django-cors-headers==4.9.0
 djangorestframework==3.16.1
 sqlparse==0.5.4
 Pillow>=11.1.0
+pymysql==1.1.1
+python-dotenv==1.0.1
