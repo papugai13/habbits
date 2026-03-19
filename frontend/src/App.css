@@ -645,11 +645,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
   position: relative;
-  /* For absolute award */
   min-height: 32px;
-  /* Match .check-box height */
 }
 
 /* Эмоджи-награда над счётчиком */
@@ -668,12 +665,8 @@ body {
   pointer-events: none;
 }
 
-/* Фиолетовый счётчик для выполнений свыше 7 */
-.habit-count-overflow {
-  background-color: #8B5CF6;
-  color: #FFFFFF;
-  height: 24px;
-  /* Slightly smaller than main count */
+/* Контейнер для двух фиолетовых счетчиков */
+.habit-overflow-container {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -682,13 +675,39 @@ body {
   left: 50%;
   transform: translateX(-50%);
   margin-top: 2px;
+  z-index: 5;
+}
+
+/* Фиолетовый счётчик */
+.habit-count-overflow {
+  background-color: #8B5CF6;
+  color: #FFFFFF;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 800;
-  min-width: 40px;
+  min-width: 38px;
+  padding: 0 6px;
   text-align: center;
   box-shadow: 0 1px 3px rgba(139, 92, 246, 0.3);
   pointer-events: none;
+  position: relative;
+}
+
+.habit-count-overflow.weekly {
+  z-index: 1;
+  margin-right: -12px; /* Нахлест */
+  padding-right: 14px; /* Чтобы цифра не перекрывалась */
+  background-color: #A78BFA; /* Чуть светлее, так как он "сзади" */
+  opacity: 0.9;
+}
+
+.habit-count-overflow.monthly {
+  z-index: 2;
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(139, 92, 246, 0.3);
 }
 
 /* Нижняя навигация */
