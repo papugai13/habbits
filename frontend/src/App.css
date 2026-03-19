@@ -626,18 +626,33 @@ body {
   margin-left: -8px; /* Вплотную друг к другу */
 }
 
-/* Зеленая точка внутри квадратика — когда есть серия 2+ дня */
-.check-box.has-dot::after {
+/* Точки внутри квадратика — индикатор недельного прогресса (1 или 2 из 3) */
+.check-box.has-dot-1::after {
   content: '';
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 10px;
-  height: 10px;
+  width: 10px; /* было 8px */
+  height: 10px; /* было 8px */
   background-color: #1F663B;
   border-radius: 50%;
+  opacity: 1; /* было 0.6 */
   pointer-events: none;
+}
+
+.check-box.has-dot-2::after {
+  content: '••';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px; /* было 14px */
+  color: #1F663B;
+  opacity: 1; /* было 0.6 */
+  pointer-events: none;
+  line-height: 1;
+  letter-spacing: 1px;
 }
 
 /* Обёртка для основного и дополнительного счётчиков */
