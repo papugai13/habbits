@@ -1362,48 +1362,24 @@ const App = () => {
             const weeklyCount = getHabitCount(habit);
             const weeklyRealCount = habit.statuses.reduce((acc, s) => s.is_done && !s.is_restored ? acc + 1 : acc, 0);
             const weeklyAward = getWeeklyAward(weeklyRealCount);
-
-            // Calculate streak for dots: if 2+ consecutive completions in the current week
-            const sortedStatuses = [...habit.statuses].sort((a, b) => a.date.localeCompare(b.date));
-            const completionMap = sortedStatuses.reduce((acc, s) => {
-              acc[s.date] = { done: s.is_done, restored: s.is_restored };
-              return acc;
-            }, {});
-
-            const baseDateRef = new Date(currentWeekDate);
-            const dayOfWeekRef = baseDateRef.getDay();
-            const currentDayIndexRef = dayOfWeekRef === 0 ? 6 : dayOfWeekRef - 1;
-            const todayStr = new Date().toLocaleDateString('en-CA');
-
-            const weekCompletions = WEEK_DAYS.map((_, i) => {
-              const d = new Date(baseDateRef);
-              const diff = i - currentDayIndexRef;
-              d.setDate(baseDateRef.getDate() + diff);
-              const dStr = d.toLocaleDateString('en-CA');
-              const status = completionMap[dStr] || { done: false, restored: false };
-              return { done: status.done, restored: status.restored, date: dStr };
-            });
-
-            let latestStreakEnd = -1;
-            let currentStreakCount = 0;
-            let hasAnyGapThisWeek = false;
-
-            for (let i = 0; i < 7; i++) {
-              const day = weekCompletions[i];
-              // Real completion is one that is done and NOT restored
-              const isRealDone = day.done && !day.restored;
-
-              if (isRealDone) {
-                currentStreakCount++;
-                if (currentStreakCount >= 2) latestStreakEnd = i;
-              } else {
-                currentStreakCount = 0;
-                // A gap is if it's not done OR it was restored (retroactive)
-                if (day.date < todayStr) {
-                  hasAnyGapThisWeek = true;
+            // Show dots based on weekly completions (user request: "при двух отмеченых... точки... на все неделю")
+            // Проверяем, является ли последняя отметка частью серии 2+
+            const getStreakInfo = (statuses) => {
+              let lastMark = -1;
+              for (let i = statuses.length - 1; i >= 0; i--) {
+                if (statuses[i].is_done) {
+                  lastMark = i;
+                  break;
                 }
               }
-            }
+              
+              const isLastMarkInStreak = lastMark >= 1 && 
+                (statuses[lastMark].is_done && !statuses[lastMark].is_restored) && 
+                (statuses[lastMark - 1].is_done && !statuses[lastMark - 1].is_restored);
+                
+              return { lastMark, isLastMarkInStreak };
+            };
+            const { lastMark, isLastMarkInStreak } = getStreakInfo(habit.statuses);
             return (
               <div key={habit.id} className="habit-row">
                 <div className="habit-name">
@@ -1476,16 +1452,14 @@ const App = () => {
                       // Disable only IF it's in the future
                       const isDisabled = isFuture;
 
-                      // Streak logic for dots
-                      let hasStreak = false;
-                      if (!isDone && !hasAnyGapThisWeek && latestStreakEnd !== -1 && latestStreakEnd < index) {
-                        hasStreak = true;
-                      }
+                      // Show 1 dot in ONLY UNMARKED squares if exactly 2 are marked this week
+                      // Показываем точку только если последняя отметка — часть серии 2+ дня, и только СПРАВА от нее
+                      const showDotClass = (!isDone && isLastMarkInStreak && index > lastMark) ? 'has-dot-1' : '';
 
                       return (
                         <button
                           key={slotDateStr}
-                          className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''} ${hasStreak ? 'has-dot' : ''}`}
+                          className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''} ${showDotClass}`}
                           onClick={() => {
                             if (!isDisabled && !longPressTimer) {
                               toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
