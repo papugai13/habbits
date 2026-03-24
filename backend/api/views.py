@@ -233,6 +233,12 @@ class HabitViewSet(viewsets.ModelViewSet):
                 habit_date__range=[start_date, end_date],
                 comment__isnull=False
             ).exclude(comment__exact='').order_by('-habit_date').first()
+
+            # Check previous week for streak continuation (Sunday and Saturday)
+            prev_sun = start_date - timedelta(days=1)
+            prev_sat = start_date - timedelta(days=2)
+            habit_data['prev_week_sun_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sun, is_done=True).exists()
+            habit_data['prev_week_sat_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sat, is_done=True).exists()
             
             habit_data['latest_comment'] = None
             habit_data['latest_comment_details'] = None
