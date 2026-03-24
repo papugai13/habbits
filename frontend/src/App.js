@@ -1484,10 +1484,10 @@ const App = () => {
                     })}
                   </div>
                   <div className="habit-counts-wrapper">
-                    {weeklyAward && (weeklyAward.includes('⭐') || weeklyAward.includes('🌟')) && (
-                      <div className="habit-award">{weeklyAward}</div>
+                    {weeklyAward && weeklyAward === '🌟🌟🌟' && (
+                      <div className="habit-award">⭐</div>
                     )}
-                    <div className={`habit-count ${weeklyAward && weeklyAward.includes('⚡⚡') ? 'has-double-lightning' : (weeklyAward && weeklyAward.includes('⚡') ? 'has-single-lightning' : '')}`}>
+                    <div className={`habit-count ${weeklyAward && weeklyAward.includes('⚡⚡') ? 'has-double-lightning' : (weeklyAward && weeklyAward.includes('⚡') ? 'has-single-lightning' : '')} ${weeklyAward && (weeklyAward.includes('⭐') || weeklyAward.includes('🌟')) ? 'has-stars' : ''}`}>
                       {weeklyAward && weeklyAward.includes('⚡') && (
                         <div className="lightning-behind">
                           {weeklyAward === '⚡⚡' ? (
@@ -1500,6 +1500,16 @@ const App = () => {
                           )}
                         </div>
                       )}
+                      
+                      {/* Stars inside the green square */}
+                      {weeklyAward && (weeklyAward.includes('⭐') || weeklyAward.includes('🌟')) && (
+                        <div className="stars-inside">
+                          {weeklyAward === '⭐' && <span>⭐</span>}
+                          {weeklyAward === '⭐⭐' && <span>⭐⭐</span>}
+                          {weeklyAward === '🌟🌟🌟' && <span>⭐⭐</span>}
+                        </div>
+                      )}
+
                       <span className="habit-count-number">{weeklyCount}</span>
                     </div>
                     <div className="habit-overflow-container">
