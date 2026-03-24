@@ -1366,7 +1366,7 @@ const App = () => {
             const weeklyAward = getWeeklyAward(weeklyRealCount);
             // Show dots based on weekly completions (user request: "при двух отмеченых... точки... на все неделю")
             // Проверяем, является ли последняя отметка частью серии 2+
-            const getStreakInfo = (stats) => {
+            const getStreakInfo = (stats, habit) => {
               let lastMark = -1;
               if (!stats || !Array.isArray(stats)) return { lastMark: -1, isLastMarkInStreak: false };
               
@@ -1377,13 +1377,48 @@ const App = () => {
                 }
               }
               
-              const isLastMarkInStreak = lastMark >= 1 && 
-                stats[lastMark] && (stats[lastMark].is_done && !stats[lastMark].is_restored) && 
-                stats[lastMark - 1] && (stats[lastMark - 1].is_done && !stats[lastMark - 1].is_restored);
-                
+              let isLastMarkInStreak = false;
+              if (lastMark >= 1) {
+                // Серия внутри текущей недели
+                isLastMarkInStreak = (stats[lastMark].is_done && !stats[lastMark].is_restored) && 
+                                     (stats[lastMark - 1].is_done && !stats[lastMark - 1].is_restored);
+              } else if (lastMark === 0) {
+                // Только понедельник отмечен, проверяем воскресенье прошлой недели
+                isLastMarkInStreak = (stats[0].is_done && !stats[0].is_restored) && habit.prev_week_sun_done;
+              } else if (lastMark === -1) {
+                // Нет отметок на этой неделе, проверяем субботу и воскресенье прошлой недели
+                isLastMarkInStreak = habit.prev_week_sun_done && habit.prev_week_sat_done;
+              }
+              
+              // Проверка на пропадание точек при пропуске более 2 дней
+              const today = new Date();
+              const todayStr = today.toLocaleDateString('en-CA');
+              const baseDate = new Date(currentWeekDate);
+              const dayOfWeek = baseDate.getDay();
+              const currentWeekMondayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+              
+              // Находим "текущий" индекс для сравнения (сегодня или конец недели, если неделя прошлая)
+              const displayedWeekStarts = baseDate;
+              const nextWeekStarts = new Date(baseDate);
+              nextWeekStarts.setDate(baseDate.getDate() + 7);
+              
+              let comparisonIndex = -1;
+              if (today >= displayedWeekStarts && today < nextWeekStarts) {
+                // Отображаемая неделя — текущая
+                const day = today.getDay();
+                comparisonIndex = day === 0 ? 6 : day - 1;
+              } else if (today >= nextWeekStarts) {
+                // Отображаемая неделя в прошлом
+                comparisonIndex = 6;
+              }
+              
+              if (comparisonIndex !== -1 && (comparisonIndex - lastMark) > 2) {
+                isLastMarkInStreak = false;
+              }
+
               return { lastMark, isLastMarkInStreak };
             };
-            const { lastMark, isLastMarkInStreak } = getStreakInfo(statuses);
+            const { lastMark, isLastMarkInStreak } = getStreakInfo(statuses, habit);
             return (
               <div key={habit.id} className="habit-row">
                 <div className="habit-name">
