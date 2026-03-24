@@ -449,7 +449,7 @@ body {
 .habit-row {
   display: flex;
   flex-direction: column;
-  margin-bottom: 20px;
+  margin-bottom: 32px; /* Увеличено расстояние между привычками */
   gap: 8px;
 }
 
@@ -599,6 +599,22 @@ body {
   transform: translateX(-6px); /* Смещаем меньше для одной молнии */
 }
 
+.habit-count.has-stars .habit-count-number {
+  transform: translateY(6px) scale(0.9); /* Смещаем цифру вниз и чуть уменьшаем, когда есть звезды */
+}
+
+.stars-inside {
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  line-height: 1;
+  display: flex;
+  gap: 1px;
+  z-index: 3;
+}
+
 .habit-count.has-single-lightning .lightning-behind {
   right: 5px; /* Сдвигаем одну молнию левее */
 }
@@ -623,7 +639,7 @@ body {
 }
 
 .second-lightning {
-  margin-left: -8px; /* Вплотную друг к другу */
+  margin-left: -11px; /* Еще плотнее друг к другу */
 }
 
 /* Точки внутри квадратика — индикатор недельного прогресса (1 или 2 из 3) */
