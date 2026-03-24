@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Rectangle } from 'recharts';
 import './Charts.css';
 
@@ -197,6 +197,15 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
         indicatorRef.current.style.left = `${left}%`;
     };
 
+    const filteredData = useMemo(() => {
+        return data.filter(item => {
+            if (viewType === 'quantity') {
+                return (item.countExtra || 0) > 0;
+            }
+            return true;
+        });
+    }, [data, viewType]);
+
     // Initialize indicator width
     useEffect(() => {
         if (scrollRef.current && indicatorRef.current) {
@@ -204,7 +213,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
             const width = (clientWidth / scrollWidth) * 100;
             indicatorRef.current.style.width = `${width}%`;
         }
-    }, [data.length]);
+    }, [filteredData.length]);
 
     if (loading) return (
         <div className="comparison-chart-loading">
@@ -215,13 +224,13 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
 
     if (data.length === 0) return null;
 
-    const chartMinWidth = data.length > 5 ? `${data.length * 80}px` : '100%';
-    const showScroll = data.length > 5;
+    const chartMinWidth = filteredData.length > 5 ? `${filteredData.length * 80}px` : '100%';
+    const showScroll = filteredData.length > 5;
 
     const activeKey = viewType === 'habits' ? 'countCapped' : 'countExtra';
     
     // Calculate the maximum height of the bars
-    const maxHeight = data.reduce((m, d) => {
+    const maxHeight = filteredData.reduce((m, d) => {
         const height = viewType === 'habits' 
             ? (d.countCapped || 0) + (d.countRestored || 0) + (d.countRemaining || 0)
             : (d.countExtra || 0);
@@ -263,7 +272,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
                 <div className="comparison-scroll-wrapper" onScroll={handleScroll} ref={scrollRef}>
                     <div className="comparison-chart-inner" style={{ minWidth: chartMinWidth }}>
                         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                            <BarChart data={data} margin={{ top: 20, right: 30, left: 15, bottom: 40 }}>
+                            <BarChart data={filteredData} margin={{ top: 20, right: 30, left: 15, bottom: 40 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                                 <XAxis
                                     dataKey="shortName"
