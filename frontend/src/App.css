@@ -1347,9 +1347,6 @@ body {
   border-radius: 12px;
   padding: 20px;
   border: 1px solid #e0e0e0;
-}
-
-.profile-settings {
   margin-bottom: 20px;
 }
 
@@ -1411,6 +1408,14 @@ body {
   user-select: none;
   -webkit-user-select: none;
   position: relative;
+}
+
+.manage-habit-item.no-drag {
+  cursor: default;
+}
+
+.manage-habit-item.no-drag:hover {
+  transform: none;
 }
 
 .manage-habit-item:hover {

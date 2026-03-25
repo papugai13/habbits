@@ -55,6 +55,8 @@ const App = () => {
   const [longPressTimer, setLongPressTimer] = useState(null);
   const [editingHabit, setEditingHabit] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [showEditCategoryModal, setShowEditCategoryModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [editProfileData, setEditProfileData] = useState({ username: '', email: '', age: '' });
   const [reportData, setReportData] = useState(null);
@@ -455,7 +457,11 @@ const App = () => {
         setNewCategoryName('');
         setShowAddCategory(false);
         await fetchCategories();
-        setNewHabitCategory(newCat.id.toString());
+        if (showEditModal && editingHabit) {
+          setEditingHabit({ ...editingHabit, category: newCat.id.toString() });
+        } else {
+          setNewHabitCategory(newCat.id.toString());
+        }
       } else {
         const err = await response.json();
         const errorMessage = err.name ? err.name[0] : (err.detail || 'Ошибка при создании категории');
@@ -798,15 +804,54 @@ const App = () => {
         throw new Error(errData.detail || 'Не удалось создать привычку');
       }
 
-      // Reset form and close modal
-      setNewHabitName('');
       setShowCreateModal(false);
-
-      // Refresh habits list
+      setNewHabitName('');
       await fetchHabits();
     } catch (error) {
       console.error('Error creating habit:', error);
-      setCreateError(error.message || 'Произошла ошибка при создании привычки');
+      setCreateError(error.message);
+    }
+  };
+
+  const handleUpdateCategory = async (e) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+
+    const name = editingCategory.name.trim();
+    if (!name) return;
+
+    if (name.length < 2) {
+      setCreateError('Название категории должно содержать минимум 2 символа');
+      return;
+    }
+    if (name.length > 20) {
+      setCreateError('Название категории не должно превышать 20 символов');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/categories/${editingCategory.id}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include',
+        body: JSON.stringify({ name })
+      });
+
+      if (response.ok) {
+        setShowEditCategoryModal(false);
+        setEditingCategory(null);
+        await fetchCategories();
+        await fetchHabits(); // Refresh habits to see new category name
+      } else {
+        const err = await response.json();
+        const errorMessage = err.name ? err.name[0] : (err.detail || 'Ошибка при обновлении категории');
+        setCreateError(errorMessage);
+      }
+    } catch (error) {
+      console.error('Error updating category:', error);
     }
   };
 
@@ -1614,6 +1659,36 @@ const App = () => {
           </div>
 
           <div className="settings-section">
+            <h3 className="section-title">Управление категориями</h3>
+            <div className="manage-habits-list">
+              {categories.filter(c => c.id !== 'all').length === 0 ? (
+                <p className="no-habits-msg">У вас пока нет категорий.</p>
+              ) : (
+                categories.filter(c => c.id !== 'all').map(category => (
+                  <div key={category.id} className="manage-habit-item no-drag">
+                    <div className="manage-habit-info">
+                      <div className="manage-habit-name">{category.name}</div>
+                    </div>
+                    <div className="manage-habit-actions">
+                      <button
+                        className="manage-btn edit-btn"
+                        onClick={() => {
+                          setEditingCategory({ ...category });
+                          setShowEditCategoryModal(true);
+                          setCreateError('');
+                        }}
+                        title="Изменить"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="settings-section">
             <h3 className="section-title">Управление привычками</h3>
             <div className="manage-habits-list">
               {habitsData.length === 0 ? (
@@ -1832,7 +1907,63 @@ const App = () => {
         </div>
       )}
 
-      {/* Модальное окно редактирования привычки */}
+      {/* Модальное окно редактирования категории */}
+      {showEditCategoryModal && editingCategory && (
+        <div className="modal-overlay" onClick={() => setShowEditCategoryModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Изменить категорию</h2>
+              <button
+                className="modal-close"
+                onClick={() => setShowEditCategoryModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateCategory} className="habit-form">
+              <div className="form-group">
+                <label htmlFor="edit-category-name">Название категории</label>
+                <input
+                  id="edit-category-name"
+                  type="text"
+                  className="form-input"
+                  value={editingCategory.name}
+                  onChange={(e) => {
+                    setEditingCategory({ ...editingCategory, name: e.target.value });
+                    if (createError) setCreateError('');
+                  }}
+                  autoFocus
+                  minLength="2"
+                  maxLength="20"
+                />
+              </div>
+
+              {createError && (
+                <div className="error-message" style={{ marginBottom: '15px' }}>
+                  {createError}
+                </div>
+              )}
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowEditCategoryModal(false)}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                >
+                  Сохранить
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {showEditModal && editingHabit && (
         <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -1861,17 +1992,58 @@ const App = () => {
 
               <div className="form-group">
                 <label htmlFor="edit-habit-category">Категория</label>
-                <select
-                  id="edit-habit-category"
-                  className="form-select"
-                  value={editingHabit.category || ''}
-                  onChange={(e) => setEditingHabit({ ...editingHabit, category: e.target.value })}
-                >
-                  {categories.filter(c => c.id !== 'all').map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
+                <div className="category-input-wrapper">
+                  <select
+                    id="edit-habit-category"
+                    className="form-select"
+                    value={editingHabit.category || ''}
+                    onChange={(e) => setEditingHabit({ ...editingHabit, category: e.target.value })}
+                  >
+                    {categories.filter(c => c.id !== 'all').map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="add-category-inline-btn"
+                    onClick={() => setShowAddCategory(!showAddCategory)}
+                  >
+                    {showAddCategory ? '−' : '+'}
+                  </button>
+                </div>
               </div>
+
+              {showAddCategory && (
+                <div className="form-group add-category-field">
+                  <div className="inline-add-row">
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Новая категория"
+                      value={newCategoryName}
+                      onChange={(e) => {
+                        setNewCategoryName(e.target.value);
+                        if (createError) setCreateError('');
+                      }}
+                      minLength="2"
+                      maxLength="20"
+                    />
+                    <button
+                      type="button"
+                      className="btn-primary btn-small"
+                      onClick={handleCreateCategory}
+                    >
+                      Добавить
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {createError && (
+                <div className="error-message" style={{ marginBottom: '15px' }}>
+                  {createError}
+                </div>
+              )}
 
               <div className="form-actions">
                 <button
