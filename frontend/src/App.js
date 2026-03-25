@@ -1360,10 +1360,9 @@ const App = () => {
             return habit.category_name === selectedCategory;
           }).map((habit) => {
             const weeklyCount = getHabitCount(habit);
+            const weeklyAward = getWeeklyAward(weeklyCount);
             // Безопасное получение статусов
             const statuses = habit.statuses || [];
-            const weeklyRealCount = statuses.reduce((acc, s) => s && s.is_done && !s.is_restored ? acc + 1 : acc, 0);
-            const weeklyAward = getWeeklyAward(weeklyRealCount);
             // Show dots based on weekly completions (user request: "при двух отмеченых... точки... на все неделю")
             // Проверяем, является ли последняя отметка частью серии 2+
             const getStreakInfo = (stats, habit) => {
@@ -1519,33 +1518,41 @@ const App = () => {
                     })}
                   </div>
                   <div className="habit-counts-wrapper">
-                    {weeklyAward && weeklyAward === '🌟🌟🌟' && (
-                      <div className="habit-award">⭐</div>
+                    {/* Третья звезда над квадратиком для серии из 7 дней */}
+                    {weeklyCount >= 7 && (
+                      <span className="third-star-top">⭐</span>
                     )}
-                    <div className={`habit-count ${weeklyAward && weeklyAward.includes('⚡⚡') ? 'has-double-lightning' : (weeklyAward && weeklyAward.includes('⚡') ? 'has-single-lightning' : '')} ${weeklyAward && (weeklyAward.includes('⭐') || weeklyAward.includes('🌟')) ? 'has-stars' : ''}`}>
+                    <div className={`habit-count ${weeklyCount >= 3 ? 'active' : ''}`}>
+                      {/* Lightning icons at the top */}
                       {weeklyAward && weeklyAward.includes('⚡') && (
                         <div className="lightning-behind">
-                          {weeklyAward === '⚡⚡' ? (
-                            <>
-                              <span className="lightning-item">⚡</span>
-                              <span className="lightning-item second-lightning">⚡</span>
-                            </>
-                          ) : (
-                            <span className="lightning-item">⚡</span>
+                          <span className="lightning-item first-lightning">⚡</span>
+                          {weeklyCount >= 4 && (
+                            <span className="lightning-item second-lightning">⚡</span>
                           )}
                         </div>
                       )}
-                      
-                      {/* Stars inside the green square */}
+
+                      {/* Star icons */}
                       {weeklyAward && (weeklyAward.includes('⭐') || weeklyAward.includes('🌟')) && (
-                        <div className="stars-inside">
-                          {weeklyAward === '⭐' && <span>⭐</span>}
-                          {weeklyAward === '⭐⭐' && <span>⭐⭐</span>}
-                          {weeklyAward === '🌟🌟🌟' && <span>⭐⭐</span>}
-                        </div>
+                        <>
+                          {weeklyCount >= 7 ? (
+                            <div className="stars-three-layout">
+                              <span className="star-item top-row-star">⭐</span>
+                              <span className="star-item top-row-star">⭐</span>
+                            </div>
+                          ) : (
+                            <div className="stars-inside">
+                              <span className="star-item first-star">⭐</span>
+                              {weeklyCount >= 6 && (
+                                <span className="star-item second-star">⭐</span>
+                              )}
+                            </div>
+                          )}
+                        </>
                       )}
 
-                      <span className="habit-count-number">{weeklyCount}</span>
+                      <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>{weeklyCount}</span>
                     </div>
                     <div className="habit-overflow-container">
                       {(habit.weekly_overflow > 0) && (
