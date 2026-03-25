@@ -600,6 +600,13 @@ body {
   overflow: hidden; /* Гарантируем, что молнии не выходят за рамки */
 }
 
+.habit-counts-wrapper {
+  position: relative; /* Для позиционирования третьей звезды над индикатором */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .habit-count-number {
   position: relative;
   z-index: 2;
@@ -607,55 +614,98 @@ body {
   transition: transform 0.2s;
 }
 
-.habit-count.has-double-lightning .habit-count-number {
-  transform: translateX(-12px); /* Смещаем цифру сильно влево для двух молний */
-}
-
-.habit-count.has-single-lightning .habit-count-number {
-  transform: translateX(-6px); /* Смещаем меньше для одной молнии */
-}
-
+.habit-count.has-double-lightning .habit-count-number,
+.habit-count.has-single-lightning .habit-count-number,
 .habit-count.has-stars .habit-count-number {
-  transform: translateY(6px) scale(0.9); /* Смещаем цифру вниз и чуть уменьшаем, когда есть звезды */
+  transform: translateY(-2px); /* Смещаем все наборы наград вверх, так как они теперь все внизу */
+}
+
+.habit-count-number.shifted-down {
+  transform: translateY(3px) !important; /* Для 3 звезд смещаем цифру вниз, так как звезды сверху */
 }
 
 .stars-inside {
   position: absolute;
-  top: 3px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 11px;
-  line-height: 1;
+  bottom: 1px;
+  right: 1px;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.first-star {
+  position: absolute;
+  bottom: 3px;
+  right: 1px;
+  font-size: 12px;
+  z-index: 1;
+}
+
+.second-star {
+  position: absolute;
+  bottom: 0px;
+  right: 5px;
+  font-size: 9px;
+  z-index: 2;
+}
+
+/* Новые стили для 3 звезд (серия 7+) */
+.stars-three-layout {
+  position: absolute;
+  top: 1px;
+  left: 0;
+  width: 100%;
   display: flex;
+  justify-content: center;
   gap: 1px;
   z-index: 3;
 }
 
-.habit-count.has-single-lightning .lightning-behind {
-  right: 5px; /* Сдвигаем одну молнию левее */
+.top-row-star {
+  font-size: 10px;
 }
+
+.third-star-top {
+  position: absolute;
+  top: -16px; /* Поднимаем звезду выше, чтобы она полностью выходила за пределы квадрата */
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  z-index: 4;
+}
+
+/* Убираем старые стили смещения */
 
 .lightning-behind {
   position: absolute;
-  top: 50%;
-  right: 0px; /* Вплотную к краю */
-  transform: translateY(-50%); /* Убираем поворот для ровного уровня */
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  font-size: 13px;
-  opacity: 0.9;
+  bottom: 1px;
+  right: 1px;
+  width: 18px;
+  height: 18px;
   pointer-events: none;
+  z-index: 1;
+}
+
+.first-lightning {
+  position: absolute;
+  bottom: 3px;
+  right: 1px;
+  font-size: 13px;
+  z-index: 1;
+}
+
+.second-lightning {
+  position: absolute;
+  bottom: 0px;
+  right: 5px;
+  font-size: 10px;
+  z-index: 2;
 }
 
 .lightning-item {
   display: inline-block;
   line-height: 1;
-}
-
-.second-lightning {
-  margin-left: -11px; /* Еще плотнее друг к другу */
 }
 
 /* Точки внутри квадратика — индикатор недельного прогресса (1 или 2 из 3) */
