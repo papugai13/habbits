@@ -550,11 +550,27 @@ body {
   border: none;
 }
 
+.check-box.today {
+  border: 2px solid #00f089 !important;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.7); /* Internal light stroke for contrast */
+  font-weight: bold;
+}
+
 /* Also styling the day header if it matches today */
 .day-col.today {
-  color: #000;
-  font-weight: 800;
-  /* border: 1px solid #666;  Optional if user wants the header boxed too */
+  color: #2ecc71;
+  font-weight: 900;
+  border: 2.5px solid #2ecc71;
+  border-radius: 10px;
+  padding: 4px 0px; /* Even narrower */
+  margin: -6px 4px; /* Adjust horizontal margin to keep it narrow */
+  background-color: rgba(46, 204, 113, 0.05);
+}
+
+.day-col.today .day-name,
+.day-col.today .day-number {
+  font-weight: 900;
+  color: #27ae60; /* Darker saturated green for text */
 }
 
 .check-box:hover {
