@@ -551,7 +551,8 @@ body {
 }
 
 .check-box.today {
-  border: 2px solid #00f089 !important; /* Lighter and more saturated green */
+  border: 2px solid #00f089 !important;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.7); /* Internal light stroke for contrast */
   font-weight: bold;
 }
 
