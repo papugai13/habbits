@@ -560,10 +560,10 @@ body {
 .day-col.today {
   color: #2ecc71;
   font-weight: 900;
-  border: 2.5px solid #2ecc71; /* Thinner but solid and bright */
+  border: 2.5px solid #2ecc71;
   border-radius: 10px;
-  padding: 6px 2px;
-  margin: -8px -2px;
+  padding: 4px 0px; /* Even narrower */
+  margin: -6px 4px; /* Adjust horizontal margin to keep it narrow */
   background-color: rgba(46, 204, 113, 0.05);
 }
 
