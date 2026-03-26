@@ -671,10 +671,10 @@ const App = () => {
     }
   };
 
-  // Кол-во дней выполнения (по 1 за день, не зависимо от quantity)
+  // Кол-во дней выполнения (по 1 за день, не зависимо от quantity), исключая восполненные
   const getHabitCount = (habit) => {
     return habit.statuses.reduce((acc, s) => {
-      if (s.is_done) {
+      if (s.is_done && !s.is_restored) {
         return acc + 1;
       }
       return acc;
