@@ -46,6 +46,7 @@ const App = () => {
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
   const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('Все');
+  const [chartsSelectedCategory, setChartsSelectedCategory] = useState('Все');
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   // Quantity modal state
@@ -1594,11 +1595,18 @@ const App = () => {
       {activeTab === 'Графики' && (
         <Charts
           getCookie={getCookie}
-          habitsData={habitsData}
+          habitsData={habitsData.filter(h => 
+            chartsSelectedCategory === 'Все' || 
+            (chartsSelectedCategory === 'Без категории' && !h.category_name) ||
+            (h.category_name === chartsSelectedCategory)
+          )}
           handleGenerateReport={handleGenerateReport}
           handleGenerateSummaryReport={handleGenerateSummaryReport}
           isReportLoading={isReportLoading}
           currentWeekDate={currentWeekDate}
+          sortedCategories={sortedCategories}
+          selectedCategory={chartsSelectedCategory}
+          onSelectCategory={setChartsSelectedCategory}
         />
       )}
 
