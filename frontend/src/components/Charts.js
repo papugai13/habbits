@@ -258,13 +258,13 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
 
                                 {viewType === 'habits' ? (
                                     <>
-                                        <Bar dataKey="countCapped" stackId="a" fill="#1F663B" radius={[4, 4, 0, 0]} name="Выполнено" isAnimationActive={false} shape={<CustomBarShape />}>
+                                        <Bar dataKey="countCapped" stackId="a" fill="#059669" radius={[4, 4, 0, 0]} name="Выполнено" isAnimationActive={false} shape={<CustomBarShape />}>
                                             <LabelList
                                                 dataKey="countCapped"
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
                                             />
                                         </Bar>
-                                        <Bar dataKey="countRestored" stackId="a" fill="#A8D8B5" radius={[4, 4, 0, 0]} name="Восполнено" isAnimationActive={false} shape={<CustomBarShape />}>
+                                        <Bar dataKey="countRestored" stackId="a" fill="#6EE7B7" radius={[4, 4, 0, 0]} name="Восполнено" isAnimationActive={false} shape={<CustomBarShape />}>
                                             <LabelList
                                                 dataKey="countRestored"
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
@@ -483,7 +483,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                     <Bar
                                         dataKey="countCapped"
                                         stackId="a"
-                                        fill="#1F663B"
+                                        fill="#059669"
                                         radius={[8, 8, 0, 0]}
                                         isAnimationActive={false}
                                         name="Выполнено"
@@ -497,7 +497,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                     <Bar
                                         dataKey="countRestored"
                                         stackId="a"
-                                        fill="#A8D8B5"
+                                        fill="#6EE7B7"
                                         radius={[8, 8, 0, 0]}
                                         isAnimationActive={false}
                                         name="Восполнено"
