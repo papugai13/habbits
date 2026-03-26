@@ -303,7 +303,17 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
     );
 };
 
-const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSummaryReport, isReportLoading, currentWeekDate }) => {
+const Charts = ({ 
+    getCookie, 
+    habitsData, 
+    handleGenerateReport, 
+    handleGenerateSummaryReport, 
+    isReportLoading, 
+    currentWeekDate,
+    sortedCategories,
+    selectedCategory,
+    onSelectCategory
+}) => {
     const [period, setPeriod] = useState('week');
     const [viewType, setViewType] = useState('habits'); // 'habits' or 'quantity'
     const [chartData, setChartData] = useState([]);
@@ -445,6 +455,20 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                         </button>
                     </div>
                 </div>
+
+                {sortedCategories && onSelectCategory && (
+                    <div className="categories-section unified charts-category-filter">
+                        {sortedCategories.map(category => (
+                            <button
+                                key={category.id}
+                                className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
+                                onClick={() => onSelectCategory(category.name)}
+                            >
+                                {category.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {loading ? (

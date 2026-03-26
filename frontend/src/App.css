@@ -2285,3 +2285,8 @@ body {
   color: white;
   border-color: #1F663B;
 }
+
+/* Charts Category Filter */
+.charts-category-filter {
+  margin-bottom: 20px;
+}
