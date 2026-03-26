@@ -417,13 +417,22 @@ class HabitViewSet(viewsets.ModelViewSet):
             end_date = start_date + timedelta(days=6)
             label = f"{start_date.strftime('%d.%m')} - {end_date.strftime('%d.%m')}"
         elif period == 'month':
-            start_date = date(today.year, today.month, 1)
+            first_day = date(today.year, today.month, 1)
             if today.month == 12:
                 next_month = date(today.year + 1, 1, 1)
             else:
                 next_month = date(today.year, today.month + 1, 1)
-            end_date = next_month - timedelta(days=1)
-            label = f"{MONTHS_RU[start_date.month]} {start_date.year}"
+            last_day = next_month - timedelta(days=1)
+            
+            # Start on the Monday of the week containing the 1st
+            days_since_monday = first_day.weekday()
+            start_date = first_day - timedelta(days=days_since_monday)
+            
+            # End on the Sunday of the week containing the last day
+            days_until_sunday = 6 - last_day.weekday()
+            end_date = last_day + timedelta(days=days_until_sunday)
+            
+            label = f"{MONTHS_RU[first_day.month]} {first_day.year}"
         elif period == 'year':
             start_date = date(today.year, 1, 1)
             end_date = date(today.year, 12, 31)
