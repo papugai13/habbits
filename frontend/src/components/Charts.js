@@ -85,7 +85,7 @@ const CustomBarShape = (props) => {
 
 
 
-const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
+const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCategory }) => {
     const [data, setData] = useState([]);
     const [periodLabel, setPeriodLabel] = useState('');
     const [loading, setLoading] = useState(true);
@@ -101,7 +101,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
         const fetchComparisonData = async () => {
             setLoading(true);
             try {
-                const response = await fetch(`/api/v1/habits/habit_comparison/?period=${period}&date=${currentWeekDate}`, {
+                const response = await fetch(`/api/v1/habits/habit_comparison/?period=${period}&date=${currentWeekDate}&category=${selectedCategory || 'Все'}`, {
                     credentials: 'include'
                 });
                 if (response.ok) {
@@ -155,7 +155,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
             }
         };
         fetchComparisonData();
-    }, [period, currentWeekDate]);
+    }, [period, currentWeekDate, selectedCategory]);
 
     const scrollRef = useRef(null);
     const indicatorRef = useRef(null);
@@ -344,7 +344,7 @@ const Charts = ({
 
     useEffect(() => {
         fetchStatistics();
-    }, [period, chartDate]);
+    }, [period, chartDate, selectedCategory]);
 
     const handlePrevPeriod = () => {
         const date = new Date(chartDate);
@@ -373,7 +373,7 @@ const Charts = ({
     const fetchStatistics = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/v1/habits/daily_statistics/?period=${period}&date=${chartDate}`, {
+            const response = await fetch(`/api/v1/habits/daily_statistics/?period=${period}&date=${chartDate}&category=${selectedCategory || 'Все'}`, {
                 credentials: 'include'
             });
 
@@ -588,6 +588,7 @@ const Charts = ({
                 period={period}
                 viewType={viewType}
                 currentWeekDate={chartDate}
+                selectedCategory={selectedCategory}
             />
 
             <div className="reports-section">

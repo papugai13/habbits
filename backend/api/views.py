@@ -448,10 +448,16 @@ class HabitViewSet(viewsets.ModelViewSet):
 
         # Получаем все привычки пользователя или одну конкретную
         habit_id = request.query_params.get('habit_id')
+        category_name = request.query_params.get('category')
+        
+        habits = Habit.objects.filter(user=user_profile)
         if habit_id:
-            habits = Habit.objects.filter(user=user_profile, id=habit_id)
-        else:
-            habits = Habit.objects.filter(user=user_profile)
+            habits = habits.filter(id=habit_id)
+        if category_name and category_name != 'Все':
+            if category_name == 'Без категории':
+                habits = habits.filter(category__isnull=True)
+            else:
+                habits = habits.filter(category__name=category_name)
         
         # Собираем статистику по дням или агрегированным периодам
         statistics = []
@@ -644,7 +650,14 @@ class HabitViewSet(viewsets.ModelViewSet):
             end_date = today
             label = "Произвольный период"
 
+        category_name = request.query_params.get('category')
         habits = Habit.objects.filter(user=user_profile, is_archived=False)
+        if category_name and category_name != 'Все':
+            if category_name == 'Без категории':
+                habits = habits.filter(category__isnull=True)
+            else:
+                habits = habits.filter(category__name=category_name)
+                
         statistics = []
 
         for habit in habits:

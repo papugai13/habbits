@@ -2289,4 +2289,5 @@ body {
 /* Charts Category Filter */
 .charts-category-filter {
   margin-bottom: 20px;
+  border-bottom: none !important;
 }
