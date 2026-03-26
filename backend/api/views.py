@@ -444,11 +444,20 @@ class HabitViewSet(viewsets.ModelViewSet):
                 end_date = today
 
         # Получаем все привычки пользователя или одну конкретную
+        category_name = request.query_params.get('category')
         habit_id = request.query_params.get('habit_id')
+        
         if habit_id:
             habits = Habit.objects.filter(user=user_profile, id=habit_id)
+        elif category_name:
+            if category_name == 'Без категории':
+                habits = Habit.objects.filter(user=user_profile, category__isnull=True, is_archived=False)
+            elif category_name != 'Все':
+                habits = Habit.objects.filter(user=user_profile, category__name=category_name, is_archived=False)
+            else:
+                habits = Habit.objects.filter(user=user_profile, is_archived=False)
         else:
-            habits = Habit.objects.filter(user=user_profile)
+            habits = Habit.objects.filter(user=user_profile, is_archived=False)
         
         # Собираем статистику по дням или агрегированным периодам
         statistics = []
@@ -640,8 +649,19 @@ class HabitViewSet(viewsets.ModelViewSet):
             start_date = today - timedelta(days=6)
             end_date = today
             label = "Произвольный период"
-
-        habits = Habit.objects.filter(user=user_profile, is_archived=False)
+        
+        # Filter habits by category if specified
+        category_name = request.query_params.get('category')
+        if category_name:
+            if category_name == 'Без категории':
+                habits = Habit.objects.filter(user=user_profile, category__isnull=True, is_archived=False)
+            elif category_name != 'Все':
+                habits = Habit.objects.filter(user=user_profile, category__name=category_name, is_archived=False)
+            else:
+                habits = Habit.objects.filter(user=user_profile, is_archived=False)
+        else:
+            habits = Habit.objects.filter(user=user_profile, is_archived=False)
+            
         statistics = []
 
         for habit in habits:

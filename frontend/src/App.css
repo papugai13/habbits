@@ -2287,6 +2287,10 @@ body {
 }
 
 /* Charts Category Filter */
-.charts-category-filter {
-  margin-bottom: 20px;
+.categories-section.unified.charts-category-filter {
+  margin-bottom: 10px;
+  border-bottom: none;
+  background-color: transparent;
+  padding-left: 0;
+  padding-right: 0;
 }
