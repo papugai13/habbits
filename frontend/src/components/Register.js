@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Auth.css';
 
-const Register = ({ onRegister, onSwitchToLogin }) => {
+const Register = ({ onRegister, onSwitchToLogin, t }) => {
     const [formData, setFormData] = useState({
         username: '',
         email: '',
@@ -31,15 +31,15 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
         const newErrors = {};
 
         if (formData.password !== formData.password2) {
-            newErrors.password2 = 'Пароли не совпадают';
+            newErrors.password2 = t('passwordsDoNotMatch');
         }
 
         if (formData.password.length < 8) {
-            newErrors.password = 'Пароль должен содержать минимум 8 символов';
+            newErrors.password = t('passwordTooShort');
         }
 
         if (!formData.email.includes('@')) {
-            newErrors.email = 'Введите корректный email';
+            newErrors.email = t('invalidEmail');
         }
 
         return newErrors;
@@ -77,11 +77,11 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
                 if (typeof data === 'object') {
                     setErrors(data);
                 } else {
-                    setErrors({ general: 'Ошибка регистрации' });
+                    setErrors({ general: t('registerError') });
                 }
             }
         } catch (err) {
-            setErrors({ general: 'Ошибка соединения с сервером' });
+            setErrors({ general: t('connectionError') });
             console.error('Register error:', err);
         } finally {
             setLoading(false);
@@ -91,14 +91,14 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
     return (
         <div className="auth-container">
             <div className="auth-card">
-                <h1 className="auth-title">Регистрация</h1>
-                <p className="auth-subtitle">Создайте новый аккаунт</p>
+                <h1 className="auth-title">{t('registerTitle')}</h1>
+                <p className="auth-subtitle">{t('registerSubtitle')}</p>
 
                 {errors.general && <div className="auth-error">{errors.general}</div>}
 
                 <form onSubmit={handleSubmit} className="auth-form">
                     <div className="form-group">
-                        <label htmlFor="username">Имя пользователя *</label>
+                        <label htmlFor="username">{t('username')} *</label>
                         <input
                             type="text"
                             id="username"
@@ -113,7 +113,7 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="email">Email *</label>
+                        <label htmlFor="email">{t('email')} *</label>
                         <input
                             type="email"
                             id="email"
@@ -128,7 +128,7 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
 
                     <div className="form-row">
                         <div className="form-group">
-                            <label htmlFor="first_name">Имя</label>
+                            <label htmlFor="first_name">{t('firstName')}</label>
                             <input
                                 type="text"
                                 id="first_name"
@@ -140,7 +140,7 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="last_name">Фамилия</label>
+                            <label htmlFor="last_name">{t('lastName')}</label>
                             <input
                                 type="text"
                                 id="last_name"
@@ -153,7 +153,7 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="password">Пароль *</label>
+                        <label htmlFor="password">{t('password')} *</label>
                         <input
                             type="password"
                             id="password"
@@ -167,7 +167,7 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="password2">Подтверждение пароля *</label>
+                        <label htmlFor="password2">{t('confirmPassword')} *</label>
                         <input
                             type="password"
                             id="password2"
@@ -185,18 +185,18 @@ const Register = ({ onRegister, onSwitchToLogin }) => {
                         className="auth-button"
                         disabled={loading}
                     >
-                        {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+                        {loading ? t('registering') : t('registerButton')}
                     </button>
                 </form>
 
                 <div className="auth-switch">
-                    Уже есть аккаунт?{' '}
+                    {t('alreadyHaveAccount')}{' '}
                     <button
                         onClick={onSwitchToLogin}
                         className="auth-link"
                         disabled={loading}
                     >
-                        Войти
+                        {t('loginButton')}
                     </button>
                 </div>
             </div>

@@ -3,14 +3,14 @@ import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 const ITEM_HEIGHT = 44;
 
 /**
- * DrumPicker — компонент выбора числа прокруткой как в будильнике iPhone.
+ * DrumPicker — a scrollable number picker component (iOS style).
  * Props:
- *   value   — текущее выбранное число (число)
- *   min     — минимум (по умолчанию 1)
- *   max     — максимум (по умолчанию 999)
+ *   value   — current selected value (number)
+ *   min     — minimum value (default 1)
+ *   max     — maximum value (default 999)
  *   onChange — callback(newValue: number)
  */
-const DrumPicker = ({ value, min = 1, max = 999, allowNoQuantity = false, noQuantityLabel = "Без количества", onChange }) => {
+const DrumPicker = ({ value, min = 1, max = 999, allowNoQuantity = false, noQuantityLabel = "-", onChange }) => {
     const listRef = useRef(null);
     const isDragging = useRef(false);
     const isSnapping = useRef(false);
