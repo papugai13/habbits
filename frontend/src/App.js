@@ -43,6 +43,8 @@ const App = () => {
   const [categories, setCategories] = useState([{ id: 'all', name: 'Все' }]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [editingCategoryValue, setEditingCategoryValue] = useState('');
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   // Quantity modal state
@@ -455,7 +457,11 @@ const App = () => {
         setNewCategoryName('');
         setShowAddCategory(false);
         await fetchCategories();
-        setNewHabitCategory(newCat.id.toString());
+        if (showEditModal && editingHabit) {
+          setEditingHabit({ ...editingHabit, category: newCat.id.toString() });
+        } else {
+          setNewHabitCategory(newCat.id.toString());
+        }
       } else {
         const err = await response.json();
         const errorMessage = err.name ? err.name[0] : (err.detail || 'Ошибка при создании категории');
@@ -463,6 +469,56 @@ const App = () => {
       }
     } catch (error) {
       console.error('Error creating category:', error);
+    }
+  };
+
+  const handleUpdateCategory = async (id, newName) => {
+    if (!newName.trim()) return;
+    try {
+      const response = await fetch(`/api/v1/categories/${id}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include',
+        body: JSON.stringify({ name: newName.trim() })
+      });
+
+      if (response.ok) {
+        setEditingCategoryId(null);
+        await fetchCategories();
+        await fetchHabits(); // Refresh habits to pick up name changes if cached
+      } else {
+        const err = await response.json();
+        alert(err.name ? err.name[0] : 'Ошибка при обновлении категории');
+      }
+    } catch (error) {
+      console.error('Error updating category:', error);
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm('Вы уверены, что хотите удалить эту категорию? Привычки в этой категории останутся без категории.')) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/v1/categories/${id}/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        await fetchCategories();
+        await fetchHabits(); // Habits category will be updated to null
+      } else {
+        alert('Ошибка при удалении категории');
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error);
     }
   };
 
@@ -1243,7 +1299,12 @@ const App = () => {
         <button
           className="add-btn"
           title="Создать привычку"
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            setCreateError('');
+            setShowAddCategory(false);
+            setNewCategoryName('');
+            setShowCreateModal(true);
+          }}
         >
           +
         </button>
@@ -1620,6 +1681,76 @@ const App = () => {
             </div>
           </div>
 
+          <div className="settings-section categories-settings">
+            <h3 className="section-title">Управление категориями</h3>
+            <div className="manage-categories-list">
+              {categories.filter(c => c.id !== 'all').length === 0 ? (
+                <p className="no-habits-msg">У вас пока нет категорий.</p>
+              ) : (
+                categories.filter(c => c.id !== 'all').map(cat => (
+                  <div key={cat.id} className="manage-category-item">
+                    {editingCategoryId === cat.id ? (
+                      <div className="category-edit-row">
+                        <input
+                          type="text"
+                          className="category-edit-input"
+                          value={editingCategoryValue}
+                          onChange={(e) => setEditingCategoryValue(e.target.value)}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleUpdateCategory(cat.id, editingCategoryValue);
+                            if (e.key === 'Escape') setEditingCategoryId(null);
+                          }}
+                        />
+                        <div className="category-edit-actions">
+                          <button 
+                            className="manage-btn save-btn" 
+                            onClick={() => handleUpdateCategory(cat.id, editingCategoryValue)}
+                            title="Сохранить"
+                          >
+                            💾
+                          </button>
+                          <button 
+                            className="manage-btn cancel-btn" 
+                            onClick={() => setEditingCategoryId(null)}
+                            title="Отмена"
+                          >
+                            ❌
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="manage-category-info">
+                          <div className="manage-category-name">{cat.name}</div>
+                        </div>
+                        <div className="manage-category-actions">
+                          <button
+                            className="manage-btn edit-btn"
+                            onClick={() => {
+                              setEditingCategoryId(cat.id);
+                              setEditingCategoryValue(cat.name);
+                            }}
+                            title="Переименовать"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            className="manage-btn delete-btn"
+                            onClick={() => handleDeleteCategory(cat.id)}
+                            title="Удалить"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
           <div className="settings-section">
             <h3 className="section-title">Управление привычками</h3>
             <div className="manage-habits-list">
@@ -1650,6 +1781,9 @@ const App = () => {
                         className="manage-btn edit-btn"
                         onClick={() => {
                           setEditingHabit({ ...habit });
+                          setCreateError('');
+                          setShowAddCategory(false);
+                          setNewCategoryName('');
                           setShowEditModal(true);
                         }}
                         title="Изменить"
@@ -1744,7 +1878,12 @@ const App = () => {
               <h2>Создать привычку</h2>
               <button
                 className="modal-close"
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setCreateError('');
+                  setShowAddCategory(false);
+                  setNewCategoryName('');
+                  setShowCreateModal(false);
+                }}
               >
                 ×
               </button>
@@ -1866,19 +2005,60 @@ const App = () => {
                 />
               </div>
 
-              <div className="form-group">
+               <div className="form-group">
                 <label htmlFor="edit-habit-category">Категория</label>
-                <select
-                  id="edit-habit-category"
-                  className="form-select"
-                  value={editingHabit.category || ''}
-                  onChange={(e) => setEditingHabit({ ...editingHabit, category: e.target.value })}
-                >
-                  {categories.filter(c => c.id !== 'all').map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
+                <div className="category-input-wrapper">
+                  <select
+                    id="edit-habit-category"
+                    className="form-select"
+                    value={editingHabit.category || ''}
+                    onChange={(e) => setEditingHabit({ ...editingHabit, category: e.target.value })}
+                  >
+                    {categories.filter(c => c.id !== 'all').map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="add-category-inline-btn"
+                    onClick={() => setShowAddCategory(!showAddCategory)}
+                  >
+                    {showAddCategory ? '−' : '+'}
+                  </button>
+                </div>
               </div>
+
+              {showAddCategory && (
+                <div className="form-group add-category-field">
+                  <div className="inline-add-row">
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Новая категория"
+                      value={newCategoryName}
+                      onChange={(e) => {
+                        setNewCategoryName(e.target.value);
+                        if (createError) setCreateError('');
+                      }}
+                      minLength="2"
+                      maxLength="20"
+                    />
+                    <button
+                      type="button"
+                      className="btn-primary btn-small"
+                      onClick={handleCreateCategory}
+                    >
+                      Добавить
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {createError && (
+                <div className="error-message">
+                  {createError}
+                </div>
+              )}
 
               <div className="form-actions">
                 <button

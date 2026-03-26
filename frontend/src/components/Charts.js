@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Rectangle } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList, Rectangle } from 'recharts';
 import './Charts.css';
 
 const formatDate = (dateStr, periodType) => {
@@ -83,35 +83,7 @@ const CustomBarShape = (props) => {
     return <Rectangle {...props} radius={finalRadius} />;
 };
 
-const CustomTooltip = ({ active, payload, viewType }) => {
-    if (active && payload && payload.length) {
-        const data = payload[0].payload;
-        return (
-            <div className="custom-tooltip">
-                <p className="tooltip-date">{data.fullDate}</p>
-                {viewType === 'habits' ? (
-                    <div className="tooltip-details">
-                        <p className="tooltip-row">
-                            <span className="dot" style={{ backgroundColor: '#1F663B' }}></span>
-                            Выполнено: <strong>{data.countCapped}</strong>
-                        </p>
-                        <p className="tooltip-row">
-                            <span className="dot" style={{ backgroundColor: '#A8D8B5' }}></span>
-                            Восполнено: <strong>{data.countRestored}</strong>
-                        </p>
-                        <p className="tooltip-row">
-                            <span className="dot" style={{ backgroundColor: '#D0D0D0' }}></span>
-                            Пропущено: <strong>{data.countRemaining}</strong>
-                        </p>
-                    </div>
-                ) : (
-                    <p className="tooltip-overflow">Количество: {data.countExtra}</p>
-                )}
-            </div>
-        );
-    }
-    return null;
-};
+
 
 const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
     const [data, setData] = useState([]);
@@ -283,10 +255,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
                                     textAnchor="middle"
                                 />
                                 <YAxis hide domain={[0, effectiveMax]} tickCount={8} />
-                                <Tooltip
-                                    content={<CustomTooltip viewType={viewType} />}
-                                    cursor={{ fill: 'rgba(0, 0, 0, 0.02)' }}
-                                />
+
                                 {viewType === 'habits' ? (
                                     <>
                                         <Bar dataKey="countCapped" stackId="a" fill="#1F663B" radius={[4, 4, 0, 0]} name="Выполнено" isAnimationActive={false} shape={<CustomBarShape />}>
@@ -508,7 +477,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                 tick={{ fill: '#666', fontSize: 12 }}
                                 allowDecimals={false}
                             />
-                            <Tooltip content={<CustomTooltip viewType={viewType} />} cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }} />
+
                             {viewType === 'habits' ? (
                                 <>
                                     <Bar
