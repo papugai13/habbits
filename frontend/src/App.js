@@ -45,6 +45,7 @@ const App = () => {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
+  const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('Все');
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   // Quantity modal state
@@ -782,7 +783,13 @@ const App = () => {
       return countB - countA;
     });
 
-    return [{ id: 'all', name: 'Все' }, ...sorted];
+    const hasUncategorized = habitsData.some(h => !h.category_name);
+    const result = [{ id: 'all', name: 'Все' }];
+    if (hasUncategorized) {
+      result.push({ id: 'none', name: 'Без категории' });
+    }
+
+    return [...result, ...sorted];
   }, [categories, habitsData]);
 
   const MAX_VISIBLE_CATEGORIES = 4;
@@ -843,7 +850,7 @@ const App = () => {
         credentials: 'include',
         body: JSON.stringify({
           name: newHabitName.trim(),
-          category: newHabitCategory
+          category: newHabitCategory === "" ? null : newHabitCategory
         })
       });
 
@@ -1114,7 +1121,7 @@ const App = () => {
         credentials: 'include',
         body: JSON.stringify({
           name: editingHabit.name,
-          category: editingHabit.category
+          category: editingHabit.category === "" ? null : editingHabit.category
         })
       });
 
@@ -1753,12 +1760,37 @@ const App = () => {
 
           <div className="settings-section">
             <h3 className="section-title">Управление привычками</h3>
+            
+            <div className="settings-category-filter">
+              {sortedCategories.map(cat => (
+                <button
+                  key={cat.id}
+                  className={`settings-cat-btn ${settingsSelectedCategory === cat.name ? 'active' : ''}`}
+                  onClick={() => setSettingsSelectedCategory(cat.name)}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+
             <div className="manage-habits-list">
-              {habitsData.length === 0 ? (
-                <p className="no-habits-msg">У вас пока нет привычек.</p>
+              {habitsData
+                .filter(h => !h.is_archived && (
+                  settingsSelectedCategory === 'Все' || 
+                  (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
+                  (h.category_name === settingsSelectedCategory)
+                ))
+                .length === 0 ? (
+                <p className="no-habits-msg">Нет привычек в этой категории.</p>
               ) : (
-                habitsData.map(habit => (
-                  <div
+                habitsData
+                  .filter(h => !h.is_archived && (
+                    settingsSelectedCategory === 'Все' || 
+                    (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
+                    (h.category_name === settingsSelectedCategory)
+                  ))
+                  .map(habit => (
+                    <div
                     key={habit.id}
                     className={`manage-habit-item ${draggedHabitId === habit.id ? 'dragging' : ''} ${dragOverHabitId === habit.id && draggedHabitId !== habit.id ? 'drag-over' : ''}`}
                     draggable
@@ -1912,6 +1944,7 @@ const App = () => {
                     value={newHabitCategory}
                     onChange={(e) => setNewHabitCategory(e.target.value)}
                   >
+                    <option value="">Без категории</option>
                     {categories.filter(c => c.id !== 'all').map(cat => {
                       return <option key={cat.id} value={cat.id}>{cat.name}</option>;
                     })}
@@ -2014,6 +2047,7 @@ const App = () => {
                     value={editingHabit.category || ''}
                     onChange={(e) => setEditingHabit({ ...editingHabit, category: e.target.value })}
                   >
+                    <option value="">Без категории</option>
                     {categories.filter(c => c.id !== 'all').map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
