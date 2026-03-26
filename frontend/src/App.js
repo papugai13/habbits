@@ -46,6 +46,7 @@ const App = () => {
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
   const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('Все');
+  const [chartsSelectedCategory, setChartsSelectedCategory] = useState('Все');
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   // Quantity modal state
@@ -600,8 +601,8 @@ const App = () => {
     }
   };
 
-  const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto) => {
-    setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto });
+  const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow) => {
+    setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow });
     // If quantity is explicitly null/undefined, set to null, otherwise use currentQuantity
     setQuantityValue(currentQuantity !== null && currentQuantity !== undefined ? currentQuantity : 1);
     setCommentValue(currentComment || '');
@@ -610,9 +611,9 @@ const App = () => {
     setShowQuantityModal(true);
   };
 
-  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto) => {
+  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow) => {
     const timer = setTimeout(() => {
-      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto);
+      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow);
     }, 200); // 200ms for long press
     setLongPressTimer(timer);
   };
@@ -792,9 +793,7 @@ const App = () => {
     return [...result, ...sorted];
   }, [categories, habitsData]);
 
-  const MAX_VISIBLE_CATEGORIES = 4;
-  const visibleCategories = sortedCategories.slice(0, MAX_VISIBLE_CATEGORIES);
-  const hiddenCategories = sortedCategories.slice(MAX_VISIBLE_CATEGORIES);
+
 
   // Authentication handlers
   const handleLogin = (userData) => {
@@ -1320,69 +1319,16 @@ const App = () => {
 
       {/* Фильтры категорий - только для вкладки Журналы */}
       {activeTab === 'Журналы' && (
-        <div className="categories-section">
-          {/* Desktop / Standard View */}
-          <div className="categories-buttons desktop-only">
-            {visibleCategories.map(category => (
-              <button
-                key={category.id}
-                className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
-                onClick={() => setSelectedCategory(category.name)}
-              >
-                {category.name}
-              </button>
-            ))}
-            {hiddenCategories.length > 0 && (
-              <div className="more-categories-wrapper">
-                <button
-                  className={`category-btn more-btn ${hiddenCategories.some(c => c.name === selectedCategory) ? 'active' : ''}`}
-                  onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-                >
-                  Ещё {isMoreMenuOpen ? '▲' : '▼'}
-                </button>
-                {isMoreMenuOpen && (
-                  <div className="category-dropdown more-dropdown">
-                    {hiddenCategories.map(category => (
-                      <div
-                        key={category.id}
-                        className={`dropdown-item ${selectedCategory === category.name ? 'active' : ''}`}
-                        onClick={() => {
-                          setSelectedCategory(category.name);
-                          setIsMoreMenuOpen(false);
-                        }}
-                      >
-                        {category.name}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Mobile / Hamburger View */}
-          <div className="categories-mobile mobile-only">
-            <button className="category-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-              {selectedCategory} <span className="arrow">▼</span>
+        <div className="categories-section unified">
+          {sortedCategories.map(category => (
+            <button
+              key={category.id}
+              className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
+              onClick={() => setSelectedCategory(category.name)}
+            >
+              {category.name}
             </button>
-            {isMenuOpen && (
-              <div className="category-dropdown">
-                {sortedCategories.map(category => (
-                  <div
-                    key={category.id}
-                    className={`dropdown-item ${selectedCategory === category.name ? 'active' : ''}`}
-                    onClick={() => {
-                      setSelectedCategory(category.name);
-                      setIsMenuOpen(false);
-                    }}
-                  >
-                    {category.name}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
+          ))}
         </div>
       )}
 
@@ -1499,7 +1445,8 @@ const App = () => {
                           onClick={() => {
                             const d = habit.latest_comment_details;
                             if (d) {
-                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo);
+                              const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_overflow, habit.weekly_overflow);
                             }
                           }}
                           style={{ cursor: 'pointer' }}
@@ -1571,10 +1518,16 @@ const App = () => {
                               toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
                             }
                           }}
-                          onMouseDown={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
+                          onMouseDown={() => {
+                            const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_overflow, habit.weekly_overflow);
+                          }}
                           onMouseUp={handleLongPressEnd}
                           onMouseLeave={handleLongPressEnd}
-                          onTouchStart={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
+                          onTouchStart={() => {
+                            const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_overflow, habit.weekly_overflow);
+                          }}
                           onTouchEnd={handleLongPressEnd}
                           disabled={isDisabled}
                         >
@@ -1642,11 +1595,18 @@ const App = () => {
       {activeTab === 'Графики' && (
         <Charts
           getCookie={getCookie}
-          habitsData={habitsData}
+          habitsData={habitsData.filter(h => 
+            chartsSelectedCategory === 'Все' || 
+            (chartsSelectedCategory === 'Без категории' && !h.category_name) ||
+            (h.category_name === chartsSelectedCategory)
+          )}
           handleGenerateReport={handleGenerateReport}
           handleGenerateSummaryReport={handleGenerateSummaryReport}
           isReportLoading={isReportLoading}
           currentWeekDate={currentWeekDate}
+          sortedCategories={sortedCategories}
+          selectedCategory={chartsSelectedCategory}
+          onSelectCategory={setChartsSelectedCategory}
         />
       )}
 
@@ -2226,14 +2186,40 @@ const App = () => {
                 </p>
                 <div className="form-group">
                   <label>Количество</label>
-                  <DrumPicker
-                    value={quantityValue}
-                    min={1}
-                    max={999}
-                    allowNoQuantity={true}
-                    noQuantityLabel="≤1"
-                    onChange={(val) => setQuantityValue(val)}
-                  />
+                  <div className="quantity-selector-container">
+                    <div className="preset-column presets-left">
+                      <div className="preset-btn theme-green">
+                        <div className="preset-badge">{quantityModalData.weeklyTotal || 0}</div>
+                        <div className="preset-label">Неделя</div>
+                      </div>
+                      <div className="preset-btn theme-green">
+                        <div className="preset-badge">
+                          {quantityModalData.dayDate ? new Date(quantityModalData.dayDate).getMonth() + 1 : (new Date().getMonth() + 1)}
+                        </div>
+                        <div className="preset-label">Месяц</div>
+                      </div>
+                    </div>
+
+                    <DrumPicker
+                      value={quantityValue}
+                      min={1}
+                      max={999}
+                      allowNoQuantity={true}
+                      noQuantityLabel="≤1"
+                      onChange={(val) => setQuantityValue(val)}
+                    />
+
+                    <div className="preset-column presets-right">
+                      <div className="preset-btn theme-purple">
+                        <div className="preset-badge">+{quantityModalData.weeklyOverflow || 0}</div>
+                        <div className="preset-label">Неделя</div>
+                      </div>
+                      <div className="preset-btn theme-purple">
+                        <div className="preset-badge">{quantityModalData.monthlyTotal || 0}</div>
+                        <div className="preset-label">Месяц</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="form-group-row">
