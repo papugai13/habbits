@@ -170,60 +170,7 @@
     border-radius: 2px;
 }
 
-.custom-tooltip {
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
 
-.tooltip-date {
-    font-size: 12px;
-    color: #666;
-    margin: 0 0 8px 0;
-    font-weight: 600;
-}
-
-.tooltip-details {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.tooltip-row {
-    font-size: 13px;
-    color: #444;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.tooltip-row strong {
-    margin-left: auto;
-}
-
-.dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-.tooltip-count {
-    font-size: 14px;
-    font-weight: 600;
-    color: #1F663B;
-    margin: 0 0 4px 0;
-}
-
-.tooltip-overflow {
-    font-size: 13px;
-    font-weight: 600;
-    color: #8B5CF6;
-    margin: 0;
-}
 
 .no-data-message {
     position: absolute;
