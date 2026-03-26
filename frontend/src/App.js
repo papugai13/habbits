@@ -5,6 +5,8 @@ import Register from './components/Register';
 import Charts from './components/Charts';
 import DrumPicker from './components/DrumPicker';
 
+import { translations } from './translations';
+
 const App = () => {
   // Helper to get CSRF token
   function getCookie(name) {
@@ -22,8 +24,17 @@ const App = () => {
     return cookieValue;
   }
 
-  const [selectedCategory, setSelectedCategory] = useState('Все');
-  const [activeTab, setActiveTab] = useState('Журналы');
+  const [language, setLanguage] = useState(localStorage.getItem('language') || 'ru');
+  const t = (key) => translations[language][key] || key;
+
+  const toggleLanguage = () => {
+    const newLang = language === 'ru' ? 'en' : 'ru';
+    setLanguage(newLang);
+    localStorage.setItem('language', newLang);
+  };
+
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [activeTab, setActiveTab] = useState('journals'); // Using translation keys as tab names internally now
   const [habitsData, setHabitsData] = useState([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -45,7 +56,7 @@ const App = () => {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
-  const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('Все');
+  const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('all');
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   // Quantity modal state
@@ -90,12 +101,12 @@ const App = () => {
   const [draggedHabitId, setDraggedHabitId] = useState(null);
   const [dragOverHabitId, setDragOverHabitId] = useState(null);
 
-  const WEEK_DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const WEEK_DAYS = language === 'ru' ? ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   const bottomTabs = [
-    { name: 'Журналы', icon: '✔️', disabled: false },
-    { name: 'Графики', icon: '📊', disabled: false },
-    { name: 'Настройки', icon: '⚙️', disabled: false },
+    { name: 'journals', icon: '✔️', disabled: false },
+    { name: 'charts', icon: '📊', disabled: false },
+    { name: 'settings', icon: '⚙️', disabled: false },
   ];
 
   // Fetch categories from API
@@ -331,7 +342,8 @@ const App = () => {
     const lastDay = new Date(firstDay);
     lastDay.setDate(firstDay.getDate() + 6);
 
-    return `${firstDay.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} - ${lastDay.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}`;
+    const locale = language === 'ru' ? 'ru-RU' : 'en-US';
+    return `${firstDay.toLocaleDateString(locale, { day: 'numeric', month: 'short' })} - ${lastDay.toLocaleDateString(locale, { day: 'numeric', month: 'short' })}`;
   };
 
   // Close profile menu when clicking outside
@@ -434,11 +446,11 @@ const App = () => {
     if (!name) return;
 
     if (name.length < 2) {
-      setCreateError('Название категории должно содержать минимум 2 символа');
+      setCreateError(t('categoryNameMinLength'));
       return;
     }
     if (name.length > 20) {
-      setCreateError('Название категории не должно превышать 20 символов');
+      setCreateError(t('categoryNameMaxLength'));
       return;
     }
 
@@ -465,7 +477,7 @@ const App = () => {
         }
       } else {
         const err = await response.json();
-        const errorMessage = err.name ? err.name[0] : (err.detail || 'Ошибка при создании категории');
+        const errorMessage = err.name ? err.name[0] : (err.detail || t('errorCreatingCategory'));
         setCreateError(errorMessage);
       }
     } catch (error) {
@@ -492,7 +504,7 @@ const App = () => {
         await fetchHabits(); // Refresh habits to pick up name changes if cached
       } else {
         const err = await response.json();
-        alert(err.name ? err.name[0] : 'Ошибка при обновлении категории');
+        alert(err.name ? err.name[0] : t('errorUpdatingCategory'));
       }
     } catch (error) {
       console.error('Error updating category:', error);
@@ -500,7 +512,7 @@ const App = () => {
   };
 
   const handleDeleteCategory = async (id) => {
-    if (!window.confirm('Вы уверены, что хотите удалить эту категорию? Привычки в этой категории останутся без категории.')) {
+    if (!window.confirm(t('confirmDeleteCategory'))) {
       return;
     }
     try {
@@ -516,7 +528,7 @@ const App = () => {
         await fetchCategories();
         await fetchHabits(); // Habits category will be updated to null
       } else {
-        alert('Ошибка при удалении категории');
+        alert(t('errorDeletingCategory'));
       }
     } catch (error) {
       console.error('Error deleting category:', error);
@@ -717,7 +729,7 @@ const App = () => {
       await fetchHabits();
     } catch (error) {
       console.error('Error saving data:', error);
-      alert(`Ошибка при сохранении данных: ${error.message}`);
+      alert(`${t('errorSavingData')}: ${error.message}`);
     } finally {
       setShowQuantityModal(false);
       setQuantityModalData(null);
@@ -1184,7 +1196,7 @@ const App = () => {
       <div className="app">
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p>Загрузка...</p>
+          <p>{t('loading')}</p>
         </div>
       </div>
     );
@@ -1297,15 +1309,15 @@ const App = () => {
 
         <div className="date-section">
           <div className="week-navigation">
-            <button className="week-nav-btn" onClick={handlePrevWeek}>&lt;</button>
+            <button className="week-nav-btn" onClick={handlePrevWeek} title={t('prevWeek')}>&lt;</button>
             <div className="week-range-text">{currentWeekRange()}</div>
-            <button className="week-nav-btn" onClick={handleNextWeek}>&gt;</button>
+            <button className="week-nav-btn" onClick={handleNextWeek} title={t('nextWeek')}>&gt;</button>
           </div>
         </div>
 
         <button
           className="add-btn"
-          title="Создать привычку"
+          title={t('createHabit')}
           onClick={() => {
             setCreateError('');
             setShowAddCategory(false);
@@ -1319,39 +1331,39 @@ const App = () => {
 
 
       {/* Фильтры категорий - только для вкладки Журналы */}
-      {activeTab === 'Журналы' && (
+      {activeTab === 'journals' && (
         <div className="categories-section">
           {/* Desktop / Standard View */}
           <div className="categories-buttons desktop-only">
             {visibleCategories.map(category => (
               <button
                 key={category.id}
-                className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
-                onClick={() => setSelectedCategory(category.name)}
+                className={`category-btn ${selectedCategory === category.id ? 'active' : ''}`}
+                onClick={() => setSelectedCategory(category.id)}
               >
-                {category.name}
+                {category.id === 'all' ? t('all') : (category.id === 'none' ? t('noCategory') : category.name)}
               </button>
             ))}
             {hiddenCategories.length > 0 && (
               <div className="more-categories-wrapper">
                 <button
-                  className={`category-btn more-btn ${hiddenCategories.some(c => c.name === selectedCategory) ? 'active' : ''}`}
+                  className={`category-btn more-btn ${hiddenCategories.some(c => c.id === selectedCategory) ? 'active' : ''}`}
                   onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
                 >
-                  Ещё {isMoreMenuOpen ? '▲' : '▼'}
+                  {t('more')} {isMoreMenuOpen ? '▲' : '▼'}
                 </button>
                 {isMoreMenuOpen && (
                   <div className="category-dropdown more-dropdown">
                     {hiddenCategories.map(category => (
                       <div
                         key={category.id}
-                        className={`dropdown-item ${selectedCategory === category.name ? 'active' : ''}`}
+                        className={`dropdown-item ${selectedCategory === category.id ? 'active' : ''}`}
                         onClick={() => {
-                          setSelectedCategory(category.name);
+                          setSelectedCategory(category.id);
                           setIsMoreMenuOpen(false);
                         }}
                       >
-                        {category.name}
+                        {category.id === 'all' ? t('all') : (category.id === 'none' ? t('noCategory') : category.name)}
                       </div>
                     ))}
                   </div>
@@ -1363,20 +1375,20 @@ const App = () => {
           {/* Mobile / Hamburger View */}
           <div className="categories-mobile mobile-only">
             <button className="category-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-              {selectedCategory} <span className="arrow">▼</span>
+              {selectedCategory === 'all' ? t('all') : (selectedCategory === 'none' ? t('noCategory') : (categories.find(c => c.id === selectedCategory)?.name || t('all')))} <span className="arrow">▼</span>
             </button>
             {isMenuOpen && (
               <div className="category-dropdown">
                 {sortedCategories.map(category => (
                   <div
                     key={category.id}
-                    className={`dropdown-item ${selectedCategory === category.name ? 'active' : ''}`}
+                    className={`dropdown-item ${selectedCategory === category.id ? 'active' : ''}`}
                     onClick={() => {
-                      setSelectedCategory(category.name);
+                      setSelectedCategory(category.id);
                       setIsMenuOpen(false);
                     }}
                   >
-                    {category.name}
+                    {category.id === 'all' ? t('all') : (category.id === 'none' ? t('noCategory') : category.name)}
                   </div>
                 ))}
               </div>
@@ -1417,15 +1429,16 @@ const App = () => {
       )}
 
       {/* Список привычек - только для вкладки Журналы */}
-      {activeTab === 'Журналы' && (
+      {activeTab === 'journals' && (
         <div className={`habits-container ${swipeDirection ? 'swipe-' + swipeDirection : ''}`}
           ref={habitsContainerRef}
           onTouchStart={handleSwipeStart}
           onTouchEnd={handleSwipeEnd}
         >
           {habitsData.filter(habit => {
-            if (selectedCategory === 'Все') return true;
-            return habit.category_name === selectedCategory;
+            if (selectedCategory === 'all') return true;
+            if (selectedCategory === 'none') return !habit.category_id;
+            return habit.category_id && habit.category_id.toString() === selectedCategory.toString();
           }).map((habit) => {
             const weeklyCount = getHabitCount(habit);
             const weeklyAward = getWeeklyAward(weeklyCount);
@@ -1646,7 +1659,7 @@ const App = () => {
       )}
 
       {/* Компонент графиков - для вкладки Графики */}
-      {activeTab === 'Графики' && (
+      {activeTab === 'charts' && (
         <Charts
           getCookie={getCookie}
           habitsData={habitsData}
@@ -1654,30 +1667,35 @@ const App = () => {
           handleGenerateSummaryReport={handleGenerateSummaryReport}
           isReportLoading={isReportLoading}
           currentWeekDate={currentWeekDate}
+          t={t}
+          language={language}
         />
       )}
 
       {/* Вкладка Настройка */}
-      {activeTab === 'Настройки' && (
+      {activeTab === 'settings' && (
         <div className="settings-container">
           <div className="settings-header">
-            <h2>⚙️ Настройки</h2>
+            <h2>{t('settings_label')}</h2>
+            <button className="lang-toggle-btn" onClick={toggleLanguage}>
+              RU / EN
+            </button>
           </div>
 
           <div className="settings-section profile-settings">
-            <h3 className="section-title">Профиль</h3>
+            <h3 className="section-title">{t('profile')}</h3>
             <div className="manage-profile-info">
               <div className="profile-info-row">
-                <span className="info-label">Имя:</span>
+                <span className="info-label">{t('name')}</span>
                 <span className="info-value">{user?.username}</span>
               </div>
               <div className="profile-info-row">
-                <span className="info-label">Email:</span>
+                <span className="info-label">{t('email')}</span>
                 <span className="info-value">{user?.email}</span>
               </div>
               <div className="profile-info-row">
-                <span className="info-label">Возраст:</span>
-                <span className="info-value">{user?.age || 'не указан'}</span>
+                <span className="info-label">{t('age')}</span>
+                <span className="info-value">{user?.age || t('notSpecified')}</span>
               </div>
               <button
                 className="btn-secondary btn-small edit-profile-btn"
@@ -1690,16 +1708,16 @@ const App = () => {
                   setShowEditProfileModal(true);
                 }}
               >
-                ✏️ Изменить профиль
+                {t('editProfile')}
               </button>
             </div>
           </div>
 
           <div className="settings-section categories-settings">
-            <h3 className="section-title">Управление категориями</h3>
+            <h3 className="section-title">{t('manageCategories')}</h3>
             <div className="manage-categories-list">
               {categories.filter(c => c.id !== 'all').length === 0 ? (
-                <p className="no-habits-msg">У вас пока нет категорий.</p>
+                <p className="no-habits-msg">{t('noCategoriesYet')}</p>
               ) : (
                 categories.filter(c => c.id !== 'all').map(cat => (
                   <div key={cat.id} className="manage-category-item">
@@ -1752,7 +1770,7 @@ const App = () => {
                           <button
                             className="manage-btn delete-btn"
                             onClick={() => handleDeleteCategory(cat.id)}
-                            title="Удалить"
+                            title={t('delete')}
                           >
                             🗑️
                           </button>
@@ -1766,16 +1784,16 @@ const App = () => {
           </div>
 
           <div className="settings-section">
-            <h3 className="section-title">Управление привычками</h3>
+            <h3 className="section-title">{t('manageHabits')}</h3>
             
             <div className="settings-category-filter">
               {sortedCategories.map(cat => (
                 <button
                   key={cat.id}
-                  className={`settings-cat-btn ${settingsSelectedCategory === cat.name ? 'active' : ''}`}
-                  onClick={() => setSettingsSelectedCategory(cat.name)}
+                  className={`settings-cat-btn ${settingsSelectedCategory === cat.id ? 'active' : ''}`}
+                  onClick={() => setSettingsSelectedCategory(cat.id)}
                 >
-                  {cat.name}
+                  {cat.id === 'all' ? t('all') : (cat.id === 'none' ? t('noCategory') : cat.name)}
                 </button>
               ))}
             </div>
@@ -1783,18 +1801,18 @@ const App = () => {
             <div className="manage-habits-list">
               {habitsData
                 .filter(h => !h.is_archived && (
-                  settingsSelectedCategory === 'Все' || 
-                  (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
-                  (h.category_name === settingsSelectedCategory)
+                  settingsSelectedCategory === 'all' || 
+                  (settingsSelectedCategory === 'none' && !h.category_id) ||
+                  (h.category_id && h.category_id.toString() === settingsSelectedCategory.toString())
                 ))
                 .length === 0 ? (
-                <p className="no-habits-msg">Нет привычек в этой категории.</p>
+                <p className="no-habits-msg">{t('noHabitsInCategory')}</p>
               ) : (
                 habitsData
                   .filter(h => !h.is_archived && (
-                    settingsSelectedCategory === 'Все' || 
-                    (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
-                    (h.category_name === settingsSelectedCategory)
+                    settingsSelectedCategory === 'all' || 
+                    (settingsSelectedCategory === 'none' && !h.category_id) ||
+                    (h.category_id && h.category_id.toString() === settingsSelectedCategory.toString())
                   ))
                   .map(habit => (
                     <div
@@ -1810,7 +1828,7 @@ const App = () => {
                     onTouchEnd={handleTouchEnd}
                     data-habit-id={habit.id}
                   >
-                    <div className="drag-handle" title="Перетащить">⠿</div>
+                    <div className="drag-handle" title={t('dragHandle')}>{t('dragHandle')}</div>
                     <div className="manage-habit-info">
                       <div className="manage-habit-name">{habit.name}</div>
                       <div className="manage-habit-category">{habit.category_name}</div>
@@ -1825,21 +1843,21 @@ const App = () => {
                           setNewCategoryName('');
                           setShowEditModal(true);
                         }}
-                        title="Изменить"
+                        title={t('editHabit')}
                       >
                         ✏️
                       </button>
                       <button
                         className="manage-btn archive-btn"
                         onClick={() => handleArchiveHabit(habit.id)}
-                        title="В архив"
+                        title={t('archive')}
                       >
                         📦
                       </button>
                       <button
                         className="manage-btn delete-btn"
                         onClick={() => handleDeleteHabit(habit.id)}
-                        title="Удалить"
+                        title={t('delete')}
                       >
                         🗑️
                       </button>
@@ -1856,12 +1874,12 @@ const App = () => {
                 onClick={() => setShowArchive(!showArchive)}
               >
                 <span className="archive-toggle-icon">{showArchive ? '▲' : '▼'}</span>
-                📁 Архив ({archivedHabits.length})
+                {t('archiveLabel')} ({archivedHabits.length})
               </button>
               {showArchive && (
                 <div className="archived-habits-list">
                   {archivedHabits.length === 0 ? (
-                    <p className="no-habits-msg">Архив пуст.</p>
+                    <p className="no-habits-msg">{t('archiveEmpty')}</p>
                   ) : (
                     archivedHabits.map(habit => (
                       <div key={habit.id} className="archived-habit-item">
@@ -1873,14 +1891,14 @@ const App = () => {
                           <button
                             className="manage-btn unarchive-btn"
                             onClick={() => handleUnarchiveHabit(habit.id)}
-                            title="Восстановить"
+                            title={t('unarchive')}
                           >
                             📤
                           </button>
                           <button
                             className="manage-btn delete-btn"
                             onClick={() => handleDeleteHabit(habit.id)}
-                            title="Удалить навсегда"
+                            title={t('deleteForever')}
                           >
                             🗑️
                           </button>
@@ -1904,7 +1922,7 @@ const App = () => {
             onClick={() => !tab.disabled && setActiveTab(tab.name)}
           >
             <div className="nav-icon">{tab.icon}</div>
-            <div className="nav-label">{tab.name}</div>
+            <div className="nav-label">{t(tab.name)}</div>
           </button>
         ))}
       </div>
@@ -1914,7 +1932,7 @@ const App = () => {
         <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Создать привычку</h2>
+              <h2>{t('createHabit')}</h2>
               <button
                 className="modal-close"
                 onClick={() => {
@@ -1930,12 +1948,12 @@ const App = () => {
 
             <form onSubmit={handleCreateHabit} className="habit-form">
               <div className="form-group">
-                <label htmlFor="habit-name">Название привычки</label>
+                <label htmlFor="habit-name">{t('habitName')}</label>
                 <input
                   id="habit-name"
                   type="text"
                   className="form-input"
-                  placeholder="Например: Зарядка"
+                  placeholder={t('habitNamePlaceholder')}
                   value={newHabitName}
                   onChange={(e) => setNewHabitName(e.target.value)}
                   autoFocus
@@ -1943,7 +1961,7 @@ const App = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="habit-category">Категория</label>
+                <label htmlFor="habit-category">{t('categoryLabel')}</label>
                 <div className="category-input-wrapper">
                   <select
                     id="habit-category"
@@ -1951,7 +1969,7 @@ const App = () => {
                     value={newHabitCategory}
                     onChange={(e) => setNewHabitCategory(e.target.value)}
                   >
-                    <option value="">Без категории</option>
+                    <option value="">{t('noCategory')}</option>
                     {categories.filter(c => c.id !== 'all').map(cat => {
                       return <option key={cat.id} value={cat.id}>{cat.name}</option>;
                     })}
@@ -1972,7 +1990,7 @@ const App = () => {
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="Новая категория"
+                      placeholder={t('newCategoryPlaceholder')}
                       value={newCategoryName}
                       onChange={(e) => {
                         setNewCategoryName(e.target.value);
@@ -1986,7 +2004,7 @@ const App = () => {
                       className="btn-primary btn-small"
                       onClick={handleCreateCategory}
                     >
-                      Добавить
+                      {t('add')}
                     </button>
                   </div>
                 </div>
@@ -2004,13 +2022,13 @@ const App = () => {
                   className="btn-secondary"
                   onClick={() => setShowCreateModal(false)}
                 >
-                  Отмена
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   className="btn-primary"
                 >
-                  Создать
+                  {t('create')}
                 </button>
               </div>
             </form>
@@ -2023,7 +2041,7 @@ const App = () => {
         <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Изменить привычку</h2>
+              <h2>{t('editHabit')}</h2>
               <button
                 className="modal-close"
                 onClick={() => setShowEditModal(false)}
@@ -2034,7 +2052,7 @@ const App = () => {
 
             <form onSubmit={handleUpdateHabit} className="habit-form">
               <div className="form-group">
-                <label htmlFor="edit-habit-name">Название привычки</label>
+                <label htmlFor="edit-habit-name">{t('habitName')}</label>
                 <input
                   id="edit-habit-name"
                   type="text"
@@ -2046,7 +2064,7 @@ const App = () => {
               </div>
 
                <div className="form-group">
-                <label htmlFor="edit-habit-category">Категория</label>
+                <label htmlFor="edit-habit-category">{t('categoryLabel')}</label>
                 <div className="category-input-wrapper">
                   <select
                     id="edit-habit-category"
@@ -2054,7 +2072,7 @@ const App = () => {
                     value={editingHabit.category || ''}
                     onChange={(e) => setEditingHabit({ ...editingHabit, category: e.target.value })}
                   >
-                    <option value="">Без категории</option>
+                    <option value="">{t('noCategory')}</option>
                     {categories.filter(c => c.id !== 'all').map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
@@ -2075,7 +2093,7 @@ const App = () => {
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="Новая категория"
+                      placeholder={t('newCategoryPlaceholder')}
                       value={newCategoryName}
                       onChange={(e) => {
                         setNewCategoryName(e.target.value);
@@ -2089,7 +2107,7 @@ const App = () => {
                       className="btn-primary btn-small"
                       onClick={handleCreateCategory}
                     >
-                      Добавить
+                      {t('add')}
                     </button>
                   </div>
                 </div>
@@ -2107,13 +2125,13 @@ const App = () => {
                   className="btn-secondary"
                   onClick={() => setShowEditModal(false)}
                 >
-                  Отмена
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   className="btn-primary"
                 >
-                  Сохранить
+                  {t('save')}
                 </button>
               </div>
             </form>
@@ -2126,7 +2144,7 @@ const App = () => {
         <div className="modal-overlay" onClick={() => setShowEditProfileModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Изменить профиль</h2>
+              <h2>{t('editProfileTitle')}</h2>
               <button
                 className="modal-close"
                 onClick={() => setShowEditProfileModal(false)}
@@ -2137,7 +2155,7 @@ const App = () => {
 
             <form onSubmit={handleUpdateProfile} className="habit-form">
               <div className="form-group">
-                <label htmlFor="profile-username">Имя пользователя</label>
+                <label htmlFor="profile-username">{t('usernameLabel')}</label>
                 <input
                   id="profile-username"
                   type="text"
@@ -2149,7 +2167,7 @@ const App = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="profile-email">Email</label>
+                <label htmlFor="profile-email">{t('email')}</label>
                 <input
                   id="profile-email"
                   type="email"
@@ -2161,12 +2179,12 @@ const App = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="profile-age">Возраст</label>
+                <label htmlFor="profile-age">{t('ageLabel')}</label>
                 <input
                   id="profile-age"
                   type="text"
                   className="form-input"
-                  placeholder="Например: 25"
+                  placeholder={t('agePlaceholder')}
                   value={editProfileData.age}
                   onChange={(e) => setEditProfileData({ ...editProfileData, age: e.target.value })}
                 />
@@ -2178,13 +2196,13 @@ const App = () => {
                   className="btn-secondary"
                   onClick={() => setShowEditProfileModal(false)}
                 >
-                  Отмена
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   className="btn-primary"
                 >
-                  Сохранить
+                  {t('save')}
                 </button>
               </div>
             </form>
@@ -2211,7 +2229,7 @@ const App = () => {
           >
             <div className={`modal-swipe-container ${modalSwipeDirection ? 'swipe-' + modalSwipeDirection : ''}`} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <div className="modal-header">
-                <h2>Детали выполнения {quantityModalData.dayDate && ` — ${new Date(quantityModalData.dayDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`}</h2>
+                <h2>{t('detailsTitle')} {quantityModalData.dayDate && ` — ${new Date(quantityModalData.dayDate).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long' })}`}</h2>
                 <button
                   className="modal-close"
                   onClick={() => {
@@ -2232,18 +2250,18 @@ const App = () => {
                   <strong>{quantityModalData.habitName}</strong>
                 </p>
                 <div className="form-group">
-                  <label>Количество</label>
+                  <label>{t('quantity')}</label>
                   <div className="quantity-selector-container">
                     <div className="preset-column presets-left">
                       <div className="preset-btn theme-green">
                         <div className="preset-badge">{quantityModalData.weeklyTotal || 0}</div>
-                        <div className="preset-label">Неделя</div>
+                        <div className="preset-label">{t('week')}</div>
                       </div>
                       <div className="preset-btn theme-green">
                         <div className="preset-badge">
                           {quantityModalData.dayDate ? new Date(quantityModalData.dayDate).getMonth() + 1 : (new Date().getMonth() + 1)}
                         </div>
-                        <div className="preset-label">Месяц</div>
+                        <div className="preset-label">{t('month')}</div>
                       </div>
                     </div>
 
@@ -2259,11 +2277,11 @@ const App = () => {
                     <div className="preset-column presets-right">
                       <div className="preset-btn theme-purple">
                         <div className="preset-badge">+{quantityModalData.weeklyOverflow || 0}</div>
-                        <div className="preset-label">Неделя</div>
+                        <div className="preset-label">{t('week')}</div>
                       </div>
                       <div className="preset-btn theme-purple">
                         <div className="preset-badge">{quantityModalData.monthlyTotal || 0}</div>
-                        <div className="preset-label">Месяц</div>
+                        <div className="preset-label">{t('month')}</div>
                       </div>
                     </div>
                   </div>
@@ -2271,11 +2289,11 @@ const App = () => {
 
                 <div className="form-group-row">
                   <div className="form-group form-group-flex">
-                    <label htmlFor="comment-input">Комментарий</label>
+                    <label htmlFor="comment-input">{t('commentLabel')}</label>
                     <textarea
                       id="comment-input"
                       className="form-input"
-                      placeholder="Добавьте заметку..."
+                      placeholder={t('commentPlaceholder')}
                       value={commentValue}
                       onChange={(e) => setCommentValue(e.target.value)}
                       rows="2"
@@ -2283,12 +2301,12 @@ const App = () => {
                   </div>
 
                   <div className="form-group form-group-flex">
-                    <label htmlFor="photo-input">Фото</label>
+                    <label htmlFor="photo-input">{t('photoLabel')}</label>
                     {quantityModalData.currentPhoto && !photoFile && !deletePhoto && (
                       <div className="current-photo-preview">
                         <img
                           src={quantityModalData.currentPhoto}
-                          alt="Текущее фото"
+                          alt={t('photo')}
                           className="photo-thumbnail"
                           style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', borderRadius: '8px', cursor: 'zoom-in' }}
                           onClick={() => setLightboxUrl(quantityModalData.currentPhoto)}
@@ -2298,20 +2316,20 @@ const App = () => {
                           type="button"
                           onClick={() => setDeletePhoto(true)}
                         >
-                          🗑️ Удалить фото
+                          {t('deletePhoto')}
                         </button>
                       </div>
                     )}
                     {deletePhoto && !photoFile && (
                       <div className="photo-deletion-notice">
-                        Фото будет удалено при сохранении
+                        {t('photoDeletionNotice')}
                         <button
                           className="btn-link"
                           type="button"
                           onClick={() => setDeletePhoto(false)}
                           style={{ marginLeft: '10px', fontSize: '12px' }}
                         >
-                          Отмена
+                          {t('cancel')}
                         </button>
                       </div>
                     )}
@@ -2345,14 +2363,14 @@ const App = () => {
                     setDeletePhoto(false);
                   }}
                 >
-                  Отмена
+                  {t('cancel')}
                 </button>
                 <button
                   type="button"
                   className="btn-primary"
                   onClick={handleEntrySubmit}
                 >
-                  Выполнен
+                  {t('done')}
                 </button>
                 {quantityModalData.dayDate < new Date().toLocaleDateString('en-CA') && (
                   <button
@@ -2360,7 +2378,7 @@ const App = () => {
                     className="btn-primary btn-restored"
                     onClick={handleEntryRestored}
                   >
-                    Восполнен
+                    {t('restored')}
                   </button>
                 )}
               </div>
@@ -2373,10 +2391,10 @@ const App = () => {
         <div className="modal-overlay report-modal-overlay" onClick={() => setReportData(null)}>
           <div className="modal-content report-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header no-print">
-              <h2>Отчет: {reportData.habit.name}</h2>
+              <h2>{t('reportFor')} {reportData.habit.name}</h2>
               <div>
                 <button className="btn-primary" onClick={() => window.print()} style={{ marginRight: '10px' }}>
-                  🖨️ Сохранить PDF
+                  {t('savePDF')}
                 </button>
                 <button className="modal-close" onClick={() => setReportData(null)} style={{ position: 'relative', top: '0', right: '0' }}>×</button>
               </div>
@@ -2384,18 +2402,18 @@ const App = () => {
 
             <div className="printable-report">
               <div className="report-header print-only" style={{ display: 'none' }}>
-                <h2>{reportData.habit.name} - Отчет о прогрессе</h2>
+                <h2>{reportData.habit.name} - {t('progressReportTitle')}</h2>
               </div>
 
               {reportData.is_general ? (
                 <div className="summary-report-content">
                   <div className="report-stats" style={{ padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px', marginBottom: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                     <div>
-                      <strong>Всего выполнений:</strong>
+                      <strong>{t('totalCompletions')}</strong>
                       <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{reportData.total_completions}</div>
                     </div>
                     <div>
-                      <strong>Общая сумма действий:</strong>
+                      <strong>{t('totalQuantity')}</strong>
                       <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{reportData.total_quantity}</div>
                     </div>
                   </div>
@@ -2403,10 +2421,10 @@ const App = () => {
                   <table className="summary-table" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
                     <thead>
                       <tr style={{ textAlign: 'left', borderBottom: '2px solid #eee' }}>
-                        <th style={{ padding: '10px' }}>Привычка</th>
-                        <th style={{ padding: '10px' }}>Категория</th>
-                        <th style={{ padding: '10px', textAlign: 'right' }}>Выполнено</th>
-                        <th style={{ padding: '10px', textAlign: 'right' }}>Сумма</th>
+                        <th style={{ padding: '10px' }}>{t('habitColumn')}</th>
+                        <th style={{ padding: '10px' }}>{t('categoryColumn')}</th>
+                        <th style={{ padding: '10px', textAlign: 'right' }}>{t('completedColumn')}</th>
+                        <th style={{ padding: '10px', textAlign: 'right' }}>{t('sumColumn')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2424,26 +2442,26 @@ const App = () => {
               ) : (
                 <>
                   <div className="report-stats" style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '8px', marginBottom: '20px' }}>
-                    <p><strong>Всего записей:</strong> {reportData.entries.length}</p>
-                    <p><strong>Общая сумма действий:</strong> {reportData.entries.reduce((sum, e) => sum + (e.quantity || 1), 0)}</p>
+                    <p><strong>{t('totalCompletions')}</strong> {reportData.entries.length}</p>
+                    <p><strong>{t('totalQuantity')}</strong> {reportData.entries.reduce((sum, e) => sum + (e.quantity || 1), 0)}</p>
                   </div>
 
                   <div className="report-entries" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     {reportData.entries.length === 0 ? (
-                      <p>Нет данных для отчета.</p>
+                      <p>{t('noDataReport')}</p>
                     ) : (
                       reportData.entries.map((entry, idx) => (
                         <div key={idx} className="report-entry" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px' }}>
                           <div className="report-entry-header" style={{ borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
-                            <strong>{new Date(entry.date).toLocaleDateString('ru-RU')}</strong>
-                            {(entry.quantity !== null && entry.quantity > 1) && <span style={{ marginLeft: '10px', color: '#666' }}>(Кол-во: {entry.quantity})</span>}
+                            <strong>{new Date(entry.date).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US')}</strong>
+                            {(entry.quantity !== null && entry.quantity > 1) && <span style={{ marginLeft: '10px', color: '#666' }}>({t('quantity')}: {entry.quantity})</span>}
                           </div>
                           {entry.comment && <p className="report-entry-comment" style={{ fontStyle: 'italic', marginBottom: '10px' }}>{entry.comment}</p>}
                           {entry.photo && (
                             <div style={{ marginTop: '10px' }}>
                               <img
                                 src={entry.photo}
-                                alt="Прогресс"
+                                alt={t('habitProgress')}
                                 className="report-entry-photo"
                                 style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', objectFit: 'contain', cursor: 'zoom-in' }}
                                 onClick={() => setLightboxUrl(entry.photo)}
@@ -2475,7 +2493,7 @@ const App = () => {
           <button className="lightbox-close" onClick={closeLightbox}>×</button>
           <img
             src={lightboxUrl}
-            alt="Просмотр фото"
+            alt={t('photo')}
             className="lightbox-img"
             style={{
               transform: `translateY(${lightboxTranslateY}px)`,
@@ -2484,7 +2502,7 @@ const App = () => {
             }}
             onClick={(e) => e.stopPropagation()}
           />
-          <div className="lightbox-hint-text">Проведите вниз, чтобы закрыть</div>
+          <div className="lightbox-hint-text">{t('swipeHint')}</div>
         </div>
       )}
 
