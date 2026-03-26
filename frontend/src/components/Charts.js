@@ -62,13 +62,11 @@ const CustomBarLabel = ({ x, y, width, height, value, color, baseSize = 14 }) =>
 const CustomBarShape = (props) => {
     const { payload, dataKey, radius } = props;
 
-    // Define the order of stacking
-    const keys = ['countCapped', 'countRestored', 'countRemaining'];
+    const keys = ['countCapped', 'countRestored'];
     const currentIndex = keys.indexOf(dataKey);
 
     let isTop = true;
     if (currentIndex !== -1) {
-        // A segment is "top" if all segments defined after it in the 'keys' array are zero
         for (let i = currentIndex + 1; i < keys.length; i++) {
             if (payload[keys[i]] > 0) {
                 isTop = false;
@@ -76,11 +74,26 @@ const CustomBarShape = (props) => {
             }
         }
     }
-    // For single bars (like countExtra), currentIndex will be -1, and isTop remains true
 
     const finalRadius = isTop ? radius : [0, 0, 0, 0];
-
     return <Rectangle {...props} radius={finalRadius} />;
+};
+
+const PercentageBadge = ({ x, y, width, height, value, badgeW, badgeH, fSize }) => {
+    if (!value) return null;
+    const bw = badgeW || 44;
+    const bh = badgeH || 22;
+    const fs = fSize || 12;
+    const cx = x + width / 2;
+    const cy = y - 14;
+    return (
+        <g>
+            <rect x={cx - bw / 2} y={cy - bh / 2} width={bw} height={bh} rx={6} fill="#3B82F6" />
+            <text x={cx} y={cy + 1} fill="#FFF" textAnchor="middle" dominantBaseline="middle" fontSize={fs} fontWeight={700}>
+                {value}
+            </text>
+        </g>
+    );
 };
 
 
@@ -137,15 +150,22 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                         passedDays = Math.min(totalDaysInPeriod, diffDays);
                     }
 
-                    const formatted = json.habits.map(item => ({
-                        id: item.id,
-                        name: item.name,
-                        shortName: shortenName(item.name),
-                        countCapped: item.completed_days,
-                        countRestored: item.restored_days || 0,
-                        countExtra: item.extra_quantity,
-                        countRemaining: Math.max(0, passedDays - item.completed_days - (item.restored_days || 0))
-                    }));
+                    const formatted = json.habits.map(item => {
+                        const countCapped = item.completed_days || 0;
+                        const percentageStr = totalDaysInPeriod > 0 
+                            ? Math.round((countCapped / totalDaysInPeriod) * 100) + '%' 
+                            : '0%';
+
+                        return {
+                            id: item.id,
+                            name: item.name,
+                            shortName: shortenName(item.name),
+                            countCapped: countCapped,
+                            countRestored: item.restored_days || 0,
+                            countExtra: item.extra_quantity,
+                            percentage: percentageStr
+                        };
+                    });
                     setData(formatted);
                 }
             } catch (error) {
@@ -204,13 +224,16 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     // Calculate the maximum height of the bars
     const maxHeight = filteredData.reduce((m, d) => {
         const height = viewType === 'habits' 
-            ? (d.countCapped || 0) + (d.countRestored || 0) + (d.countRemaining || 0)
+            ? (d.countCapped || 0) + (d.countRestored || 0) + 1 // + 1 to account for the percentage label space roughly
             : (d.countExtra || 0);
         return Math.max(m, height);
     }, 0);
 
     // To have exactly 7 integer divisions, the max value must be a multiple of 7 and at least 7.
-    const effectiveMax = Math.max(7, Math.ceil(maxHeight / 7) * 7);
+    // Ensure we have some space above for the label when using green report
+    const effectiveMax = viewType === 'habits' 
+        ? Math.max(period === 'week' ? 7 : 7, Math.ceil(maxHeight / 7) * 7 + (maxHeight > 5 ? 7 : 0))
+        : Math.max(7, Math.ceil(maxHeight / 7) * 7);
 
     // Build a minimal dummy dataset with the same max value for the Y-axis ghost chart
     const yAxisData = [{ [activeKey]: effectiveMax }];
@@ -243,8 +266,8 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                 {/* Scrollable chart area (no Y-axis) */}
                 <div className="comparison-scroll-wrapper" onScroll={handleScroll} ref={scrollRef}>
                     <div className="comparison-chart-inner" style={{ minWidth: chartMinWidth }}>
-                        <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                            <BarChart data={filteredData} margin={{ top: 20, right: 30, left: 15, bottom: 40 }}>
+                        <ResponsiveContainer width="100%" height={CHART_HEIGHT} style={{ overflow: 'visible' }}>
+                            <BarChart data={filteredData} margin={{ top: 40, right: 30, left: 15, bottom: 40 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                                 <XAxis
                                     dataKey="shortName"
@@ -269,11 +292,10 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                                                 dataKey="countRestored"
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
                                             />
-                                        </Bar>
-                                        <Bar dataKey="countRemaining" stackId="a" fill="#D0D0D0" radius={[4, 4, 0, 0]} name="Пропущено" isAnimationActive={false} shape={<CustomBarShape />}>
                                             <LabelList
-                                                dataKey="countRemaining"
-                                                content={(props) => <CustomBarLabel {...props} color="#666" baseSize={12} />}
+                                                dataKey="percentage"
+                                                position="top"
+                                                content={(props) => <PercentageBadge {...props} badgeW={40} badgeH={20} fSize={11} />}
                                             />
                                         </Bar>
                                     </>
@@ -384,6 +406,16 @@ const Charts = ({
                 const formattedData = json.data.map(item => {
                     const isFuture = item.date > todayStr;
                     const habitCount = item.habit_count || 0;
+                    const maxPossible = habitCount * item.days_in_period;
+                    const completed = item.completed_days || 0;  // только невосполненные
+                    
+                    let percentageStr = '';
+                    if (!isFuture && maxPossible > 0) {
+                        percentageStr = Math.round((completed / maxPossible) * 100) + '%';
+                    } else if (!isFuture && maxPossible === 0) {
+                        percentageStr = '0%';
+                    }
+
                     return {
                         date: item.label, // Use the pre-formatted label from backend
                         fullDate: item.date,
@@ -392,7 +424,7 @@ const Charts = ({
                         countCapped: item.completed_days,
                         countRestored: item.restored_days || 0,
                         countExtra: item.extra_quantity,
-                        countRemaining: isFuture ? 0 : Math.max(0, (habitCount * item.days_in_period) - item.completed_days - (item.restored_days || 0))
+                        percentage: percentageStr
                     };
                 });
                 setChartData(formattedData);
@@ -483,10 +515,10 @@ const Charts = ({
                             minWidth: period === 'year' ? '600px' : '100%',
                             transition: 'min-width 0.3s ease'
                         }}>
-                    <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 400 : 500}>
+                    <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 400 : 500} style={{ overflow: 'visible' }}>
                         <BarChart
                             data={chartData}
-                            margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
+                            margin={{ top: 40, right: 30, left: 0, bottom: 20 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                             <XAxis
@@ -501,7 +533,6 @@ const Charts = ({
                                 tick={{ fill: '#666', fontSize: 12 }}
                                 allowDecimals={false}
                             />
-
                             {viewType === 'habits' ? (
                                 <>
                                     <Bar
@@ -531,19 +562,10 @@ const Charts = ({
                                             dataKey="countRestored"
                                             content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
                                         />
-                                    </Bar>
-                                    <Bar
-                                        dataKey="countRemaining"
-                                        stackId="a"
-                                        fill="#D0D0D0"
-                                        radius={[8, 8, 0, 0]}
-                                        isAnimationActive={false}
-                                        name="Пропущено"
-                                        shape={<CustomBarShape />}
-                                    >
                                         <LabelList
-                                            dataKey="countRemaining"
-                                            content={(props) => <CustomBarLabel {...props} color="#666" baseSize={18} />}
+                                            dataKey="percentage"
+                                            position="top"
+                                            content={(props) => <PercentageBadge {...props} />}
                                         />
                                     </Bar>
                                 </>
