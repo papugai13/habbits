@@ -2,17 +2,40 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList, Rectangle } from 'recharts';
 import './Charts.css';
 
-const formatDate = (dateStr, periodType) => {
+const formatDate = (dateStr, periodType, language) => {
     const date = new Date(dateStr);
     if (periodType === 'week') {
-        const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-        return days[date.getDay()];
+        const daysRu = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+        const daysEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        return language === 'ru' ? daysRu[date.getDay()] : daysEn[date.getDay()];
     } else if (periodType === 'month') {
         return date.getDate();
     } else {
-        const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-        return months[date.getMonth()];
+        const monthsRu = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+        const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return language === 'ru' ? monthsRu[date.getMonth()] : monthsEn[date.getMonth()];
     }
+};
+
+const generatePeriodLabel = (period, referenceDate, t) => {
+    const today = new Date(referenceDate);
+    const months = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
+
+    if (period === 'week') {
+        const day = today.getDay();
+        const diff = today.getDate() - (day === 0 ? 6 : day - 1);
+        const start_date = new Date(today.getFullYear(), today.getMonth(), diff);
+        const end_date = new Date(start_date);
+        end_date.setDate(start_date.getDate() + 6);
+
+        const monthName = t(months[start_date.getMonth()]);
+        return `${t('week')} ${start_date.getDate()} - ${end_date.getDate()} ${monthName}`;
+    } else if (period === 'month') {
+        return `${t(months[today.getMonth()])} ${today.getFullYear()}`;
+    } else if (period === 'year') {
+        return `${today.getFullYear()}`;
+    }
+    return '';
 };
 
 const getNumericDate = (dateStr) => {
@@ -96,9 +119,7 @@ const PercentageBadge = ({ x, y, width, height, value, badgeW, badgeH, fSize }) 
     );
 };
 
-
-
-const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCategory }) => {
+const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCategory, t, language }) => {
     const [data, setData] = useState([]);
     const [periodLabel, setPeriodLabel] = useState('');
     const [loading, setLoading] = useState(true);
@@ -119,7 +140,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                 });
                 if (response.ok) {
                     const json = await response.json();
-                    setPeriodLabel(json.period_label);
+                    setPeriodLabel(generatePeriodLabel(period, currentWeekDate, t));
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
 
@@ -210,7 +231,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     if (loading) return (
         <div className="comparison-chart-loading">
             <div className="mini-spinner"></div>
-            <p>Загрузка статистики по привычкам...</p>
+            <p>{t('loadingStats')}</p>
         </div>
     );
 
@@ -229,10 +250,9 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
         return Math.max(m, height);
     }, 0);
 
-    // To have exactly 7 integer divisions, the max value must be a multiple of 7 and at least 7.
-    // Ensure we have some space above for the label when using green report
+    // Ensure we have some space above for the label
     const effectiveMax = viewType === 'habits' 
-        ? Math.max(period === 'week' ? 7 : 7, Math.ceil(maxHeight / 7) * 7 + (maxHeight > 5 ? 7 : 0))
+        ? Math.max(7, Math.ceil(maxHeight / 7) * 7 + (maxHeight > 5 ? 7 : 0))
         : Math.max(7, Math.ceil(maxHeight / 7) * 7);
 
     // Build a minimal dummy dataset with the same max value for the Y-axis ghost chart
@@ -241,7 +261,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     return (
         <div className="habits-comparison-section">
             <div className="comparison-header">
-                <h3>Прогресс по привычкам</h3>
+                <h3>{t('habitProgress')}</h3>
                 <span className="comparison-period">{periodLabel}</span>
             </div>
 
@@ -281,13 +301,13 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
 
                                 {viewType === 'habits' ? (
                                     <>
-                                        <Bar dataKey="countCapped" stackId="a" fill="#059669" radius={[4, 4, 0, 0]} name="Выполнено" isAnimationActive={false} shape={<CustomBarShape />}>
+                                        <Bar dataKey="countCapped" stackId="a" fill="#059669" radius={[4, 4, 0, 0]} name={t('completed')} isAnimationActive={false} shape={<CustomBarShape />}>
                                             <LabelList
                                                 dataKey="countCapped"
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
                                             />
                                         </Bar>
-                                        <Bar dataKey="countRestored" stackId="a" fill="#6EE7B7" radius={[4, 4, 0, 0]} name="Восполнено" isAnimationActive={false} shape={<CustomBarShape />}>
+                                        <Bar dataKey="countRestored" stackId="a" fill="#6EE7B7" radius={[4, 4, 0, 0]} name={t('restored')} isAnimationActive={false} shape={<CustomBarShape />}>
                                             <LabelList
                                                 dataKey="countRestored"
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
@@ -300,7 +320,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                                         </Bar>
                                     </>
                                 ) : (
-                                    <Bar dataKey="countExtra" fill="#8B5CF6" radius={[4, 4, 0, 0]} name="Количество" isAnimationActive={false} shape={<CustomBarShape />}>
+                                    <Bar dataKey="countExtra" fill="#8B5CF6" radius={[4, 4, 0, 0]} name={t('quantity')} isAnimationActive={false} shape={<CustomBarShape />}>
                                         <LabelList
                                             dataKey="countExtra"
                                             content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
@@ -334,7 +354,9 @@ const Charts = ({
     currentWeekDate,
     sortedCategories,
     selectedCategory,
-    onSelectCategory
+    onSelectCategory,
+    t,
+    language
 }) => {
     const [period, setPeriod] = useState('week');
     const [viewType, setViewType] = useState('habits'); // 'habits' or 'quantity'
@@ -401,13 +423,13 @@ const Charts = ({
 
             if (response.ok) {
                 const json = await response.json();
-                setPeriodLabel(json.period_label);
+                setPeriodLabel(generatePeriodLabel(period, chartDate, t));
                 const todayStr = new Date().toISOString().split('T')[0];
                 const formattedData = json.data.map(item => {
                     const isFuture = item.date > todayStr;
                     const habitCount = item.habit_count || 0;
                     const maxPossible = habitCount * item.days_in_period;
-                    const completed = item.completed_days || 0;  // только невосполненные
+                    const completed = item.completed_days || 0;
                     
                     let percentageStr = '';
                     if (!isFuture && maxPossible > 0) {
@@ -417,7 +439,7 @@ const Charts = ({
                     }
 
                     return {
-                        date: item.label, // Use the pre-formatted label from backend
+                        date: item.label,
                         fullDate: item.date,
                         dayMonth: getNumericDate(item.date),
                         countTotal: item.completed_count,
@@ -439,7 +461,7 @@ const Charts = ({
     return (
         <div className="charts-container">
             <div className="charts-header">
-                <h2>Статистика выполнения</h2>
+                <h2>{t('statistics')}</h2>
                 
                 <div className="chart-navigation-controls">
                     <button className="nav-arrow-btn" onClick={handlePrevPeriod}>←</button>
@@ -453,17 +475,17 @@ const Charts = ({
 
                 <div className="selectors-container">
                     <div className="view-selector">
-                            <button
-                                className={`view-btn habits ${viewType === 'habits' ? 'active' : ''}`}
-                                onClick={() => setViewType('habits')}
-                            >
-                                Выполнено
-                            </button>
+                        <button
+                            className={`view-btn habits ${viewType === 'habits' ? 'active' : ''}`}
+                            onClick={() => setViewType('habits')}
+                        >
+                            {t('completed')}
+                        </button>
                         <button
                             className={`view-btn quantity ${viewType === 'quantity' ? 'active' : ''}`}
                             onClick={() => setViewType('quantity')}
                         >
-                            Количество
+                            {t('quantity')}
                         </button>
                     </div>
                     <div className="period-selector">
@@ -471,34 +493,38 @@ const Charts = ({
                             className={`period-btn ${period === 'week' ? 'active' : ''}`}
                             onClick={() => setPeriod('week')}
                         >
-                            Неделя
+                            {t('week')}
                         </button>
                         <button
                             className={`period-btn ${period === 'month' ? 'active' : ''}`}
                             onClick={() => setPeriod('month')}
                         >
-                            Месяц
+                            {t('month')}
                         </button>
                         <button
                             className={`period-btn ${period === 'year' ? 'active' : ''}`}
                             onClick={() => setPeriod('year')}
                         >
-                            Год
+                            {t('year')}
                         </button>
                     </div>
                 </div>
 
                 {sortedCategories && onSelectCategory && (
                     <div className="categories-section unified charts-category-filter">
-                        {sortedCategories.map(category => (
-                            <button
-                                key={category.id}
-                                className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
-                                onClick={() => onSelectCategory(category.name)}
-                            >
-                                {category.name}
-                            </button>
-                        ))}
+                        {sortedCategories.map(category => {
+                            const displayName = category.name === 'Все' ? t('allCategories') : 
+                                             (category.name === 'Без категории' ? t('noCategory') : category.name);
+                            return (
+                                <button
+                                    key={category.id}
+                                    className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
+                                    onClick={() => onSelectCategory(category.name)}
+                                >
+                                    {displayName}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -506,7 +532,7 @@ const Charts = ({
             {loading ? (
                 <div className="charts-loading">
                     <div className="loading-spinner"></div>
-                    <p>Загрузка данных...</p>
+                    <p>{t('loading')}</p>
                 </div>
             ) : (
                 <div className="chart-wrapper">
@@ -515,81 +541,81 @@ const Charts = ({
                             minWidth: period === 'year' ? '600px' : '100%',
                             transition: 'min-width 0.3s ease'
                         }}>
-                    <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 400 : 500} style={{ overflow: 'visible' }}>
-                        <BarChart
-                            data={chartData}
-                            margin={{ top: 40, right: 30, left: 0, bottom: 20 }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                            <XAxis
-                                dataKey="date"
-                                stroke="#666"
-                                tick={<CustomXAxisTick period={period} />}
-                                height={period === 'week' ? 50 : 30}
-                                interval={0}
-                            />
-                            <YAxis
-                                stroke="#666"
-                                tick={{ fill: '#666', fontSize: 12 }}
-                                allowDecimals={false}
-                            />
-                            {viewType === 'habits' ? (
-                                <>
-                                    <Bar
-                                        dataKey="countCapped"
-                                        stackId="a"
-                                        fill="#059669"
-                                        radius={[8, 8, 0, 0]}
-                                        isAnimationActive={false}
-                                        name="Выполнено"
-                                        shape={<CustomBarShape />}
-                                    >
-                                        <LabelList
-                                            dataKey="countCapped"
-                                            content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
-                                        />
-                                    </Bar>
-                                    <Bar
-                                        dataKey="countRestored"
-                                        stackId="a"
-                                        fill="#6EE7B7"
-                                        radius={[8, 8, 0, 0]}
-                                        isAnimationActive={false}
-                                        name="Восполнено"
-                                        shape={<CustomBarShape />}
-                                    >
-                                        <LabelList
-                                            dataKey="countRestored"
-                                            content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
-                                        />
-                                        <LabelList
-                                            dataKey="percentage"
-                                            position="top"
-                                            content={(props) => <PercentageBadge {...props} />}
-                                        />
-                                    </Bar>
-                                </>
-                            ) : (
-                                <Bar
-                                    dataKey="countExtra"
-                                    stackId="a"
-                                    fill="#8B5CF6"
-                                    radius={[8, 8, 0, 0]}
-                                    animationDuration={500}
-                                    isAnimationActive={false}
-                                    name="Количество"
-                                    shape={<CustomBarShape />}
+                            <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 400 : 500} style={{ overflow: 'visible' }}>
+                                <BarChart
+                                    data={chartData}
+                                    margin={{ top: 40, right: 30, left: 0, bottom: 20 }}
                                 >
-                                    <LabelList
-                                        dataKey="countExtra"
-                                        content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                                    <XAxis
+                                        dataKey="date"
+                                        stroke="#666"
+                                        tick={<CustomXAxisTick period={period} />}
+                                        height={period === 'week' ? 50 : 30}
+                                        interval={0}
                                     />
-                                </Bar>
-                            )}
-                        </BarChart>
-                    </ResponsiveContainer>
+                                    <YAxis
+                                        stroke="#666"
+                                        tick={{ fill: '#666', fontSize: 12 }}
+                                        allowDecimals={false}
+                                    />
+                                    {viewType === 'habits' ? (
+                                        <>
+                                            <Bar
+                                                dataKey="countCapped"
+                                                stackId="a"
+                                                fill="#059669"
+                                                radius={[8, 8, 0, 0]}
+                                                isAnimationActive={false}
+                                                name={t('completed')}
+                                                shape={<CustomBarShape />}
+                                            >
+                                                <LabelList
+                                                    dataKey="countCapped"
+                                                    content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
+                                                />
+                                            </Bar>
+                                            <Bar
+                                                dataKey="countRestored"
+                                                stackId="a"
+                                                fill="#6EE7B7"
+                                                radius={[8, 8, 0, 0]}
+                                                isAnimationActive={false}
+                                                name={t('restored')}
+                                                shape={<CustomBarShape />}
+                                            >
+                                                <LabelList
+                                                    dataKey="countRestored"
+                                                    content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
+                                                />
+                                                <LabelList
+                                                    dataKey="percentage"
+                                                    position="top"
+                                                    content={(props) => <PercentageBadge {...props} />}
+                                                />
+                                            </Bar>
+                                        </>
+                                    ) : (
+                                        <Bar
+                                            dataKey="countExtra"
+                                            stackId="a"
+                                            fill="#8B5CF6"
+                                            radius={[8, 8, 0, 0]}
+                                            animationDuration={500}
+                                            isAnimationActive={false}
+                                            name={t('quantity')}
+                                            shape={<CustomBarShape />}
+                                        >
+                                            <LabelList
+                                                dataKey="countExtra"
+                                                content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
+                                            />
+                                        </Bar>
+                                    )}
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
-                </div>
 
                     {period === 'year' && chartData.length > 0 && (
                         <div className="main-scroll-indicator-container">
@@ -599,8 +625,8 @@ const Charts = ({
 
                     {chartData.length === 0 && (
                         <div className="no-data-message">
-                            <p>📊 Нет данных за выбранный период</p>
-                            <p className="no-data-hint">Начните отмечать выполненные привычки!</p>
+                            <p>📊 {t('noData')}</p>
+                            <p className="no-data-hint">{t('noDataHint')}</p>
                         </div>
                     )}
                 </div>
@@ -611,23 +637,25 @@ const Charts = ({
                 viewType={viewType}
                 currentWeekDate={chartDate}
                 selectedCategory={selectedCategory}
+                t={t}
+                language={language}
             />
 
             <div className="reports-section">
-                <h3>Подробные отчеты (PDF)</h3>
+                <h3>{t('reportsTitle')}</h3>
                 <div className="reports-grid">
                     <div className="report-card general-report-card">
                         <div className="report-card-info">
-                            <div className="report-card-name">📊 Общий итог</div>
-                            <div className="report-card-category">Все привычки</div>
+                            <div className="report-card-name">📊 {t('generalSummary')}</div>
+                            <div className="report-card-category">{t('allHabits')}</div>
                         </div>
                         <button
                             className="gen-report-btn general-report-btn"
                             onClick={() => handleGenerateSummaryReport()}
                             disabled={isReportLoading}
-                            title="Сгенерировать общий отчет"
+                            title={t('generateGeneralReport')}
                         >
-                            {isReportLoading ? '⌛' : '📄 Отчет'}
+                            {isReportLoading ? '⌛' : `📄 ${t('reportButton')}`}
                         </button>
                     </div>
                     {habitsData && habitsData.length > 0 ? (
@@ -641,14 +669,14 @@ const Charts = ({
                                     className="gen-report-btn"
                                     onClick={() => handleGenerateReport(habit.id)}
                                     disabled={isReportLoading}
-                                    title="Сгенерировать отчет"
+                                    title={t('generateReport')}
                                 >
-                                    {isReportLoading ? '⌛' : '📄 Отчет'}
+                                    {isReportLoading ? '⌛' : `📄 ${t('reportButton')}`}
                                 </button>
                             </div>
                         ))
                     ) : (
-                        <p className="no-habits-text">У вас пока нет привычек для отчета</p>
+                        <p className="no-habits-text">{t('noHabitsForReport')}</p>
                     )}
                 </div>
             </div>

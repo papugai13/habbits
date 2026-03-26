@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Auth.css';
 
-const Login = ({ onLogin, onSwitchToRegister }) => {
+const Login = ({ onLogin, onSwitchToRegister, t }) => {
     const [formData, setFormData] = useState({
         username: '',
         password: ''
@@ -28,7 +28,7 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                credentials: 'include', // Важно для работы с cookies
+                credentials: 'include',
                 body: JSON.stringify(formData)
             });
 
@@ -37,10 +37,10 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
             if (response.ok) {
                 onLogin(data);
             } else {
-                setError(data.error || 'Ошибка входа');
+                setError(data.error || t('loginError'));
             }
         } catch (err) {
-            setError('Ошибка соединения с сервером');
+            setError(t('connectionError'));
             console.error('Login error:', err);
         } finally {
             setLoading(false);
@@ -50,14 +50,14 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
     return (
         <div className="auth-container">
             <div className="auth-card">
-                <h1 className="auth-title">Вход</h1>
-                <p className="auth-subtitle">Войдите в свой аккаунт</p>
+                <h1 className="auth-title">{t('loginTitle')}</h1>
+                <p className="auth-subtitle">{t('loginSubtitle')}</p>
 
                 {error && <div className="auth-error">{error}</div>}
 
                 <form onSubmit={handleSubmit} className="auth-form">
                     <div className="form-group">
-                        <label htmlFor="username">Имя пользователя</label>
+                        <label htmlFor="username">{t('username')}</label>
                         <input
                             type="text"
                             id="username"
@@ -71,7 +71,7 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="password">Пароль</label>
+                        <label htmlFor="password">{t('password')}</label>
                         <input
                             type="password"
                             id="password"
@@ -88,18 +88,18 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
                         className="auth-button"
                         disabled={loading}
                     >
-                        {loading ? 'Вход...' : 'Войти'}
+                        {loading ? t('loggingIn') : t('loginButton')}
                     </button>
                 </form>
 
                 <div className="auth-switch">
-                    Нет аккаунта?{' '}
+                    {t('dontHaveAccount')}{' '}
                     <button
                         onClick={onSwitchToRegister}
                         className="auth-link"
                         disabled={loading}
                     >
-                        Зарегистрироваться
+                        {t('registerButton')}
                     </button>
                 </div>
             </div>
