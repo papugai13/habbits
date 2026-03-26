@@ -792,9 +792,7 @@ const App = () => {
     return [...result, ...sorted];
   }, [categories, habitsData]);
 
-  const MAX_VISIBLE_CATEGORIES = 4;
-  const visibleCategories = sortedCategories.slice(0, MAX_VISIBLE_CATEGORIES);
-  const hiddenCategories = sortedCategories.slice(MAX_VISIBLE_CATEGORIES);
+
 
   // Authentication handlers
   const handleLogin = (userData) => {
@@ -1320,69 +1318,16 @@ const App = () => {
 
       {/* Фильтры категорий - только для вкладки Журналы */}
       {activeTab === 'Журналы' && (
-        <div className="categories-section">
-          {/* Desktop / Standard View */}
-          <div className="categories-buttons desktop-only">
-            {visibleCategories.map(category => (
-              <button
-                key={category.id}
-                className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
-                onClick={() => setSelectedCategory(category.name)}
-              >
-                {category.name}
-              </button>
-            ))}
-            {hiddenCategories.length > 0 && (
-              <div className="more-categories-wrapper">
-                <button
-                  className={`category-btn more-btn ${hiddenCategories.some(c => c.name === selectedCategory) ? 'active' : ''}`}
-                  onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-                >
-                  Ещё {isMoreMenuOpen ? '▲' : '▼'}
-                </button>
-                {isMoreMenuOpen && (
-                  <div className="category-dropdown more-dropdown">
-                    {hiddenCategories.map(category => (
-                      <div
-                        key={category.id}
-                        className={`dropdown-item ${selectedCategory === category.name ? 'active' : ''}`}
-                        onClick={() => {
-                          setSelectedCategory(category.name);
-                          setIsMoreMenuOpen(false);
-                        }}
-                      >
-                        {category.name}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Mobile / Hamburger View */}
-          <div className="categories-mobile mobile-only">
-            <button className="category-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-              {selectedCategory} <span className="arrow">▼</span>
+        <div className="categories-section unified">
+          {sortedCategories.map(category => (
+            <button
+              key={category.id}
+              className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
+              onClick={() => setSelectedCategory(category.name)}
+            >
+              {category.name}
             </button>
-            {isMenuOpen && (
-              <div className="category-dropdown">
-                {sortedCategories.map(category => (
-                  <div
-                    key={category.id}
-                    className={`dropdown-item ${selectedCategory === category.name ? 'active' : ''}`}
-                    onClick={() => {
-                      setSelectedCategory(category.name);
-                      setIsMenuOpen(false);
-                    }}
-                  >
-                    {category.name}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
+          ))}
         </div>
       )}
 
