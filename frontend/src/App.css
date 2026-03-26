@@ -2208,3 +2208,83 @@ body {
   display: flex;
   gap: 6px;
 }
+
+/* Settings Category Filter */
+.settings-category-filter {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.settings-cat-btn {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid #e0e0e0;
+  background: white;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.settings-cat-btn:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.settings-cat-btn.active {
+  background: #1F663B;
+  color: white;
+  border-color: #1F663B;
+}
+
+.settings-category-filter::-webkit-scrollbar {
+  height: 4px;
+}
+
+.settings-category-filter::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 4px;
+}
+
+/* Settings Category Filter */
+.settings-category-filter {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  scrollbar-width: none;
+}
+
+.settings-category-filter::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-cat-btn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid #e0e0e0;
+  background: white;
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.settings-cat-btn:hover {
+  background-color: #f5f5f5;
+  border-color: #ccc;
+}
+
+.settings-cat-btn.active {
+  background-color: #1F663B;
+  color: white;
+  border-color: #1F663B;
+}
