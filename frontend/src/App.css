@@ -2000,7 +2000,88 @@ body {
   font-size: 13px;
   color: #888;
   font-weight: 500;
+  margin-bottom: 12px;
+}
+
+/* Container for Picker and Presets */
+.quantity-selector-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 10px;
+}
+
+.preset-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 80px;
+  align-items: center;
+}
+
+.preset-btn {
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: default;
+  padding: 0;
+  width: 100%;
+}
+
+.preset-badge {
+  width: 100%;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 24px;
+  font-weight: 800;
   margin-bottom: 4px;
+  position: relative;
+}
+
+/* Double border effect like in the screenshot */
+.preset-badge::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid currentColor;
+  border-radius: 16px;
+  opacity: 0.3;
+}
+
+.preset-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #333;
+}
+
+/* Themes */
+.preset-btn.theme-green {
+  color: #059669;
+}
+
+.preset-btn.theme-green .preset-badge {
+  background-color: #059669;
+  color: white;
+}
+
+.preset-btn.theme-purple {
+  color: #8B5CF6;
+}
+
+.preset-btn.theme-purple .preset-badge {
+  background-color: #8B5CF6;
+  color: white;
+}
+
+/* Adjust DrumPicker width when presets are present */
+.quantity-modal .drum-picker-container {
+  width: 120px; /* narrowed slightly */
 }
 
 /* =====================================================

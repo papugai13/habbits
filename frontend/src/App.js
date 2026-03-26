@@ -599,8 +599,8 @@ const App = () => {
     }
   };
 
-  const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto) => {
-    setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto });
+  const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow) => {
+    setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow });
     // If quantity is explicitly null/undefined, set to null, otherwise use currentQuantity
     setQuantityValue(currentQuantity !== null && currentQuantity !== undefined ? currentQuantity : 1);
     setCommentValue(currentComment || '');
@@ -609,9 +609,9 @@ const App = () => {
     setShowQuantityModal(true);
   };
 
-  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto) => {
+  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow) => {
     const timer = setTimeout(() => {
-      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto);
+      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow);
     }, 200); // 200ms for long press
     setLongPressTimer(timer);
   };
@@ -1492,7 +1492,8 @@ const App = () => {
                           onClick={() => {
                             const d = habit.latest_comment_details;
                             if (d) {
-                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo);
+                              const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_overflow, habit.weekly_overflow);
                             }
                           }}
                           style={{ cursor: 'pointer' }}
@@ -1564,10 +1565,16 @@ const App = () => {
                               toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
                             }
                           }}
-                          onMouseDown={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
+                          onMouseDown={() => {
+                            const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_overflow, habit.weekly_overflow);
+                          }}
                           onMouseUp={handleLongPressEnd}
                           onMouseLeave={handleLongPressEnd}
-                          onTouchStart={() => !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo)}
+                          onTouchStart={() => {
+                            const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_overflow, habit.weekly_overflow);
+                          }}
                           onTouchEnd={handleLongPressEnd}
                           disabled={isDisabled}
                         >
@@ -2192,14 +2199,40 @@ const App = () => {
                 </p>
                 <div className="form-group">
                   <label>Количество</label>
-                  <DrumPicker
-                    value={quantityValue}
-                    min={1}
-                    max={999}
-                    allowNoQuantity={true}
-                    noQuantityLabel="≤1"
-                    onChange={(val) => setQuantityValue(val)}
-                  />
+                  <div className="quantity-selector-container">
+                    <div className="preset-column presets-left">
+                      <div className="preset-btn theme-green">
+                        <div className="preset-badge">{quantityModalData.weeklyTotal || 0}</div>
+                        <div className="preset-label">Неделя</div>
+                      </div>
+                      <div className="preset-btn theme-green">
+                        <div className="preset-badge">
+                          {quantityModalData.dayDate ? new Date(quantityModalData.dayDate).getMonth() + 1 : (new Date().getMonth() + 1)}
+                        </div>
+                        <div className="preset-label">Месяц</div>
+                      </div>
+                    </div>
+
+                    <DrumPicker
+                      value={quantityValue}
+                      min={1}
+                      max={999}
+                      allowNoQuantity={true}
+                      noQuantityLabel="≤1"
+                      onChange={(val) => setQuantityValue(val)}
+                    />
+
+                    <div className="preset-column presets-right">
+                      <div className="preset-btn theme-purple">
+                        <div className="preset-badge">+{quantityModalData.weeklyOverflow || 0}</div>
+                        <div className="preset-label">Неделя</div>
+                      </div>
+                      <div className="preset-btn theme-purple">
+                        <div className="preset-badge">{quantityModalData.monthlyTotal || 0}</div>
+                        <div className="preset-label">Месяц</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="form-group-row">
