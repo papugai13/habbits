@@ -92,11 +92,11 @@ const CustomTooltip = ({ active, payload, viewType }) => {
                 {viewType === 'habits' ? (
                     <div className="tooltip-details">
                         <p className="tooltip-row">
-                            <span className="dot" style={{ backgroundColor: '#1F663B' }}></span>
+                            <span className="dot" style={{ backgroundColor: '#34804D' }}></span>
                             Выполнено: <strong>{data.countCapped}</strong>
                         </p>
                         <p className="tooltip-row">
-                            <span className="dot" style={{ backgroundColor: '#A8D8B5' }}></span>
+                            <span className="dot" style={{ backgroundColor: '#8FCC9F' }}></span>
                             Восполнено: <strong>{data.countRestored}</strong>
                         </p>
                         <p className="tooltip-row">
@@ -289,13 +289,13 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate }) => {
                                 />
                                 {viewType === 'habits' ? (
                                     <>
-                                        <Bar dataKey="countCapped" stackId="a" fill="#1F663B" radius={[4, 4, 0, 0]} name="Выполнено" isAnimationActive={false} shape={<CustomBarShape />}>
+                                        <Bar dataKey="countCapped" stackId="a" fill="#34804D" radius={[4, 4, 0, 0]} name="Выполнено" isAnimationActive={false} shape={<CustomBarShape />}>
                                             <LabelList
                                                 dataKey="countCapped"
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
                                             />
                                         </Bar>
-                                        <Bar dataKey="countRestored" stackId="a" fill="#A8D8B5" radius={[4, 4, 0, 0]} name="Восполнено" isAnimationActive={false} shape={<CustomBarShape />}>
+                                        <Bar dataKey="countRestored" stackId="a" fill="#8FCC9F" radius={[4, 4, 0, 0]} name="Восполнено" isAnimationActive={false} shape={<CustomBarShape />}>
                                             <LabelList
                                                 dataKey="countRestored"
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
@@ -514,7 +514,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                     <Bar
                                         dataKey="countCapped"
                                         stackId="a"
-                                        fill="#1F663B"
+                                        fill="#34804D"
                                         radius={[8, 8, 0, 0]}
                                         isAnimationActive={false}
                                         name="Выполнено"
@@ -528,7 +528,7 @@ const Charts = ({ getCookie, habitsData, handleGenerateReport, handleGenerateSum
                                     <Bar
                                         dataKey="countRestored"
                                         stackId="a"
-                                        fill="#A8D8B5"
+                                        fill="#8FCC9F"
                                         radius={[8, 8, 0, 0]}
                                         isAnimationActive={false}
                                         name="Восполнено"
