@@ -2422,7 +2422,7 @@ const App = () => {
                 >
                   {t('completed')}
                 </button>
-                {quantityModalData.dayDate < new Date().toLocaleDateString('en-CA') && (
+                {quantityModalData.dayDate <= new Date().toLocaleDateString('en-CA') && ( // Позволяет помечать сегодня как восполненное через модалку
                   <button
                     type="button"
                     className="btn-primary btn-restored"
