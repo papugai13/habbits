@@ -309,7 +309,7 @@ class HabitViewSet(viewsets.ModelViewSet):
             habit_data['statuses'] = statuses
             habit_data['weekly_overflow'] = weekly_overflow
             
-            # Calculate monthly overflow
+            # Calculate monthly overflow (sum of explicit quantities)
             monthly_overflow = Date.objects.filter(
                 user=user_profile,
                 habit=habit,
@@ -318,7 +318,24 @@ class HabitViewSet(viewsets.ModelViewSet):
                 quantity__isnull=False
             ).aggregate(total=Sum('quantity'))['total'] or 0
             
+            # Calculate monthly total (sum with default 1 for null quantity)
+            monthly_total = Date.objects.filter(
+                user=user_profile,
+                habit=habit,
+                habit_date__range=[start_of_month, end_of_month],
+                is_done=True
+            ).aggregate(
+                total=Sum(
+                    Case(
+                        When(quantity__isnull=True, then=Value(1)),
+                        default=F('quantity'),
+                        output_field=IntegerField()
+                    )
+                )
+            )['total'] or 0
+            
             habit_data['monthly_overflow'] = monthly_overflow
+            habit_data['monthly_total'] = monthly_total
             result.append(habit_data)
             
         return Response(result)

@@ -1495,7 +1495,7 @@ const App = () => {
                             const d = habit.latest_comment_details;
                             if (d) {
                               const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_overflow, habit.weekly_overflow);
+                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow);
                             }
                           }}
                           style={{ cursor: 'pointer' }}
@@ -1569,13 +1569,13 @@ const App = () => {
                           }}
                           onMouseDown={() => {
                             const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_overflow, habit.weekly_overflow);
+                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow);
                           }}
                           onMouseUp={handleLongPressEnd}
                           onMouseLeave={handleLongPressEnd}
                           onTouchStart={() => {
                             const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_overflow, habit.weekly_overflow);
+                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow);
                           }}
                           onTouchEnd={handleLongPressEnd}
                           disabled={isDisabled}
@@ -1600,41 +1600,46 @@ const App = () => {
                     })}
                   </div>
                   <div className="habit-counts-wrapper">
-                    {/* Третья звезда над квадратиком для серии из 7 дней */}
-                    {weeklyCount >= 7 && (
-                      <span className="third-star-top">⭐</span>
-                    )}
-                    <div className={`habit-count ${weeklyCount >= 3 ? 'active' : ''}`}>
-                      {/* Lightning icons at the top */}
-                      {weeklyAward && weeklyAward.includes('⚡') && (
-                        <div className="lightning-behind">
-                          <span className="lightning-item first-lightning">⚡</span>
-                          {weeklyCount >= 4 && (
-                            <span className="lightning-item second-lightning">⚡</span>
-                          )}
-                        </div>
-                      )}
+                    <div className="habit-count-container">
+                      <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''}`}>
+                        {/* Третья звезда над квадратиком для серии из 7 дней */}
+                        {weeklyCount >= 7 && (
+                          <span className="third-star-top">⭐</span>
+                        )}
+                        {/* Lightning icons at the top */}
+                        {weeklyAward && weeklyAward.includes('⚡') && (
+                          <div className="lightning-behind">
+                            <span className="lightning-item first-lightning">⚡</span>
+                            {weeklyCount >= 4 && (
+                              <span className="lightning-item second-lightning">⚡</span>
+                            )}
+                          </div>
+                        )}
 
-                      {/* Star icons */}
-                      {weeklyAward && (weeklyAward.includes('⭐') || weeklyAward.includes('🌟')) && (
-                        <>
-                          {weeklyCount >= 7 ? (
-                            <div className="stars-three-layout">
-                              <span className="star-item top-row-star">⭐</span>
-                              <span className="star-item top-row-star">⭐</span>
-                            </div>
-                          ) : (
-                            <div className="stars-inside">
-                              <span className="star-item first-star">⭐</span>
-                              {weeklyCount >= 6 && (
-                                <span className="star-item second-star">⭐</span>
-                              )}
-                            </div>
-                          )}
-                        </>
-                      )}
+                        {/* Star icons */}
+                        {weeklyAward && (weeklyAward.includes('⭐') || weeklyAward.includes('🌟')) && (
+                          <>
+                            {weeklyCount >= 7 ? (
+                              <div className="stars-three-layout">
+                                <span className="star-item top-row-star">⭐</span>
+                                <span className="star-item top-row-star">⭐</span>
+                              </div>
+                            ) : (
+                              <div className="stars-inside">
+                                <span className="star-item first-star">⭐</span>
+                                {weeklyCount >= 6 && (
+                                  <span className="star-item second-star">⭐</span>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
 
-                      <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>{weeklyCount}</span>
+                        <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>{weeklyCount}</span>
+                      </div>
+                      <div className="habit-count monthly">
+                        <span className="habit-count-number">{habit.monthly_total || 0}</span>
+                      </div>
                     </div>
                     <div className="habit-overflow-container">
                       {(habit.weekly_overflow > 0) && (
@@ -2317,7 +2322,7 @@ const App = () => {
 
                       <div className="preset-btn theme-green">
                         <div className="preset-badge">
-                          {quantityModalData.dayDate ? new Date(quantityModalData.dayDate).getMonth() + 1 : (new Date().getMonth() + 1)}
+                          {quantityModalData.monthlyTotal || 0}
                         </div>
                         <div className="preset-label">{t('month')}</div>
                       </div>

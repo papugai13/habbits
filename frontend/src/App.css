@@ -535,8 +535,36 @@ body {
   text-align: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   /* Гарантируем, что молнии не выходят за рамки */
+}
+
+/* Контейнер для двух зеленых счетчиков (недельный и месячный) */
+.habit-count-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 32px;
+}
+
+.habit-count.weekly {
+  z-index: 2;
+  /* Front */
+  position: relative;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(5, 150, 105, 0.3);
+}
+
+.habit-count.monthly {
+  z-index: 1;
+  /* Back */
+  margin-left: -12px;
+  /* Нахлест */
+  padding-left: 14px;
+  /* Чтобы цифра не перекрывалась */
+  background-color: #34d399;
+  /* Чуть светлее */
+  opacity: 0.9;
 }
 
 .habit-counts-wrapper {
@@ -951,6 +979,20 @@ body {
     height: 26px;
     font-size: 11px;
     min-width: 28px;
+  }
+
+  .habit-count.weekly {
+    box-shadow: 2px 0 3px rgba(0, 0, 0, 0.2);
+  }
+
+  .habit-count.monthly {
+    margin-left: -8px;
+    padding-left: 10px;
+    box-shadow: none;
+  }
+
+  .habit-count-container {
+    min-height: 26px;
   }
 
   .habit-counts-wrapper {
