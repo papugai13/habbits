@@ -82,6 +82,8 @@ const App = () => {
   const [swipeDirection, setSwipeDirection] = useState(null);
   const habitsContainerRef = React.useRef(null);
 
+
+
   // Modal swipe navigation refs
   const modalSwipeStartPos = React.useRef({ x: 0, y: 0 });
   const isModalSwiping = React.useRef(false);
@@ -1374,13 +1376,18 @@ const App = () => {
       )}
 
 
-      {/* Заголовки дней недели - только для вкладки Журналы */}
-      {activeTab === 'Habits' && (
-        <div className="days-header">
 
-          <div className="days-cols">
+      {/* Список привычек - только для вкладки Журналы */}
+      {activeTab === 'Habits' && (
+        <div className={`habits-container ${swipeDirection ? 'swipe-' + swipeDirection : ''}`}
+
+          ref={habitsContainerRef}
+          onTouchStart={handleSwipeStart}
+          onTouchEnd={handleSwipeEnd}
+        >
+          {/* Заголовки дней недели перенесены сюда для идеального выравнивания (плоская сетка) */}
+          <div className="days-header">
             {WEEK_DAYS.map((day, index) => {
-              // Calculate date for this column based on currentWeekDate
               const baseDate = new Date(currentWeekDate);
               const dayOfWeek = baseDate.getDay();
               const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
@@ -1404,19 +1411,10 @@ const App = () => {
                 </React.Fragment>
               );
             })}
+            {/* 8-й элемент сетки для выравнивания с блоком статистики */}
+            <div className="days-placeholder-end"></div>
           </div>
-          <div className="days-placeholder-end" style={{ width: '57px', flexShrink: 0 }}></div>
-        </div>
-      )}
 
-      {/* Список привычек - только для вкладки Журналы */}
-      {activeTab === 'Habits' && (
-        <div className={`habits-container ${swipeDirection ? 'swipe-' + swipeDirection : ''}`}
-
-          ref={habitsContainerRef}
-          onTouchStart={handleSwipeStart}
-          onTouchEnd={handleSwipeEnd}
-        >
           {habitsData.filter(habit => {
             if (selectedCategory === 'Все') return true;
             return habit.category_name === selectedCategory;
@@ -1516,89 +1514,89 @@ const App = () => {
                   )}
                 </div>
                 <div className="habit-row-content">
-                  <div className="habit-checks">
-                    {WEEK_DAYS.map((_, index) => {
-                      // Calculate date for this slot based on currentWeekDate
-                      const baseDate = new Date(currentWeekDate);
-                      const dayOfWeek = baseDate.getDay();
-                      const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                      const diff = index - currentDayIndex;
+                  {WEEK_DAYS.map((_, index) => {
+                    // Calculate date for this slot based on currentWeekDate
+                    const baseDate = new Date(currentWeekDate);
+                    const dayOfWeek = baseDate.getDay();
+                    const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                    const diff = index - currentDayIndex;
 
-                      const slotDate = new Date(baseDate);
-                      slotDate.setDate(baseDate.getDate() + diff);
-                      const slotDateStr = slotDate.toLocaleDateString('en-CA');
+                    const slotDate = new Date(baseDate);
+                    slotDate.setDate(baseDate.getDate() + diff);
+                    const slotDateStr = slotDate.toLocaleDateString('en-CA');
 
-                      const today = new Date();
-                      const todayStr = today.toLocaleDateString('en-CA');
+                    const today = new Date();
+                    const todayStr = today.toLocaleDateString('en-CA');
 
-                      // Find status for this date
-                      const status = statuses.find(s => s && s.date === slotDateStr);
-                      const isDone = status ? status.is_done : false;
-                      const isRestored = status ? status.is_restored : false;
-                      const statusId = status ? status.id : null;
-                      const quantity = status ? status.quantity : null;
+                    // Find status for this date
+                    const status = statuses.find(s => s && s.date === slotDateStr);
+                    const isDone = status ? status.is_done : false;
+                    const isRestored = status ? status.is_restored : false;
+                    const statusId = status ? status.id : null;
+                    const quantity = status ? status.quantity : null;
 
-                      // Calculate yesterday date string
-                      const yesterday = new Date(today);
-                      yesterday.setDate(today.getDate() - 1);
-                      const yesterdayStr = yesterday.toLocaleDateString('en-CA');
+                    // Calculate yesterday date string
+                    const yesterday = new Date(today);
+                    yesterday.setDate(today.getDate() - 1);
+                    const yesterdayStr = yesterday.toLocaleDateString('en-CA');
 
-                      const isToday = slotDateStr === todayStr;
-                      const isPast = slotDateStr < todayStr;
-                      const isFuture = slotDateStr > todayStr;
-                      const isYesterday = slotDateStr === yesterdayStr;
-                      const isMissed = isPast && !isDone;
-                      const hasComment = status && status.comment;
-                      const hasPhoto = status && status.photo;
+                    const isToday = slotDateStr === todayStr;
+                    const isPast = slotDateStr < todayStr;
+                    const isFuture = slotDateStr > todayStr;
+                    const isYesterday = slotDateStr === yesterdayStr;
+                    const isMissed = isPast && !isDone;
+                    const hasComment = status && status.comment;
+                    const hasPhoto = status && status.photo;
 
-                      // Disable only IF it's in the future
-                      const isDisabled = isFuture;
+                    // Disable only IF it's in the future
+                    const isDisabled = isFuture;
 
-                      // Show 1 dot in ONLY UNMARKED squares if exactly 2 are marked this week
-                      const showDotClass = (!isDone && isLastMarkInStreak && index > lastMark) ? 'has-dot-1' : '';
+                    // Show 1 dot in ONLY UNMARKED squares if exactly 2 are marked this week
+                    const showDotClass = (!isDone && isLastMarkInStreak && index > lastMark) ? 'has-dot-1' : '';
 
-                      const isMonthStart = index > 0 && slotDate.getDate() === 1;
+                    const isMonthStart = index > 0 && slotDate.getDate() === 1;
 
-                      const checkBoxBtn = (
-                        <button
-                          className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''} ${showDotClass}`}
-                          onClick={() => {
-                            if (!isDisabled && !longPressTimer) {
-                              toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
-                            }
-                          }}
-                          onMouseDown={() => {
-                            const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_overflow, habit.weekly_overflow);
-                          }}
-                          onMouseUp={handleLongPressEnd}
-                          onMouseLeave={handleLongPressEnd}
-                          onTouchStart={() => {
-                            const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_overflow, habit.weekly_overflow);
-                          }}
-                          onTouchEnd={handleLongPressEnd}
-                          disabled={isDisabled}
-                        >
-                          {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
-                          {hasComment && <span className="attachment-indicator"></span>}
-                          {hasPhoto && <span className="photo-indicator"></span>}
-                        </button>
-                      );
-                      
-                      return (
-                        <React.Fragment key={slotDateStr}>
-                          {isMonthStart ? (
-                            <div className="month-start-wrapper">
-                              {checkBoxBtn}
-                            </div>
-                          ) : (
-                            checkBoxBtn
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </div>
+                    const checkBoxBtn = (
+                      <button
+                        className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''} ${showDotClass}`}
+                        onClick={() => {
+                          if (!isDisabled && !longPressTimer) {
+                            toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
+                          }
+                        }}
+                        onMouseDown={() => {
+                          const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                          !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_overflow, habit.weekly_overflow);
+                        }}
+                        onMouseUp={handleLongPressEnd}
+                        onMouseLeave={handleLongPressEnd}
+                        onTouchStart={() => {
+                          const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                          !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_overflow, habit.weekly_overflow);
+                        }}
+                        onTouchEnd={handleLongPressEnd}
+                        disabled={isDisabled}
+                      >
+                        {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
+                        {hasComment && <span className="attachment-indicator"></span>}
+                        {hasPhoto && <span className="photo-indicator"></span>}
+                      </button>
+                    );
+                    
+                    return (
+                      <React.Fragment key={slotDateStr}>
+                        {isMonthStart ? (
+                          <div className="month-start-wrapper">
+                            {checkBoxBtn}
+                          </div>
+                        ) : (
+                          checkBoxBtn
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                  
+                  {/* 8-й элемент сетки: блок статистики */}
                   <div className="habit-counts-wrapper">
                     {/* Третья звезда над квадратиком для серии из 7 дней */}
                     {weeklyCount >= 7 && (
