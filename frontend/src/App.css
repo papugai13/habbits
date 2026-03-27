@@ -331,7 +331,8 @@ body {
   flex: 1;
   padding: 15px 16px;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible !important; /* Changed from hidden to avoid clipping the separator line */
+  position: relative;
 }
 
 /* Swipe animation */
@@ -385,6 +386,8 @@ body {
   margin-bottom: 32px;
   /* Увеличено расстояние между привычками */
   gap: 8px;
+  position: relative;
+  overflow: visible !important; /* Allow the separator line piece to extend vertically */
 }
 
 .habit-name {
@@ -433,7 +436,7 @@ body {
 }
 
 .check-box {
-  flex: 1;
+  width: 100%; /* Take full width of .grid-col */
   height: 32px;
   background-color: #D0D0D0;
   border: 1px solid #C0C0C0;
@@ -573,6 +576,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 60px; /* Fixed width for perfect grid alignment with header */
+  flex-shrink: 0;
 }
 
 .habit-count-number {
@@ -1018,10 +1023,17 @@ body {
 .days-header {
   display: flex;
   align-items: center;
-  padding: 15px 16px 5px;
-  /* Совпадает с .habits-container padding (16px) */
+  padding: 15px 0 10px; /* Matches habits-container padding-top (15px) */
   gap: 10px;
-  margin-bottom: 5px;
+  margin-bottom: 32px; /* Synchronized with habit-row margin-bottom */
+  position: sticky;
+  top: 0; 
+  background-color: #FFFFFF;
+  z-index: 1010;
+  margin-top: -15px; /* Pull into the container padding area */
+  width: 100%;
+  overflow: visible !important;
+  box-shadow: 0 4px 6px -6px rgba(0,0,0,0.1);
 }
 
 .days-placeholder {
@@ -1033,22 +1045,28 @@ body {
   display: flex;
   justify-content: space-between;
   gap: 4px;
-  /* Совпадает с .habit-checks gap */
-  transform: translateX(16px);
-  /* Сдвигаем хедер правее для точного выравнивания */
+  /* Syncing horizontal alignment with rows */
+  transform: translateX(0); 
+}
+
+/* Unified grid column class for identical header/row layout */
+.grid-col {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* Make children (like .check-box button) take full width */
+  justify-content: center;
 }
 
 .day-col {
-  flex: 1;
   text-align: center;
   font-size: 11px;
   color: #888;
   font-weight: 500;
-  display: flex;
-  flex-direction: column;
   gap: 2px;
-  min-width: 0;
-  /* Совпадает с .check-box min-width */
+  align-items: center; /* Center labels */
 }
 
 .day-name {
@@ -1081,8 +1099,8 @@ body {
 }
 
 .days-placeholder-end {
-  min-width: 35px;
-  /* aligns with habit count */
+  width: 60px; /* Synchronized with .habit-counts-wrapper */
+  flex-shrink: 0;
 }
 
 /* Removed fixed widths for responsiveness */
@@ -2448,43 +2466,36 @@ body {
   position: relative;
 }
 
-/* Header line piece */
-.day-col.month-start::before {
-  content: '';
-  position: absolute;
-  left: -9px;
-  /* Exactly between the margin gap */
-  top: 0;
-  bottom: -15px;
-  /* Cover container padding */
-  width: 4px;
-  background-color: #6d7681;
-  z-index: 10;
-  pointer-events: none;
-}
-
-/* Row line piece */
-.month-start-wrapper {
-  flex: 1;
-  display: flex;
-  min-width: 0;
-  position: relative;
+/* Styling for elements that signify the start of a month in the grid */
+.grid-col.month-start {
+  margin-left: 14px !important;
   overflow: visible !important;
 }
 
-.month-start-wrapper::before {
+/* Base line piece using heavy overlap to form a SOLID vertical line */
+.grid-col.month-start::before {
   content: '';
   position: absolute;
-  left: -9px;
-  bottom: -1px;
-  /* Ends exactly at the wrapper's bottom aligned perfectly */
-  height: calc(100% + 150px);
-  /* Explicit height forces it to cover previous row gaps */
+  left: -9px; /* Synchronized: 4px gap + 14px margin = 18px / 2 = 9px */
+  top: -45px; /* Heavy overlap with previous row/header */
+  height: calc(100% + 90px); /* Reaches far up and down to close any gaps */
   width: 4px;
   background-color: #6d7681;
-  z-index: 10;
+  z-index: 1000;
   pointer-events: none;
 }
+
+/* Header-specific piece: don't extend above the header content */
+.days-header .grid-col.month-start::before {
+  top: 0; /* Start at the top of header */
+  height: calc(100% + 90px); /* Extend far downwards */
+}
+
+/* Ensure row containers allow the line to pass through */
+.habit-checks, .days-cols {
+  overflow: visible !important;
+}
+
 
 /* Ограничиваем видимость линии в основном контейнере, если нужно */
 .habits-container {
