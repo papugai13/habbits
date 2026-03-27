@@ -1391,18 +1391,21 @@ const App = () => {
               const columnDateStr = columnDate.toLocaleDateString('en-CA');
 
               const todayStr = new Date().toLocaleDateString('en-CA');
-
               const isTodayCol = columnDateStr === todayStr;
 
+              const isMonthStart = index > 0 && columnDate.getDate() === 1;
+
               return (
-                <div key={day} className={`day-col ${isTodayCol ? 'today' : ''}`}>
-                  <div className="day-name">{day}</div>
-                  <div className="day-number">{columnDate.getDate()}</div>
-                </div>
+                <React.Fragment key={day}>
+                  <div className={`day-col ${isTodayCol ? 'today' : ''} ${isMonthStart ? 'month-start' : ''}`}>
+                    <div className="day-name">{day}</div>
+                    <div className="day-number">{columnDate.getDate()}</div>
+                  </div>
+                </React.Fragment>
               );
             })}
           </div>
-          <div className="days-placeholder-end"></div>
+          <div className="days-placeholder-end" style={{ width: '57px', flexShrink: 0 }}></div>
         </div>
       )}
 
@@ -1552,12 +1555,12 @@ const App = () => {
                       const isDisabled = isFuture;
 
                       // Show 1 dot in ONLY UNMARKED squares if exactly 2 are marked this week
-                      // Показываем точку только если последняя отметка — часть серии 2+ дня, и только СПРАВА от нее
                       const showDotClass = (!isDone && isLastMarkInStreak && index > lastMark) ? 'has-dot-1' : '';
 
-                      return (
+                      const isMonthStart = index > 0 && slotDate.getDate() === 1;
+
+                      const checkBoxBtn = (
                         <button
-                          key={slotDateStr}
                           className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''} ${showDotClass}`}
                           onClick={() => {
                             if (!isDisabled && !longPressTimer) {
@@ -1581,6 +1584,18 @@ const App = () => {
                           {hasComment && <span className="attachment-indicator"></span>}
                           {hasPhoto && <span className="photo-indicator"></span>}
                         </button>
+                      );
+                      
+                      return (
+                        <React.Fragment key={slotDateStr}>
+                          {isMonthStart ? (
+                            <div className="month-start-wrapper">
+                              {checkBoxBtn}
+                            </div>
+                          ) : (
+                            checkBoxBtn
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </div>
