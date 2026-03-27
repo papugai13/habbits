@@ -1374,49 +1374,45 @@ const App = () => {
       )}
 
 
-      {/* Заголовки дней недели - только для вкладки Журналы */}
-      {activeTab === 'Habits' && (
-        <div className="days-header">
-
-          <div className="days-cols">
-            {WEEK_DAYS.map((day, index) => {
-              // Calculate date for this column based on currentWeekDate
-              const baseDate = new Date(currentWeekDate);
-              const dayOfWeek = baseDate.getDay();
-              const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-              const diff = index - currentDayIndex;
-
-              const columnDate = new Date(baseDate);
-              columnDate.setDate(baseDate.getDate() + diff);
-              const columnDateStr = columnDate.toLocaleDateString('en-CA');
-
-              const todayStr = new Date().toLocaleDateString('en-CA');
-              const isTodayCol = columnDateStr === todayStr;
-
-              const isMonthStart = index > 0 && columnDate.getDate() === 1;
-
-              return (
-                <React.Fragment key={day}>
-                  <div className={`day-col ${isTodayCol ? 'today' : ''} ${isMonthStart ? 'month-start' : ''}`}>
-                    <div className="day-name">{day}</div>
-                    <div className="day-number">{columnDate.getDate()}</div>
-                  </div>
-                </React.Fragment>
-              );
-            })}
-          </div>
-          <div className="days-placeholder-end" style={{ width: '57px', flexShrink: 0 }}></div>
-        </div>
-      )}
-
-      {/* Список привычек - только для вкладки Журналы */}
+      {/* Список привычек и заголовок - только для вкладки Журналы */}
       {activeTab === 'Habits' && (
         <div className={`habits-container ${swipeDirection ? 'swipe-' + swipeDirection : ''}`}
-
           ref={habitsContainerRef}
           onTouchStart={handleSwipeStart}
           onTouchEnd={handleSwipeEnd}
         >
+          {/* Заголовки дней недели внутри контейнера для синхронизации с сеткой и полосой прокрутки */}
+          <div className="days-header">
+            <div className="days-cols">
+              {WEEK_DAYS.map((day, index) => {
+                // Calculate date for this column based on currentWeekDate
+                const baseDate = new Date(currentWeekDate);
+                const dayOfWeek = baseDate.getDay();
+                const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                const diff = index - currentDayIndex;
+
+                const columnDate = new Date(baseDate);
+                columnDate.setDate(baseDate.getDate() + diff);
+                const columnDateStr = columnDate.toLocaleDateString('en-CA');
+
+                const todayStr = new Date().toLocaleDateString('en-CA');
+                const isTodayCol = columnDateStr === todayStr;
+
+                const isMonthStart = index > 0 && columnDate.getDate() === 1;
+
+                return (
+                  <React.Fragment key={day}>
+                    <div className={`grid-col day-col ${isTodayCol ? 'today' : ''} ${isMonthStart ? 'month-start' : ''}`}>
+                      <div className="day-name">{day}</div>
+                      <div className="day-number">{columnDate.getDate()}</div>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+            <div className="days-placeholder-end"></div>
+          </div>
+
           {habitsData.filter(habit => {
             if (selectedCategory === 'Все') return true;
             return habit.category_name === selectedCategory;
@@ -1587,15 +1583,9 @@ const App = () => {
                       );
                       
                       return (
-                        <React.Fragment key={slotDateStr}>
-                          {isMonthStart ? (
-                            <div className="month-start-wrapper">
-                              {checkBoxBtn}
-                            </div>
-                          ) : (
-                            checkBoxBtn
-                          )}
-                        </React.Fragment>
+                        <div key={slotDateStr} className={`grid-col ${isMonthStart ? 'month-start' : ''}`}>
+                          {checkBoxBtn}
+                        </div>
                       );
                     })}
                   </div>
