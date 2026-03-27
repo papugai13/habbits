@@ -283,14 +283,17 @@ body {
   padding: 12px 16px;
   background-color: #FFFFFF;
   border-bottom: 1px solid #E0E0E0;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge */
   justify-content: flex-start;
   -webkit-overflow-scrolling: touch;
 }
 
 .categories-section.unified::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+  display: none;
+  /* Chrome/Safari */
 }
 
 .categories-section.unified .category-btn {
@@ -333,13 +336,27 @@ body {
 
 /* Swipe animation */
 @keyframes slideFromLeft {
-  from { opacity: 0; transform: translateX(-40px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes slideFromRight {
-  from { opacity: 0; transform: translateX(40px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .habits-container.swipe-right {
@@ -365,7 +382,8 @@ body {
 .habit-row {
   display: flex;
   flex-direction: column;
-  margin-bottom: 32px; /* Увеличено расстояние между привычками */
+  margin-bottom: 32px;
+  /* Увеличено расстояние между привычками */
   gap: 8px;
 }
 
@@ -468,7 +486,8 @@ body {
 
 .check-box.today {
   border: 2px solid #00f089 !important;
-  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.7); /* Internal light stroke for contrast */
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.7);
+  /* Internal light stroke for contrast */
   font-weight: bold;
 }
 
@@ -478,15 +497,18 @@ body {
   font-weight: 900;
   border: 2.5px solid #2ecc71;
   border-radius: 10px;
-  padding: 4px 0px; /* Even narrower */
-  margin: -6px 4px; /* Adjust horizontal margin to keep it narrow */
+  padding: 4px 0px;
+  /* Even narrower */
+  margin: -6px 4px;
+  /* Adjust horizontal margin to keep it narrow */
   background-color: rgba(46, 204, 113, 0.05);
 }
 
 .day-col.today .day-name,
 .day-col.today .day-number {
   font-weight: 900;
-  color: #27ae60; /* Darker saturated green for text */
+  color: #27ae60;
+  /* Darker saturated green for text */
 }
 
 .check-box:hover {
@@ -513,11 +535,13 @@ body {
   text-align: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   position: relative;
-  overflow: hidden; /* Гарантируем, что молнии не выходят за рамки */
+  overflow: hidden;
+  /* Гарантируем, что молнии не выходят за рамки */
 }
 
 .habit-counts-wrapper {
-  position: relative; /* Для позиционирования третьей звезды над индикатором */
+  position: relative;
+  /* Для позиционирования третьей звезды над индикатором */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -533,11 +557,13 @@ body {
 .habit-count.has-double-lightning .habit-count-number,
 .habit-count.has-single-lightning .habit-count-number,
 .habit-count.has-stars .habit-count-number {
-  transform: translateY(-2px); /* Смещаем все наборы наград вверх, так как они теперь все внизу */
+  transform: translateY(-2px);
+  /* Смещаем все наборы наград вверх, так как они теперь все внизу */
 }
 
 .habit-count-number.shifted-down {
-  transform: translateY(3px) !important; /* Для 3 звезд смещаем цифру вниз, так как звезды сверху */
+  transform: translateY(3px) !important;
+  /* Для 3 звезд смещаем цифру вниз, так как звезды сверху */
 }
 
 .stars-inside {
@@ -584,7 +610,8 @@ body {
 
 .third-star-top {
   position: absolute;
-  top: -16px; /* Поднимаем звезду выше, чтобы она полностью выходила за пределы квадрата */
+  top: -16px;
+  /* Поднимаем звезду выше, чтобы она полностью выходила за пределы квадрата */
   left: 50%;
   transform: translateX(-50%);
   font-size: 10px;
@@ -631,11 +658,14 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 10px; /* было 8px */
-  height: 10px; /* было 8px */
+  width: 10px;
+  /* было 8px */
+  height: 10px;
+  /* было 8px */
   background-color: #059669;
   border-radius: 50%;
-  opacity: 1; /* было 0.6 */
+  opacity: 1;
+  /* было 0.6 */
   pointer-events: none;
 }
 
@@ -645,9 +675,11 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 18px; /* было 14px */
+  font-size: 18px;
+  /* было 14px */
   color: #059669;
-  opacity: 1; /* было 0.6 */
+  opacity: 1;
+  /* было 0.6 */
   pointer-events: none;
   line-height: 1;
   letter-spacing: 1px;
@@ -712,9 +744,12 @@ body {
 
 .habit-count-overflow.weekly {
   z-index: 1;
-  margin-right: -12px; /* Нахлест */
-  padding-right: 14px; /* Чтобы цифра не перекрывалась */
-  background-color: #A78BFA; /* Чуть светлее, так как он "сзади" */
+  margin-right: -12px;
+  /* Нахлест */
+  padding-right: 14px;
+  /* Чтобы цифра не перекрывалась */
+  background-color: #A78BFA;
+  /* Чуть светлее, так как он "сзади" */
   opacity: 0.9;
 }
 
@@ -941,7 +976,8 @@ body {
 .days-header {
   display: flex;
   align-items: center;
-  padding: 15px 20px 5px;
+  padding: 15px 16px 5px;
+  /* Совпадает с .habits-container padding (16px) */
   gap: 10px;
   margin-bottom: 5px;
 }
@@ -954,7 +990,10 @@ body {
   flex: 1;
   display: flex;
   justify-content: space-between;
-  /* aligns with habit-checks gap */
+  gap: 4px;
+  /* Совпадает с .habit-checks gap */
+  transform: translateX(16px);
+  /* Сдвигаем хедер правее для точного выравнивания */
 }
 
 .day-col {
@@ -966,6 +1005,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  /* Совпадает с .check-box min-width */
 }
 
 .day-name {
@@ -1623,7 +1664,8 @@ body {
 
 @media (max-width: 480px) {
   .quantity-display {
-    font-size: 13px; /* Increased from 10px */
+    font-size: 13px;
+    /* Increased from 10px */
   }
 }
 
@@ -1997,7 +2039,8 @@ body {
 
 /* Adjust DrumPicker width when presets are present */
 .quantity-modal .drum-picker-container {
-  width: 120px; /* narrowed slightly */
+  width: 120px;
+  /* narrowed slightly */
 }
 
 /* =====================================================
@@ -2134,6 +2177,7 @@ body {
   background-color: #6EE7B7 !important;
   box-shadow: 0 4px 12px rgba(168, 216, 181, 0.3) !important;
 }
+
 /* Category Management Styles */
 .categories-settings {
   margin-bottom: 20px;
@@ -2354,3 +2398,65 @@ body {
 }
 
 
+
+/* Styling for elements that signify the start of a month in the grid */
+.day-col.month-start,
+.month-start-wrapper {
+  margin-left: 14px !important;
+  position: relative;
+}
+
+/* Header line piece */
+.day-col.month-start::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  /* Exactly between the margin gap */
+  top: 0;
+  bottom: -15px;
+  /* Cover container padding */
+  width: 4px;
+  background-color: #6d7681;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Row line piece */
+.month-start-wrapper {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  position: relative;
+  overflow: visible !important;
+}
+
+.month-start-wrapper::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  bottom: -1px;
+  /* Ends exactly at the wrapper's bottom aligned perfectly */
+  height: calc(100% + 150px);
+  /* Explicit height forces it to cover previous row gaps */
+  width: 4px;
+  background-color: #6d7681;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Ограничиваем видимость линии в основном контейнере, если нужно */
+.habits-container {
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* Убеждаемся, что строки не обрезают выходящую за пределы линию */
+.habit-row,
+.habit-row-content,
+.habit-checks,
+.days-header,
+.days-cols {
+  overflow: visible !important;
+}
