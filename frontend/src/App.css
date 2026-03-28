@@ -477,8 +477,8 @@ body {
 }
 
 .check-box.today:not(.checked):not(.restored) {
-  border: 1px solid #666;
-  opacity: 0.5;
+  border: 1px solid #059669;
+  opacity: 0.8;
 }
 
 .check-box.checked,
@@ -488,31 +488,13 @@ body {
 }
 
 .check-box.today {
-  border: 2px solid #00f089 !important;
+  border: 2px solid #059669 !important;
   box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.7);
   /* Internal light stroke for contrast */
   font-weight: bold;
 }
 
-/* Also styling the day header if it matches today */
-.day-col.today {
-  color: #2ecc71;
-  font-weight: 900;
-  border: 2.5px solid #2ecc71;
-  border-radius: 10px;
-  padding: 4px 0px;
-  /* Even narrower */
-  margin: -6px 4px;
-  /* Adjust horizontal margin to keep it narrow */
-  background-color: rgba(46, 204, 113, 0.05);
-}
 
-.day-col.today .day-name,
-.day-col.today .day-number {
-  font-weight: 900;
-  color: #27ae60;
-  /* Darker saturated green for text */
-}
 
 .check-box:hover {
   opacity: 0.8;
@@ -1081,15 +1063,32 @@ body {
   color: #333;
 }
 
-.day-col.today .day-number {
+.day-col.today {
   color: #059669;
+  font-weight: 900;
+  border: 2.5px solid #059669;
+  border-radius: 10px;
+  padding: 4px 0 10px;
+  /* Even more space at the bottom */
+  margin: -6px 4px;
+  background-color: rgba(5, 150, 105, 0.05);
+}
+
+.day-col.today .day-name,
+.day-col.today .day-number {
+  font-weight: 900;
+  color: #059669;
+}
+
+.day-col.today .day-number {
   position: relative;
 }
 
 .day-col.today .day-number::after {
   content: '';
   position: absolute;
-  bottom: -4px;
+  bottom: -8px;
+  /* Moved 2px even lower as requested */
   left: 50%;
   transform: translateX(-50%);
   width: 4px;
