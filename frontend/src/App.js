@@ -316,7 +316,16 @@ const App = () => {
       dateId: statusId,
       currentPhoto: photo
     });
-    setQuantityValue(quantity !== null && quantity !== undefined ? quantity : 1);
+    
+    // Default quantity logic for swipe:
+    // If today, default to null (shows as "≤1" in DrumPicker).
+    // If past date, default to 1 if no quantity exists.
+    const isTodayNew = newDateStr === todayStr;
+    const initialQuantity = (quantity !== null && quantity !== undefined) 
+                            ? quantity 
+                            : (isTodayNew ? null : 1);
+    
+    setQuantityValue(initialQuantity);
     setCommentValue(comment || '');
     setPhotoFile(null);
     setDeletePhoto(false);
@@ -544,8 +553,16 @@ const App = () => {
 
   const toggleHabitCheck = async (habitId, dayDate, currentStatus, dateId, quantity = null) => {
     const todayStr = new Date().toLocaleDateString('en-CA');
+    const isToday = dayDate === todayStr;
     const isPastDate = dayDate < todayStr;
     const isMarkingDone = !currentStatus;
+
+    // Determining the quantity to use:
+    // If we're marking as "done" for today and no quantity is passed, default to null (shows as "≤1" in picker)
+    let effectiveQuantity = quantity;
+    if (isMarkingDone && effectiveQuantity === null && isToday) {
+      effectiveQuantity = null; // Ensure it stays null for "≤1" state
+    }
 
     // Optimistic update
     const updatedHabits = habitsData.map(habit => {
@@ -557,7 +574,7 @@ const App = () => {
               ...status,
               is_done: isMarkingDone,
               is_restored: isPastDate && isMarkingDone,
-              quantity: quantity !== null ? quantity : (isMarkingDone ? status.quantity : null)
+              quantity: effectiveQuantity !== null ? effectiveQuantity : (isMarkingDone ? status.quantity : null)
             } : status
           )
         };
@@ -568,8 +585,8 @@ const App = () => {
 
     try {
       let response;
-      const payload = quantity !== null
-        ? { is_done: isMarkingDone, quantity, is_restored: isPastDate && isMarkingDone }
+      const payload = effectiveQuantity !== null
+        ? { is_done: isMarkingDone, quantity: effectiveQuantity, is_restored: isPastDate && isMarkingDone }
         : { is_done: isMarkingDone, is_restored: isPastDate && isMarkingDone };
 
       const csrf = getCookie('csrftoken');
@@ -600,7 +617,7 @@ const App = () => {
             habit_date: dayDate,
             is_done: true,
             is_restored: isPastDate,
-            ...(quantity !== null && { quantity })
+            ...(effectiveQuantity !== null && { quantity: effectiveQuantity })
           })
         });
       }
@@ -621,8 +638,17 @@ const App = () => {
 
   const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow) => {
     setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow });
-    // If quantity is explicitly null/undefined, set to null, otherwise use currentQuantity
-    setQuantityValue(currentQuantity !== null && currentQuantity !== undefined ? currentQuantity : 1);
+    
+    // Default quantity logic:
+    // If today, default to null (shows as "≤1" in DrumPicker).
+    // If past date, default to 1 if no quantity exists.
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const isToday = dayDate === todayStr;
+    const initialQuantity = (currentQuantity !== null && currentQuantity !== undefined) 
+                            ? currentQuantity 
+                            : (isToday ? null : 1);
+    
+    setQuantityValue(initialQuantity);
     setCommentValue(currentComment || '');
     setPhotoFile(null);
     setDeletePhoto(false);
