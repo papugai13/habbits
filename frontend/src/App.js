@@ -636,15 +636,22 @@ const App = () => {
     }
   };
 
-  const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow) => {
+  const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, isRestored) => {
     setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow });
     
     // Default quantity logic:
-    // User requested: ALWAYS default to null (≤1) for simple checkmarks.
-    // However, if the user explicitly marked 1 or >1 previously, show that exact digit.
-    const initialQuantity = (currentQuantity !== null && currentQuantity !== undefined) 
-                            ? currentQuantity 
-                            : null;
+    // If it's explicitly set (1, 2, ...), use it.
+    // If it's light green (isRestored implies marked restored, or unmarked past date), default to 1.
+    // If it's dark green (today, or unmarked today), default to null (<=1).
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const isLightGreenTarget = currentStatus ? isRestored : (dayDate < todayStr);
+    
+    let initialQuantity;
+    if (currentQuantity !== null && currentQuantity !== undefined) {
+      initialQuantity = currentQuantity;
+    } else {
+      initialQuantity = isLightGreenTarget ? 1 : null;
+    }
     
     setQuantityValue(initialQuantity);
     setCommentValue(currentComment || '');
@@ -653,9 +660,9 @@ const App = () => {
     setShowQuantityModal(true);
   };
 
-  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow) => {
+  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, isRestored) => {
     const timer = setTimeout(() => {
-      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow);
+      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, isRestored);
     }, 200); // 200ms for long press
     setLongPressTimer(timer);
   };
@@ -1589,13 +1596,13 @@ const App = () => {
                           }}
                           onMouseDown={() => {
                             const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow);
+                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, isRestored);
                           }}
                           onMouseUp={handleLongPressEnd}
                           onMouseLeave={handleLongPressEnd}
                           onTouchStart={() => {
                             const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow);
+                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, isRestored);
                           }}
                           onTouchEnd={handleLongPressEnd}
                           disabled={isDisabled}
