@@ -640,13 +640,11 @@ const App = () => {
     setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow });
     
     // Default quantity logic:
-    // If today, default to null (shows as "≤1" in DrumPicker).
-    // If past date, default to 1 if no quantity exists.
-    const todayStr = new Date().toLocaleDateString('en-CA');
-    const isToday = dayDate === todayStr;
+    // User requested: ALWAYS default to null (≤1) for simple checkmarks.
+    // However, if the user explicitly marked 1 or >1 previously, show that exact digit.
     const initialQuantity = (currentQuantity !== null && currentQuantity !== undefined) 
                             ? currentQuantity 
-                            : (isToday ? null : 1);
+                            : null;
     
     setQuantityValue(initialQuantity);
     setCommentValue(currentComment || '');
