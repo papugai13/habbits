@@ -235,6 +235,8 @@ const App = () => {
     const touch = e.touches[0];
     const distX = Math.abs(touch.clientX - swipeStartPos.current.x);
     const distY = Math.abs(touch.clientY - swipeStartPos.current.y);
+    // Start horizontal week swipe only when gesture is clearly horizontal.
+    // Don't block vertical scrolling.
     if (distX > 30 && distX > distY) {
       isSwiping.current = true;
       if (e.cancelable) e.preventDefault();
@@ -335,15 +337,15 @@ const App = () => {
       dateId: statusId,
       currentPhoto: photo
     });
-    
+
     // Default quantity logic for swipe:
     // If today, default to null (shows as "≤1" in DrumPicker).
     // If past date, default to 1 if no quantity exists.
     const isTodayNew = newDateStr === todayStr;
-    const initialQuantity = (quantity !== null && quantity !== undefined) 
-                            ? quantity 
-                            : (isTodayNew ? null : 1);
-    
+    const initialQuantity = (quantity !== null && quantity !== undefined)
+      ? quantity
+      : (isTodayNew ? null : 1);
+
     setQuantityValue(initialQuantity);
     setCommentValue(comment || '');
     setPhotoFile(null);
@@ -829,21 +831,21 @@ const App = () => {
 
   const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, isRestored) => {
     setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow });
-    
+
     // Default quantity logic:
     // If it's explicitly set (1, 2, ...), use it.
     // If it's light green (isRestored implies marked restored, or unmarked past date), default to 1.
     // If it's dark green (today, or unmarked today), default to null (<=1).
     const todayStr = new Date().toLocaleDateString('en-CA');
     const isLightGreenTarget = currentStatus ? isRestored : (dayDate < todayStr);
-    
+
     let initialQuantity;
     if (currentQuantity !== null && currentQuantity !== undefined) {
       initialQuantity = currentQuantity;
     } else {
       initialQuantity = isLightGreenTarget ? 1 : null;
     }
-    
+
     setQuantityValue(initialQuantity);
     setCommentValue(currentComment || '');
     setPhotoFile(null);
@@ -1523,8 +1525,8 @@ const App = () => {
       {activeTab === 'Habits' && (
         <div className="categories-section unified">
           {sortedCategories.map(category => {
-            const displayName = category.name === 'Все' ? t('allCategories') : 
-                             (category.name === 'Без категории' ? t('noCategory') : category.name);
+            const displayName = category.name === 'Все' ? t('allCategories') :
+              (category.name === 'Без категории' ? t('noCategory') : category.name);
             return (
               <button
                 key={category.id}
@@ -1575,7 +1577,10 @@ const App = () => {
                 );
               })}
             </div>
-            <div className="days-placeholder-end"></div>
+            <div className="days-placeholder-end header-counts-container">
+              <div className="header-count-badge weekly">{t('week').substring(0, 3).toUpperCase()}</div>
+              <div className="header-count-badge monthly">{t('month').substring(0, 3).toUpperCase()}</div>
+            </div>
           </div>
 
           {habitsData.filter(habit => {
@@ -1592,19 +1597,19 @@ const App = () => {
             const getStreakInfo = (stats, habit) => {
               let lastMark = -1;
               if (!stats || !Array.isArray(stats)) return { lastMark: -1, isLastMarkInStreak: false };
-              
+
               for (let i = stats.length - 1; i >= 0; i--) {
                 if (stats[i] && stats[i].is_done) {
                   lastMark = i;
                   break;
                 }
               }
-              
+
               let isLastMarkInStreak = false;
               if (lastMark >= 1) {
                 // Серия внутри текущей недели
-                isLastMarkInStreak = (stats[lastMark].is_done && !stats[lastMark].is_restored) && 
-                                     (stats[lastMark - 1].is_done && !stats[lastMark - 1].is_restored);
+                isLastMarkInStreak = (stats[lastMark].is_done && !stats[lastMark].is_restored) &&
+                  (stats[lastMark - 1].is_done && !stats[lastMark - 1].is_restored);
               } else if (lastMark === 0) {
                 // Только понедельник отмечен, проверяем воскресенье прошлой недели
                 isLastMarkInStreak = (stats[0].is_done && !stats[0].is_restored) && habit.prev_week_sun_done;
@@ -1612,16 +1617,17 @@ const App = () => {
                 // Нет отметок на этой неделе, проверяем субботу и воскресенье прошлой недели
                 isLastMarkInStreak = habit.prev_week_sun_done && habit.prev_week_sat_done;
               }
-              
+
               // Проверка на пропадание точек при пропуске более 2 дней
               const today = new Date();
               const baseDate = new Date(currentWeekDate);
-              
+
               // Находим "текущий" индекс для сравнения (сегодня или конец недели, если неделя прошлая)
+
               const displayedWeekStarts = baseDate;
               const nextWeekStarts = new Date(baseDate);
               nextWeekStarts.setDate(baseDate.getDate() + 7);
-              
+
               let comparisonIndex = -1;
               if (today >= displayedWeekStarts && today < nextWeekStarts) {
                 // Отображаемая неделя — текущая
@@ -1631,7 +1637,7 @@ const App = () => {
                 // Отображаемая неделя в прошлом
                 comparisonIndex = 6;
               }
-              
+
               if (comparisonIndex !== -1 && (comparisonIndex - lastMark) > 2) {
                 isLastMarkInStreak = false;
               }
@@ -1737,7 +1743,7 @@ const App = () => {
                           {hasPhoto && <span className="photo-indicator"></span>}
                         </button>
                       );
-                      
+
                       return (
                         <div key={slotDateStr} className={`grid-col ${isMonthStart ? 'month-start' : ''}`}>
                           {checkBoxBtn}
@@ -1808,8 +1814,8 @@ const App = () => {
 
         <Charts
           getCookie={getCookie}
-          habitsData={habitsData.filter(h => 
-            chartsSelectedCategory === 'Все' || 
+          habitsData={habitsData.filter(h =>
+            chartsSelectedCategory === 'Все' ||
             (chartsSelectedCategory === 'Без категории' && !h.category_name) ||
             (h.category_name === chartsSelectedCategory)
           )}
@@ -1831,7 +1837,7 @@ const App = () => {
         <div className="settings-container">
           <div className="settings-header">
             <h2>⚙️ {t('settings')}</h2>
-            <button 
+            <button
               className="lang-toggle-btn"
               onClick={() => {
                 const newLang = language === 'ru' ? 'en' : 'ru';
@@ -1917,16 +1923,16 @@ const App = () => {
                           }}
                         />
                         <div className="category-edit-actions">
-                          <button 
-                            className="manage-btn save-btn" 
+                          <button
+                            className="manage-btn save-btn"
                             onClick={() => handleUpdateCategory(cat.id, editingCategoryValue)}
                             title={t('save')}
 
                           >
                             💾
                           </button>
-                          <button 
-                            className="manage-btn cancel-btn" 
+                          <button
+                            className="manage-btn cancel-btn"
                             onClick={() => setEditingCategoryId(null)}
                             title={t('cancel')}
 
@@ -2021,11 +2027,11 @@ const App = () => {
 
           <div className="settings-section">
             <h3 className="section-title">{t('manageHabits')}</h3>
-            
+
             <div className="settings-category-filter">
               {sortedCategories.map(cat => {
-                const displayName = cat.name === 'Все' ? t('allCategories') : 
-                                 (cat.name === 'Без категории' ? t('noCategory') : cat.name);
+                const displayName = cat.name === 'Все' ? t('allCategories') :
+                  (cat.name === 'Без категории' ? t('noCategory') : cat.name);
                 return (
                   <button
                     key={cat.id}
@@ -2042,7 +2048,7 @@ const App = () => {
             <div className="manage-habits-list">
               {habitsData
                 .filter(h => !h.is_archived && (
-                  settingsSelectedCategory === 'Все' || 
+                  settingsSelectedCategory === 'Все' ||
                   (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
                   (h.category_name === settingsSelectedCategory)
                 ))
@@ -2053,65 +2059,65 @@ const App = () => {
 
                 habitsData
                   .filter(h => !h.is_archived && (
-                    settingsSelectedCategory === 'Все' || 
+                    settingsSelectedCategory === 'Все' ||
                     (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
                     (h.category_name === settingsSelectedCategory)
                   ))
                   .map(habit => (
                     <div
-                    key={habit.id}
-                    className={`manage-habit-item ${draggedHabitId === habit.id ? 'dragging' : ''} ${dragOverHabitId === habit.id && draggedHabitId !== habit.id ? 'drag-over' : ''}`}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, habit.id)}
-                    onDragOver={(e) => handleDragOver(e, habit.id)}
-                    onDrop={(e) => handleDrop(e, habit.id)}
-                    onDragEnd={handleDragEnd}
-                    onTouchStart={(e) => handleTouchStart(e, habit.id)}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                    data-habit-id={habit.id}
-                  >
-                    <div className="drag-handle" title={t('dragToReorder')}>⠿</div>
+                      key={habit.id}
+                      className={`manage-habit-item ${draggedHabitId === habit.id ? 'dragging' : ''} ${dragOverHabitId === habit.id && draggedHabitId !== habit.id ? 'drag-over' : ''}`}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, habit.id)}
+                      onDragOver={(e) => handleDragOver(e, habit.id)}
+                      onDrop={(e) => handleDrop(e, habit.id)}
+                      onDragEnd={handleDragEnd}
+                      onTouchStart={(e) => handleTouchStart(e, habit.id)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                      data-habit-id={habit.id}
+                    >
+                      <div className="drag-handle" title={t('dragToReorder')}>⠿</div>
 
 
-                    <div className="manage-habit-info">
-                      <div className="manage-habit-name">{habit.name}</div>
-                      <div className="manage-habit-category">{habit.category_name}</div>
+                      <div className="manage-habit-info">
+                        <div className="manage-habit-name">{habit.name}</div>
+                        <div className="manage-habit-category">{habit.category_name}</div>
+                      </div>
+                      <div className="manage-habit-actions">
+                        <button
+                          className="manage-btn edit-btn"
+                          onClick={() => {
+                            setEditingHabit({ ...habit });
+                            setCreateError('');
+                            setShowAddCategory(false);
+                            setNewCategoryName('');
+                            setShowEditModal(true);
+                          }}
+                          title={t('edit')}
+
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          className="manage-btn archive-btn"
+                          onClick={() => handleArchiveHabit(habit.id)}
+                          title={t('archiveHabit')}
+
+                        >
+                          📦
+                        </button>
+                        <button
+                          className="manage-btn delete-btn"
+                          onClick={() => handleDeleteHabit(habit.id)}
+                          title={t('delete')}
+
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </div>
-                    <div className="manage-habit-actions">
-                      <button
-                        className="manage-btn edit-btn"
-                        onClick={() => {
-                          setEditingHabit({ ...habit });
-                          setCreateError('');
-                          setShowAddCategory(false);
-                          setNewCategoryName('');
-                          setShowEditModal(true);
-                        }}
-                        title={t('edit')}
-
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        className="manage-btn archive-btn"
-                        onClick={() => handleArchiveHabit(habit.id)}
-                        title={t('archiveHabit')}
-
-                      >
-                        📦
-                      </button>
-                      <button
-                        className="manage-btn delete-btn"
-                        onClick={() => handleDeleteHabit(habit.id)}
-                        title={t('delete')}
-
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  ))
               )}
             </div>
 
@@ -2326,7 +2332,7 @@ const App = () => {
                 />
               </div>
 
-               <div className="form-group">
+              <div className="form-group">
                 <label htmlFor="edit-habit-category">{t('category')}</label>
                 <div className="category-input-wrapper">
                   <select
@@ -2633,7 +2639,7 @@ const App = () => {
                 <button
                   type="button"
                   className="btn-secondary"
-                    onClick={() => {
+                  onClick={() => {
                     setShowQuantityModal(false);
                     setQuantityModalData(null);
                     setQuantityValue(null);
@@ -2789,8 +2795,7 @@ const App = () => {
             }}
             onClick={(e) => e.stopPropagation()}
           />
-          <div className="lightbox-hint-text">{t('swipeDownToClose')}</div>
-        </div>
+          <div className="lightbox-hint-text">{t('swipeDownToClose')}</div>        </div>
 
       )}
 
