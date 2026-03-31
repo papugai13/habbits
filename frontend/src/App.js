@@ -49,6 +49,8 @@ const App = () => {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
+  const [archivedCategories, setArchivedCategories] = useState([]);
+  const [showCategoryArchive, setShowCategoryArchive] = useState(false);
   const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('Все');
   const [chartsSelectedCategory, setChartsSelectedCategory] = useState('Все');
 
@@ -118,15 +120,31 @@ const App = () => {
         const data = await response.json();
         setCategories(data);
 
-        // Set default category for form if not set
-        if (data.length > 0 && !newHabitCategory) {
-          setNewHabitCategory(data[0].id.toString());
+        const hasSelectedCategory = data.some(category => category.id.toString() === newHabitCategory);
+        if (data.length > 0) {
+          if (!newHabitCategory || !hasSelectedCategory) {
+            setNewHabitCategory(data[0].id.toString());
+          }
+        } else if (newHabitCategory) {
+          setNewHabitCategory('');
         }
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
   }, [newHabitCategory]);
+
+  const fetchArchivedCategories = React.useCallback(async () => {
+    try {
+      const response = await fetch('/api/v1/categories/archived/');
+      if (response.ok) {
+        const data = await response.json();
+        setArchivedCategories(data);
+      }
+    } catch (error) {
+      console.error('Error fetching archived categories:', error);
+    }
+  }, []);
 
   // Fetch habits from API
   const fetchHabits = React.useCallback(async (targetDate) => {
@@ -168,6 +186,7 @@ const App = () => {
         fetchHabits();
         fetchArchivedHabits();
         fetchCategories();
+        fetchArchivedCategories();
       } else {
         setIsAuthenticated(false);
       }
@@ -177,7 +196,7 @@ const App = () => {
     } finally {
       setAuthLoading(false);
     }
-  }, [fetchHabits, fetchArchivedHabits, fetchCategories]);
+  }, [fetchHabits, fetchArchivedHabits, fetchCategories, fetchArchivedCategories]);
 
   // Check authentication status on mount
   useEffect(() => {
@@ -541,6 +560,7 @@ const App = () => {
 
       if (response.ok) {
         await fetchCategories();
+        await fetchArchivedCategories();
         await fetchHabits(); // Habits category will be updated to null
       } else {
         alert(t('categoryDeleteError'));
@@ -548,6 +568,50 @@ const App = () => {
       }
     } catch (error) {
       console.error('Error deleting category:', error);
+    }
+  };
+
+  const handleArchiveCategory = async (id) => {
+    try {
+      const response = await fetch(`/api/v1/categories/${id}/archive/`, {
+        method: 'PATCH',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        await fetchCategories();
+        await fetchArchivedCategories();
+        await fetchHabits();
+      } else {
+        alert(t('categoryArchiveError'));
+      }
+    } catch (error) {
+      console.error('Error archiving category:', error);
+    }
+  };
+
+  const handleUnarchiveCategory = async (id) => {
+    try {
+      const response = await fetch(`/api/v1/categories/${id}/archive/`, {
+        method: 'PATCH',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        await fetchCategories();
+        await fetchArchivedCategories();
+        await fetchHabits();
+      } else {
+        alert(t('categoryArchiveError'));
+      }
+    } catch (error) {
+      console.error('Error unarchiving category:', error);
     }
   };
 
@@ -956,6 +1020,8 @@ const App = () => {
     setIsAuthenticated(true);
     fetchHabits();
     fetchArchivedHabits();
+    fetchCategories();
+    fetchArchivedCategories();
   };
 
   const handleRegister = (userData) => {
@@ -963,6 +1029,8 @@ const App = () => {
     setIsAuthenticated(true);
     fetchHabits();
     fetchArchivedHabits();
+    fetchCategories();
+    fetchArchivedCategories();
   };
 
   const handleLogout = async () => {
@@ -1885,6 +1953,14 @@ const App = () => {
                             ✏️
                           </button>
                           <button
+                            className="manage-btn archive-btn"
+                            onClick={() => handleArchiveCategory(cat.id)}
+                            title={t('archiveCategory')}
+
+                          >
+                            📦
+                          </button>
+                          <button
                             className="manage-btn delete-btn"
                             onClick={() => handleDeleteCategory(cat.id)}
                             title={t('delete')}
@@ -1897,6 +1973,48 @@ const App = () => {
                     )}
                   </div>
                 ))
+              )}
+            </div>
+
+            <div className="archive-section">
+              <button
+                className="archive-toggle-btn"
+                onClick={() => setShowCategoryArchive(!showCategoryArchive)}
+              >
+                <span className="archive-toggle-icon">{showCategoryArchive ? '▲' : '▼'}</span>
+                📁 {t('archive')} ({archivedCategories.length})
+              </button>
+
+              {showCategoryArchive && (
+                <div className="archived-habits-list">
+                  {archivedCategories.length === 0 ? (
+                    <p className="no-habits-msg">{t('categoryArchiveEmpty')}</p>
+                  ) : (
+                    archivedCategories.map(cat => (
+                      <div key={cat.id} className="archived-habit-item">
+                        <div className="manage-habit-info">
+                          <div className="manage-habit-name">{cat.name}</div>
+                        </div>
+                        <div className="manage-habit-actions">
+                          <button
+                            className="manage-btn unarchive-btn"
+                            onClick={() => handleUnarchiveCategory(cat.id)}
+                            title={t('unarchiveCategory')}
+                          >
+                            📤
+                          </button>
+                          <button
+                            className="manage-btn delete-btn"
+                            onClick={() => handleDeleteCategory(cat.id)}
+                            title={t('deleteForever')}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               )}
             </div>
           </div>

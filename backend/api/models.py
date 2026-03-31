@@ -77,6 +77,11 @@ class Category(models.Model):
         verbose_name="Порядок",
     )
 
+    is_archived = models.BooleanField(
+        default=False,
+        verbose_name="В архиве",
+    )
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = unique_slugify(self, slugify(self.name))
