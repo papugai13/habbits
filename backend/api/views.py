@@ -45,7 +45,10 @@ class CategoryViewSet(viewsets.ModelViewSet):
             auth_user=self.request.user,
             defaults={'name': self.request.user.username, 'age': ''}
         )
-        return Category.objects.filter(user=user_profile).order_by('order')
+        qs = Category.objects.filter(user=user_profile).order_by('order')
+        if self.action == 'list':
+            return qs.filter(is_archived=False)
+        return qs
 
     def perform_create(self, serializer):
         user_profile, _ = UserAll.objects.get_or_create(
@@ -73,6 +76,28 @@ class CategoryViewSet(viewsets.ModelViewSet):
             if category_id is not None and new_order is not None:
                 Category.objects.filter(id=category_id, user=user_profile).update(order=new_order)
         return Response({'status': 'ok'})
+
+    @action(detail=True, methods=['patch'])
+    def archive(self, request, pk=None):
+        """Toggle is_archived for a category."""
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=request.user,
+            defaults={'name': request.user.username, 'age': ''}
+        )
+        category = get_object_or_404(Category, id=pk, user=user_profile)
+        category.is_archived = not category.is_archived
+        category.save(update_fields=['is_archived'])
+        return Response(CategorySerializer(category).data)
+
+    @action(detail=False, methods=['get'])
+    def archived(self, request):
+        """Return archived categories for the current user."""
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=request.user,
+            defaults={'name': request.user.username, 'age': ''}
+        )
+        categories = Category.objects.filter(user=user_profile, is_archived=True).order_by('order')
+        return Response(CategorySerializer(categories, many=True).data)
 
 
 @api_view(['GET', 'POST'])

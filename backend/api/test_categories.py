@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from api.models import UserAll, Category
 
+
 class CategoryValidationTest(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -40,3 +41,37 @@ class CategoryValidationTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Category.objects.count(), 1)
         self.assertEqual(Category.objects.get().name, 'Work')
+
+    def test_archive_category_moves_it_to_archive_list(self):
+        """Archived categories should disappear from the main list and appear in the archive."""
+        category = Category.objects.create(user=self.user_all, name='Health')
+
+        archive_response = self.client.patch(f'/api/v1/categories/{category.id}/archive/')
+
+        self.assertEqual(archive_response.status_code, status.HTTP_200_OK)
+        category.refresh_from_db()
+        self.assertTrue(category.is_archived)
+        self.assertTrue(archive_response.data['is_archived'])
+
+        active_response = self.client.get('/api/v1/categories/')
+        archived_response = self.client.get('/api/v1/categories/archived/')
+
+        self.assertEqual(active_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(archived_response.status_code, status.HTTP_200_OK)
+        self.assertNotIn(category.id, [item['id'] for item in active_response.data])
+        self.assertIn(category.id, [item['id'] for item in archived_response.data])
+
+    def test_unarchive_category_returns_it_to_main_list(self):
+        """Archiving twice should return the category back to the main list."""
+        category = Category.objects.create(user=self.user_all, name='Study')
+
+        self.client.patch(f'/api/v1/categories/{category.id}/archive/')
+        unarchive_response = self.client.patch(f'/api/v1/categories/{category.id}/archive/')
+
+        self.assertEqual(unarchive_response.status_code, status.HTTP_200_OK)
+        category.refresh_from_db()
+        self.assertFalse(category.is_archived)
+        self.assertFalse(unarchive_response.data['is_archived'])
+
+        active_response = self.client.get('/api/v1/categories/')
+        self.assertIn(category.id, [item['id'] for item in active_response.data])
