@@ -71,6 +71,11 @@ class Category(models.Model):
         max_length=100,
         blank=True,
     )
+    
+    order = models.IntegerField(
+        default=0,
+        verbose_name="Порядок",
+    )
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -84,6 +89,7 @@ class Category(models.Model):
         verbose_name = "Категория"
         verbose_name_plural = "Категории"
         unique_together = (('user', 'name'), ('user', 'slug'))
+        ordering = ['order']
 
 
 class Habit(models.Model):

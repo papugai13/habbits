@@ -30,7 +30,6 @@ const App = () => {
 
   const [habitsData, setHabitsData] = useState([]);
 
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Authentication state
@@ -52,7 +51,6 @@ const App = () => {
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
   const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('Все');
   const [chartsSelectedCategory, setChartsSelectedCategory] = useState('Все');
-  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   // Quantity modal state
   const [showQuantityModal, setShowQuantityModal] = useState(false);
@@ -95,6 +93,8 @@ const App = () => {
   // Drag-and-drop state
   const [draggedHabitId, setDraggedHabitId] = useState(null);
   const [dragOverHabitId, setDragOverHabitId] = useState(null);
+  const [draggedCategoryId, setDraggedCategoryId] = useState(null);
+  const [dragOverCategoryId, setDragOverCategoryId] = useState(null);
 
   const t = (key) => {
     return translations[language][key] || key;
@@ -551,6 +551,133 @@ const App = () => {
     }
   };
 
+  const handleCategoryDragStart = (e, catId) => {
+    setDraggedCategoryId(catId);
+    e.dataTransfer.effectAllowed = 'move';
+    const img = new Image();
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(img, 0, 0);
+  };
+
+  const liveSwapCategories = (draggedId, targetId) => {
+    if (!draggedId || !targetId || draggedId === targetId) return;
+
+    setCategories(prevList => {
+      const draggedIndex = prevList.findIndex(c => c.id === draggedId);
+      const targetIndex = prevList.findIndex(c => c.id === targetId);
+
+      if (draggedIndex === -1 || targetIndex === -1) return prevList;
+      if (draggedIndex === targetIndex) return prevList;
+
+      const newList = [...prevList];
+      const [removed] = newList.splice(draggedIndex, 1);
+      newList.splice(targetIndex, 0, removed);
+      return newList;
+    });
+  };
+
+  const handleCategoryDragOver = (e, catId) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedCategoryId && draggedCategoryId !== catId) {
+      liveSwapCategories(draggedCategoryId, catId);
+    }
+  };
+
+  const handleCategoryDrop = async (e, targetCatId) => {
+    if (e) e.preventDefault();
+    
+    setCategories(currentList => {
+      const reorderPayload = currentList
+        .filter(c => c.id !== 'all' && c.id !== 'none')
+        .map((c, index) => ({ id: c.id, order: index }));
+        
+      const csrf = getCookie('csrftoken');
+      fetch('/api/v1/categories/reorder/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf
+        },
+        credentials: 'include',
+        body: JSON.stringify(reorderPayload)
+      }).catch(error => {
+        console.error('Error saving category order:', error);
+        fetchCategories(); // revert on error
+      });
+
+      return currentList;
+    });
+
+    setDraggedCategoryId(null);
+    setDragOverCategoryId(null);
+  };
+
+  const handleCategoryDragEnd = () => {
+    setDraggedCategoryId(null);
+    setDragOverCategoryId(null);
+  };
+
+  const handleCategoryTouchStart = (e, catId) => {
+    if (e.touches.length > 1) return;
+
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    isTouchDraggingInProgress.current = false;
+
+    reorderLongPressTimer.current = setTimeout(() => {
+      setDraggedCategoryId(catId);
+      isTouchDraggingInProgress.current = true;
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 200);
+  };
+
+  const handleCategoryTouchMove = (e) => {
+    if (!reorderLongPressTimer.current && !isTouchDraggingInProgress.current) return;
+
+    const touch = e.touches[0];
+    const distX = Math.abs(touch.clientX - touchStartPos.current.x);
+    const distY = Math.abs(touch.clientY - touchStartPos.current.y);
+
+    if (!isTouchDraggingInProgress.current && (distX > 10 || distY > 10)) {
+      if (reorderLongPressTimer.current) {
+        clearTimeout(reorderLongPressTimer.current);
+        reorderLongPressTimer.current = null;
+      }
+      return;
+    }
+
+    if (isTouchDraggingInProgress.current) {
+      const draggedEl = document.querySelector(`.manage-category-item[data-category-id="${draggedCategoryId}"]`);
+      if (draggedEl) draggedEl.style.pointerEvents = 'none';
+
+      const element = document.elementFromPoint(touch.clientX, touch.clientY);
+
+      if (draggedEl) draggedEl.style.pointerEvents = '';
+
+      const habitItem = element?.closest('.manage-category-item');
+
+      if (habitItem) {
+        const targetId = parseInt(habitItem.getAttribute('data-category-id'));
+        if (targetId && targetId !== draggedCategoryId) {
+          liveSwapCategories(draggedCategoryId, targetId);
+          if (navigator.vibrate) navigator.vibrate(20);
+        }
+      }
+    }
+  };
+
+  const handleCategoryTouchEnd = (e) => {
+    clearTimeout(reorderLongPressTimer.current);
+    reorderLongPressTimer.current = null;
+
+    if (isTouchDraggingInProgress.current) {
+      handleCategoryDrop(null, null); 
+      setDraggedCategoryId(null);
+      isTouchDraggingInProgress.current = false;
+    }
+  };
+
   const toggleHabitCheck = async (habitId, dayDate, currentStatus, dateId, quantity = null) => {
     const todayStr = new Date().toLocaleDateString('en-CA');
     const isToday = dayDate === todayStr;
@@ -789,16 +916,6 @@ const App = () => {
     }, 0);
   };
 
-  // Сумма выполнений с явным указанием количества (quantity)
-  const getHabitOverflow = (habit) => {
-    return habit.statuses.reduce((acc, s) => {
-      if (s.is_done && s.quantity !== null && s.quantity !== undefined) {
-        return acc + s.quantity;
-      }
-      return acc;
-    }, 0);
-  };
-
   // Эмоджи-награда в зависимости от количества выполнений за неделю
   const getWeeklyAward = (count) => {
     if (count >= 7) return '🌟🌟🌟';
@@ -808,18 +925,6 @@ const App = () => {
     if (count === 3) return '⚡';
     return null;
   };
-
-  // Calculate weekly stats
-  const completedThisWeek = habitsData.reduce((acc, habit) => {
-    return acc + habit.statuses.reduce((sum, status) => {
-      if (status.is_done) {
-        return sum + (status.quantity || 1);
-      }
-      return sum;
-    }, 0);
-  }, 0);
-
-  const totalPossibleThisWeek = habitsData.length * 7;
 
   // Sort and filter categories
   const sortedCategories = React.useMemo(() => {
@@ -1117,45 +1222,6 @@ const App = () => {
   const handleDragEnd = () => {
     setDraggedHabitId(null);
     setDragOverHabitId(null);
-  };
-
-  const handleMoveHabit = async (habitId, direction) => {
-    const currentList = [...habitsData];
-    const index = currentList.findIndex(h => h.id === habitId);
-    if (index === -1) return;
-
-    if (direction === 'up' && index > 0) {
-      const [removed] = currentList.splice(index, 1);
-      currentList.splice(index - 1, 0, removed);
-    } else if (direction === 'down' && index < currentList.length - 1) {
-      const [removed] = currentList.splice(index, 1);
-      currentList.splice(index + 1, 0, removed);
-    } else {
-      return;
-    }
-
-    // Update locally
-    setHabitsData(currentList);
-
-    // Send to backend
-    const reorderPayload = currentList.map((h, index) => ({ id: h.id, order: index }));
-    try {
-      const csrf = getCookie('csrftoken');
-      console.log('MoveHabit: payload:', reorderPayload, 'csrf:', csrf);
-
-      await fetch('/api/v1/habits/reorder/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf
-        },
-        credentials: 'include',
-        body: JSON.stringify(reorderPayload)
-      });
-    } catch (error) {
-      console.error('Error saving order:', error);
-      fetchHabits(); // revert on error
-    }
   };
 
   const handleUpdateHabit = async (e) => {
@@ -1481,10 +1547,7 @@ const App = () => {
               
               // Проверка на пропадание точек при пропуске более 2 дней
               const today = new Date();
-              const todayStr = today.toLocaleDateString('en-CA');
               const baseDate = new Date(currentWeekDate);
-              const dayOfWeek = baseDate.getDay();
-              const currentWeekMondayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
               
               // Находим "текущий" индекс для сравнения (сегодня или конец недели, если неделя прошлая)
               const displayedWeekStarts = baseDate;
@@ -1565,15 +1628,9 @@ const App = () => {
                       const statusId = status ? status.id : null;
                       const quantity = status ? status.quantity : null;
 
-                      // Calculate yesterday date string
-                      const yesterday = new Date(today);
-                      yesterday.setDate(today.getDate() - 1);
-                      const yesterdayStr = yesterday.toLocaleDateString('en-CA');
-
                       const isToday = slotDateStr === todayStr;
                       const isPast = slotDateStr < todayStr;
                       const isFuture = slotDateStr > todayStr;
-                      const isYesterday = slotDateStr === yesterdayStr;
                       const isMissed = isPast && !isDone;
                       const hasComment = status && status.comment;
                       const hasPhoto = status && status.photo;
@@ -1764,7 +1821,20 @@ const App = () => {
 
               ) : (
                 categories.filter(c => c.id !== 'all').map(cat => (
-                  <div key={cat.id} className="manage-category-item">
+                  <div 
+                    key={cat.id} 
+                    className={`manage-category-item ${draggedCategoryId === cat.id ? 'dragging' : ''} ${dragOverCategoryId === cat.id && draggedCategoryId !== cat.id ? 'drag-over' : ''}`}
+                    draggable
+                    onDragStart={(e) => handleCategoryDragStart(e, cat.id)}
+                    onDragOver={(e) => handleCategoryDragOver(e, cat.id)}
+                    onDrop={(e) => handleCategoryDrop(e, cat.id)}
+                    onDragEnd={handleCategoryDragEnd}
+                    onTouchStart={(e) => handleCategoryTouchStart(e, cat.id)}
+                    onTouchMove={handleCategoryTouchMove}
+                    onTouchEnd={handleCategoryTouchEnd}
+                    data-category-id={cat.id}
+                  >
+                    <div className="drag-handle" title={t('dragToReorder')}>⠿</div>
                     {editingCategoryId === cat.id ? (
                       <div className="category-edit-row">
                         <input

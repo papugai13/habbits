@@ -2,21 +2,6 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList, Rectangle } from 'recharts';
 import './Charts.css';
 
-const formatDate = (dateStr, periodType, language) => {
-    const date = new Date(dateStr);
-    if (periodType === 'week') {
-        const daysRu = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-        const daysEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        return language === 'ru' ? daysRu[date.getDay()] : daysEn[date.getDay()];
-    } else if (periodType === 'month') {
-        return date.getDate();
-    } else {
-        const monthsRu = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-        const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return language === 'ru' ? monthsRu[date.getMonth()] : monthsEn[date.getMonth()];
-    }
-};
-
 const generatePeriodLabel = (period, referenceDate, t) => {
     const today = new Date(referenceDate);
     const months = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
@@ -162,15 +147,6 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                             ? new Date(periodStartDate.getFullYear(), periodStartDate.getMonth() + 1, 0).getDate() 
                             : (periodStartDate.getFullYear() % 4 === 0 ? 366 : 365);
 
-                    let passedDays;
-                    if (periodStartDate > today) {
-                        passedDays = 0;
-                    } else {
-                        const diffTime = Math.abs(today - periodStartDate);
-                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include today
-                        passedDays = Math.min(totalDaysInPeriod, diffDays);
-                    }
-
                     const formatted = json.habits.map(item => {
                         const countCapped = item.completed_days || 0;
                         const percentageStr = totalDaysInPeriod > 0 
@@ -196,7 +172,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
             }
         };
         fetchComparisonData();
-    }, [period, currentWeekDate, selectedCategory]);
+    }, [period, currentWeekDate, selectedCategory, t]);
 
     const scrollRef = useRef(null);
     const indicatorRef = useRef(null);
@@ -205,7 +181,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
 
     const handleScroll = (e) => {
         if (!indicatorRef.current) return;
-        const { scrollLeft, scrollWidth, clientWidth } = e.target;
+        const { scrollLeft, scrollWidth } = e.target;
         const left = (scrollLeft / scrollWidth) * 100;
         indicatorRef.current.style.left = `${left}%`;
     };
@@ -370,7 +346,7 @@ const Charts = ({
 
     const handleMainScroll = (e) => {
         if (!mainIndicatorRef.current) return;
-        const { scrollLeft, scrollWidth, clientWidth } = e.target;
+        const { scrollLeft, scrollWidth } = e.target;
         const left = (scrollLeft / scrollWidth) * 100;
         mainIndicatorRef.current.style.left = `${left}%`;
     };
@@ -386,35 +362,7 @@ const Charts = ({
         }
     }, [chartData.length, period]);
 
-    useEffect(() => {
-        fetchStatistics();
-    }, [period, chartDate, selectedCategory]);
-
-    const handlePrevPeriod = () => {
-        const date = new Date(chartDate);
-        if (period === 'week') {
-            date.setDate(date.getDate() - 7);
-        } else if (period === 'month') {
-            date.setMonth(date.getMonth() - 1);
-        } else if (period === 'year') {
-            date.setFullYear(date.getFullYear() - 1);
-        }
-        setChartDate(date.toISOString().split('T')[0]);
-    };
-
-    const handleNextPeriod = () => {
-        const date = new Date(chartDate);
-        if (period === 'week') {
-            date.setDate(date.getDate() + 7);
-        } else if (period === 'month') {
-            date.setMonth(date.getMonth() + 1);
-        } else if (period === 'year') {
-            date.setFullYear(date.getFullYear() + 1);
-        }
-        setChartDate(date.toISOString().split('T')[0]);
-    };
-
-    const fetchStatistics = async () => {
+    const fetchStatistics = useCallback(async () => {
         setLoading(true);
         try {
             const response = await fetch(`/api/v1/habits/daily_statistics/?period=${period}&date=${chartDate}&category=${selectedCategory || 'Все'}`, {
@@ -456,6 +404,34 @@ const Charts = ({
         } finally {
             setLoading(false);
         }
+    }, [period, chartDate, selectedCategory, t]);
+
+    useEffect(() => {
+        fetchStatistics();
+    }, [fetchStatistics]);
+
+    const handlePrevPeriod = () => {
+        const date = new Date(chartDate);
+        if (period === 'week') {
+            date.setDate(date.getDate() - 7);
+        } else if (period === 'month') {
+            date.setMonth(date.getMonth() - 1);
+        } else if (period === 'year') {
+            date.setFullYear(date.getFullYear() - 1);
+        }
+        setChartDate(date.toISOString().split('T')[0]);
+    };
+
+    const handleNextPeriod = () => {
+        const date = new Date(chartDate);
+        if (period === 'week') {
+            date.setDate(date.getDate() + 7);
+        } else if (period === 'month') {
+            date.setMonth(date.getMonth() + 1);
+        } else if (period === 'year') {
+            date.setFullYear(date.getFullYear() + 1);
+        }
+        setChartDate(date.toISOString().split('T')[0]);
     };
 
     return (
