@@ -77,7 +77,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
                 Category.objects.filter(id=category_id, user=user_profile).update(order=new_order)
         return Response({'status': 'ok'})
 
-    @action(detail=True, methods=['patch'])
+    @action(detail=True, methods=['patch', 'post'])
     def archive(self, request, pk=None):
         """Toggle is_archived for a category."""
         user_profile, _ = UserAll.objects.get_or_create(
@@ -184,7 +184,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                 Habit.objects.filter(id=habit_id, user=user_profile).update(order=new_order)
         return Response({'status': 'ok'})
 
-    @action(detail=True, methods=['patch'])
+    @action(detail=True, methods=['patch', 'post'])
     def archive(self, request, pk=None):
         """Toggle is_archived for a habit."""
         user_profile, _ = UserAll.objects.get_or_create(
