@@ -13,19 +13,21 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #F5F5F5;
+  overflow: hidden;
 }
 
 .app {
   max-width: 600px;
   margin: 0 auto;
   background-color: #FFFFFF;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   position: relative;
   padding-bottom: 80px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
   overflow-x: hidden;
+  overflow-y: hidden;
 }
 
 /* Верхняя панель */
@@ -282,7 +284,7 @@ body {
   overflow-x: auto;
   padding: 12px 16px;
   background-color: #FFFFFF;
-  border-bottom: 1px solid #E0E0E0;
+  border-bottom: none;
   scrollbar-width: none;
   /* Firefox */
   -ms-overflow-style: none;
@@ -329,7 +331,7 @@ body {
 /* Список привычек */
 .habits-container {
   flex: 1;
-  padding: 15px 16px;
+  padding: 0 16px 15px;
   overflow-y: auto;
   overflow-x: visible !important; /* Changed from hidden to avoid clipping the separator line */
   position: relative;
@@ -558,7 +560,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 60px; /* Fixed width for perfect grid alignment with header */
+  width: 72px; /* Increased to match header and prevent crowding */
   flex-shrink: 0;
 }
 
@@ -1005,14 +1007,14 @@ body {
 .days-header {
   display: flex;
   align-items: center;
-  padding: 15px 0 10px; /* Matches habits-container padding-top (15px) */
+  padding: 10px 0;
   gap: 10px;
   margin-bottom: 32px; /* Synchronized with habit-row margin-bottom */
   position: sticky;
   top: 0; 
   background-color: #FFFFFF;
   z-index: 1010;
-  margin-top: -15px; /* Pull into the container padding area */
+  margin-top: 0;
   width: 100%;
   overflow: visible !important;
   box-shadow: 0 4px 6px -6px rgba(0,0,0,0.1);
@@ -1098,8 +1100,42 @@ body {
 }
 
 .days-placeholder-end {
-  width: 60px; /* Synchronized with .habit-counts-wrapper */
+  width: 72px; /* Increased to accommodate badges and sync with rows */
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  gap: 2px;
+  padding: 0 4px;
+}
+
+
+.header-count-badge {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #64748b;
+  background-color: #f1f5f9;
+  padding: 3px 5px;
+  border-radius: 6px;
+  white-space: nowrap;
+  flex: 1;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+}
+
+.header-count-badge.weekly {
+  background-color: #ecfdf5;
+  color: #059669;
+  border-color: #d1fae5;
+}
+
+.header-count-badge.monthly {
+  background-color: #f0fdf4;
+  color: #10b981;
+  border-color: #dcfce7;
 }
 
 /* Removed fixed widths for responsiveness */
