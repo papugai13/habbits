@@ -61,6 +61,17 @@ class CategoryValidationTest(TestCase):
         self.assertNotIn(category.id, [item['id'] for item in active_response.data])
         self.assertIn(category.id, [item['id'] for item in archived_response.data])
 
+    def test_archive_category_accepts_post_method(self):
+        """Archive endpoint should also work with POST for production compatibility."""
+        category = Category.objects.create(user=self.user_all, name='Sport')
+
+        archive_response = self.client.post(f'/api/v1/categories/{category.id}/archive/')
+
+        self.assertEqual(archive_response.status_code, status.HTTP_200_OK)
+        category.refresh_from_db()
+        self.assertTrue(category.is_archived)
+        self.assertTrue(archive_response.data['is_archived'])
+
     def test_unarchive_category_returns_it_to_main_list(self):
         """Archiving twice should return the category back to the main list."""
         category = Category.objects.create(user=self.user_all, name='Study')
