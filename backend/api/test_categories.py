@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APIClient
-from api.models import UserAll, Category
+from api.models import UserAll, Category, Habit
 
 
 class CategoryValidationTest(TestCase):
@@ -71,6 +71,32 @@ class CategoryValidationTest(TestCase):
         category.refresh_from_db()
         self.assertTrue(category.is_archived)
         self.assertTrue(archive_response.data['is_archived'])
+
+    def test_archive_category_also_toggles_habits_in_it(self):
+        """Archiving a category should archive its habits, and restoring should unarchive them."""
+        category = Category.objects.create(user=self.user_all, name='Fitness')
+        habit_in_category = Habit.objects.create(user=self.user_all, name='Run', category=category)
+        other_habit = Habit.objects.create(user=self.user_all, name='Read')
+
+        archive_response = self.client.patch(f'/api/v1/categories/{category.id}/archive/')
+
+        self.assertEqual(archive_response.status_code, status.HTTP_200_OK)
+        category.refresh_from_db()
+        habit_in_category.refresh_from_db()
+        other_habit.refresh_from_db()
+
+        self.assertTrue(category.is_archived)
+        self.assertTrue(habit_in_category.is_archived)
+        self.assertFalse(other_habit.is_archived)
+
+        unarchive_response = self.client.patch(f'/api/v1/categories/{category.id}/archive/')
+
+        self.assertEqual(unarchive_response.status_code, status.HTTP_200_OK)
+        category.refresh_from_db()
+        habit_in_category.refresh_from_db()
+
+        self.assertFalse(category.is_archived)
+        self.assertFalse(habit_in_category.is_archived)
 
     def test_unarchive_category_returns_it_to_main_list(self):
         """Archiving twice should return the category back to the main list."""

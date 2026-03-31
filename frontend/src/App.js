@@ -587,6 +587,7 @@ const App = () => {
         await fetchCategories();
         await fetchArchivedCategories();
         await fetchHabits();
+        await fetchArchivedHabits();
       } else {
         alert(t('categoryArchiveError'));
       }
@@ -609,6 +610,7 @@ const App = () => {
         await fetchCategories();
         await fetchArchivedCategories();
         await fetchHabits();
+        await fetchArchivedHabits();
       } else {
         alert(t('categoryArchiveError'));
       }

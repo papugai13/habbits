@@ -79,7 +79,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['patch', 'post'])
     def archive(self, request, pk=None):
-        """Toggle is_archived for a category."""
+        """Toggle is_archived for a category and keep its habits in sync."""
         user_profile, _ = UserAll.objects.get_or_create(
             auth_user=request.user,
             defaults={'name': request.user.username, 'age': ''}
@@ -87,6 +87,9 @@ class CategoryViewSet(viewsets.ModelViewSet):
         category = get_object_or_404(Category, id=pk, user=user_profile)
         category.is_archived = not category.is_archived
         category.save(update_fields=['is_archived'])
+        Habit.objects.filter(user=user_profile, category=category).update(
+            is_archived=category.is_archived
+        )
         return Response(CategorySerializer(category).data)
 
     @action(detail=False, methods=['get'])
