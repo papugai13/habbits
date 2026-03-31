@@ -316,7 +316,16 @@ const App = () => {
       dateId: statusId,
       currentPhoto: photo
     });
-    setQuantityValue(quantity !== null && quantity !== undefined ? quantity : 1);
+    
+    // Default quantity logic for swipe:
+    // If today, default to null (shows as "≤1" in DrumPicker).
+    // If past date, default to 1 if no quantity exists.
+    const isTodayNew = newDateStr === todayStr;
+    const initialQuantity = (quantity !== null && quantity !== undefined) 
+                            ? quantity 
+                            : (isTodayNew ? null : 1);
+    
+    setQuantityValue(initialQuantity);
     setCommentValue(comment || '');
     setPhotoFile(null);
     setDeletePhoto(false);
@@ -544,8 +553,16 @@ const App = () => {
 
   const toggleHabitCheck = async (habitId, dayDate, currentStatus, dateId, quantity = null) => {
     const todayStr = new Date().toLocaleDateString('en-CA');
+    const isToday = dayDate === todayStr;
     const isPastDate = dayDate < todayStr;
     const isMarkingDone = !currentStatus;
+
+    // Determining the quantity to use:
+    // If we're marking as "done" for today and no quantity is passed, default to null (shows as "≤1" in picker)
+    let effectiveQuantity = quantity;
+    if (isMarkingDone && effectiveQuantity === null && isToday) {
+      effectiveQuantity = null; // Ensure it stays null for "≤1" state
+    }
 
     // Optimistic update
     const updatedHabits = habitsData.map(habit => {
@@ -557,7 +574,7 @@ const App = () => {
               ...status,
               is_done: isMarkingDone,
               is_restored: isPastDate && isMarkingDone,
-              quantity: quantity !== null ? quantity : (isMarkingDone ? status.quantity : null)
+              quantity: effectiveQuantity !== null ? effectiveQuantity : (isMarkingDone ? status.quantity : null)
             } : status
           )
         };
@@ -568,8 +585,8 @@ const App = () => {
 
     try {
       let response;
-      const payload = quantity !== null
-        ? { is_done: isMarkingDone, quantity, is_restored: isPastDate && isMarkingDone }
+      const payload = effectiveQuantity !== null
+        ? { is_done: isMarkingDone, quantity: effectiveQuantity, is_restored: isPastDate && isMarkingDone }
         : { is_done: isMarkingDone, is_restored: isPastDate && isMarkingDone };
 
       const csrf = getCookie('csrftoken');
@@ -600,7 +617,7 @@ const App = () => {
             habit_date: dayDate,
             is_done: true,
             is_restored: isPastDate,
-            ...(quantity !== null && { quantity })
+            ...(effectiveQuantity !== null && { quantity: effectiveQuantity })
           })
         });
       }
@@ -619,19 +636,33 @@ const App = () => {
     }
   };
 
-  const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow) => {
+  const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, isRestored) => {
     setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow });
-    // If quantity is explicitly null/undefined, set to null, otherwise use currentQuantity
-    setQuantityValue(currentQuantity !== null && currentQuantity !== undefined ? currentQuantity : 1);
+    
+    // Default quantity logic:
+    // If it's explicitly set (1, 2, ...), use it.
+    // If it's light green (isRestored implies marked restored, or unmarked past date), default to 1.
+    // If it's dark green (today, or unmarked today), default to null (<=1).
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const isLightGreenTarget = currentStatus ? isRestored : (dayDate < todayStr);
+    
+    let initialQuantity;
+    if (currentQuantity !== null && currentQuantity !== undefined) {
+      initialQuantity = currentQuantity;
+    } else {
+      initialQuantity = isLightGreenTarget ? 1 : null;
+    }
+    
+    setQuantityValue(initialQuantity);
     setCommentValue(currentComment || '');
     setPhotoFile(null);
     setDeletePhoto(false);
     setShowQuantityModal(true);
   };
 
-  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow) => {
+  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, isRestored) => {
     const timer = setTimeout(() => {
-      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow);
+      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, isRestored);
     }, 200); // 200ms for long press
     setLongPressTimer(timer);
   };
@@ -1374,49 +1405,45 @@ const App = () => {
       )}
 
 
-      {/* Заголовки дней недели - только для вкладки Журналы */}
-      {activeTab === 'Habits' && (
-        <div className="days-header">
-
-          <div className="days-cols">
-            {WEEK_DAYS.map((day, index) => {
-              // Calculate date for this column based on currentWeekDate
-              const baseDate = new Date(currentWeekDate);
-              const dayOfWeek = baseDate.getDay();
-              const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-              const diff = index - currentDayIndex;
-
-              const columnDate = new Date(baseDate);
-              columnDate.setDate(baseDate.getDate() + diff);
-              const columnDateStr = columnDate.toLocaleDateString('en-CA');
-
-              const todayStr = new Date().toLocaleDateString('en-CA');
-              const isTodayCol = columnDateStr === todayStr;
-
-              const isMonthStart = index > 0 && columnDate.getDate() === 1;
-
-              return (
-                <React.Fragment key={day}>
-                  <div className={`day-col ${isTodayCol ? 'today' : ''} ${isMonthStart ? 'month-start' : ''}`}>
-                    <div className="day-name">{day}</div>
-                    <div className="day-number">{columnDate.getDate()}</div>
-                  </div>
-                </React.Fragment>
-              );
-            })}
-          </div>
-          <div className="days-placeholder-end" style={{ width: '57px', flexShrink: 0 }}></div>
-        </div>
-      )}
-
-      {/* Список привычек - только для вкладки Журналы */}
+      {/* Список привычек и заголовок - только для вкладки Журналы */}
       {activeTab === 'Habits' && (
         <div className={`habits-container ${swipeDirection ? 'swipe-' + swipeDirection : ''}`}
-
           ref={habitsContainerRef}
           onTouchStart={handleSwipeStart}
           onTouchEnd={handleSwipeEnd}
         >
+          {/* Заголовки дней недели внутри контейнера для синхронизации с сеткой и полосой прокрутки */}
+          <div className="days-header">
+            <div className="days-cols">
+              {WEEK_DAYS.map((day, index) => {
+                // Calculate date for this column based on currentWeekDate
+                const baseDate = new Date(currentWeekDate);
+                const dayOfWeek = baseDate.getDay();
+                const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                const diff = index - currentDayIndex;
+
+                const columnDate = new Date(baseDate);
+                columnDate.setDate(baseDate.getDate() + diff);
+                const columnDateStr = columnDate.toLocaleDateString('en-CA');
+
+                const todayStr = new Date().toLocaleDateString('en-CA');
+                const isTodayCol = columnDateStr === todayStr;
+
+                const isMonthStart = index > 0 && columnDate.getDate() === 1;
+
+                return (
+                  <React.Fragment key={day}>
+                    <div className={`grid-col day-col ${isTodayCol ? 'today' : ''} ${isMonthStart ? 'month-start' : ''}`}>
+                      <div className="day-name">{day}</div>
+                      <div className="day-number">{columnDate.getDate()}</div>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+            <div className="days-placeholder-end"></div>
+          </div>
+
           {habitsData.filter(habit => {
             if (selectedCategory === 'Все') return true;
             return habit.category_name === selectedCategory;
@@ -1569,13 +1596,13 @@ const App = () => {
                           }}
                           onMouseDown={() => {
                             const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow);
+                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, isRestored);
                           }}
                           onMouseUp={handleLongPressEnd}
                           onMouseLeave={handleLongPressEnd}
                           onTouchStart={() => {
                             const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow);
+                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, isRestored);
                           }}
                           onTouchEnd={handleLongPressEnd}
                           disabled={isDisabled}
@@ -1587,15 +1614,9 @@ const App = () => {
                       );
                       
                       return (
-                        <React.Fragment key={slotDateStr}>
-                          {isMonthStart ? (
-                            <div className="month-start-wrapper">
-                              {checkBoxBtn}
-                            </div>
-                          ) : (
-                            checkBoxBtn
-                          )}
-                        </React.Fragment>
+                        <div key={slotDateStr} className={`grid-col ${isMonthStart ? 'month-start' : ''}`}>
+                          {checkBoxBtn}
+                        </div>
                       );
                     })}
                   </div>
