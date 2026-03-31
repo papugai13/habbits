@@ -45,14 +45,34 @@ class CategoryViewSet(viewsets.ModelViewSet):
             auth_user=self.request.user,
             defaults={'name': self.request.user.username, 'age': ''}
         )
-        return Category.objects.filter(user=user_profile)
+        return Category.objects.filter(user=user_profile).order_by('order')
 
     def perform_create(self, serializer):
         user_profile, _ = UserAll.objects.get_or_create(
             auth_user=self.request.user,
             defaults={'name': self.request.user.username, 'age': ''}
         )
-        serializer.save(user=user_profile)
+        max_order = Category.objects.filter(user=user_profile).aggregate(
+            max_order=Max('order')
+        )['max_order'] or 0
+        serializer.save(user=user_profile, order=max_order + 1)
+
+    @action(detail=False, methods=['post'])
+    def reorder(self, request):
+        """Accept [{id, order}, ...] and bulk-update category ordering."""
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=request.user,
+            defaults={'name': request.user.username, 'age': ''}
+        )
+        items = request.data  # list of {id, order}
+        if not isinstance(items, list):
+            return Response({'error': 'Expected a list'}, status=status.HTTP_400_BAD_REQUEST)
+        for item in items:
+            category_id = item.get('id')
+            new_order = item.get('order')
+            if category_id is not None and new_order is not None:
+                Category.objects.filter(id=category_id, user=user_profile).update(order=new_order)
+        return Response({'status': 'ok'})
 
 
 @api_view(['GET', 'POST'])

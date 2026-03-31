@@ -1456,10 +1456,37 @@ body {
   border-bottom: 1px solid #ddd;
 }
 
-.manage-habits-list {
+/* Drag and Drop Categories */
+.manage-category-item {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid #eee;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s, border-color 0.2s, background-color 0.2s, opacity 0.2s;
+  cursor: grab;
+  gap: 8px;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+  margin-bottom: 8px; /* Extra spacing for separation if needed */
+}
+
+.manage-category-item:hover {
+  border-color: #059669;
+  box-shadow: 0 2px 8px rgba(31, 102, 59, 0.12);
+}
+
+.manage-category-item.dragging {
+  opacity: 0.7;
+  cursor: grabbing;
+  transform: scale(1.05);
+  z-index: 1000;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  border-color: #059669;
 }
 
 .manage-habit-item {
