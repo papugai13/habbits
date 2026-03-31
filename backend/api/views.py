@@ -114,11 +114,29 @@ def dates_list(request):
         # Add user to request data
         data = request.data.copy()
         data['user'] = user_profile.id
+        
+        # Check if record already exists for this habit/date to avoid 400 UniqueTogetherValidator error
+        # during race conditions (e.g. quick double-click before state reloads)
+        habit_id = data.get('habit')
+        habit_date = data.get('habit_date')
+        
+        existing_date = Date.objects.filter(
+            user=user_profile, 
+            habit_id=habit_id, 
+            habit_date=habit_date
+        ).first()
+        
+        if existing_date:
+            # If record already exists, treat POST as a partial update (idempotent)
+            serializer = DateSerializer(existing_date, data=data, partial=True)
+        else:
+            serializer = DateSerializer(data=data)
             
-        serializer = DateSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            # Return 200 for update, 201 for create
+            status_code = status.HTTP_200_OK if existing_date else status.HTTP_201_CREATED
+            return Response(serializer.data, status=status_code)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     # GET request: filter by user
