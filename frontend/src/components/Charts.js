@@ -215,7 +215,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
             if (viewType === 'quantity') {
                 return (item.countExtra || 0) > 0;
             }
-            return true;
+            return ((item.countCapped || 0) + (item.countRestored || 0)) > 0;
         });
     }, [data, viewType]);
 
@@ -235,7 +235,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
         </div>
     );
 
-    if (data.length === 0) return null;
+    if (filteredData.length === 0) return null;
 
     const chartMinWidth = filteredData.length > 5 ? `${filteredData.length * 80}px` : '100%';
     const showScroll = filteredData.length > 5;
