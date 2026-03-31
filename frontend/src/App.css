@@ -545,11 +545,12 @@ body {
   /* Back */
   margin-left: -12px;
   /* Нахлест */
-  padding-left: 14px;
-  /* Чтобы цифра не перекрывалась */
+  padding-left: 12px;
+  /* Центрирование относительно видимой части (нахлест 12px) */
   background-color: #34d399;
   /* Чуть светлее */
   opacity: 0.9;
+  min-width: 48px; /* Увеличено для трехзначных цифр */
 }
 
 .habit-counts-wrapper {
@@ -558,7 +559,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 60px; /* Fixed width for perfect grid alignment with header */
+  width: 76px; /* Увеличено для выравнивания с новыми размерами квадратов */
   flex-shrink: 0;
 }
 
@@ -1098,7 +1099,7 @@ body {
 }
 
 .days-placeholder-end {
-  width: 60px; /* Synchronized with .habit-counts-wrapper */
+  width: 76px; /* Синхронизировано с .habit-counts-wrapper */
   flex-shrink: 0;
 }
 
