@@ -574,7 +574,7 @@ const App = () => {
   const handleArchiveCategory = async (id) => {
     try {
       const response = await fetch(`/api/v1/categories/${id}/archive/`, {
-        method: 'PATCH',
+        method: 'POST',
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
@@ -596,7 +596,7 @@ const App = () => {
   const handleUnarchiveCategory = async (id) => {
     try {
       const response = await fetch(`/api/v1/categories/${id}/archive/`, {
-        method: 'PATCH',
+        method: 'POST',
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
@@ -1129,7 +1129,7 @@ const App = () => {
   const handleArchiveHabit = async (habitId) => {
     try {
       const response = await fetch(`/api/v1/habits/${habitId}/archive/`, {
-        method: 'PATCH',
+        method: 'POST',
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
         credentials: 'include'
       });
@@ -1145,7 +1145,7 @@ const App = () => {
   const handleUnarchiveHabit = async (habitId) => {
     try {
       const response = await fetch(`/api/v1/habits/${habitId}/archive/`, {
-        method: 'PATCH',
+        method: 'POST',
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
         credentials: 'include'
       });
