@@ -517,10 +517,10 @@ const Charts = ({
                             minWidth: period === 'year' ? '600px' : '100%',
                             transition: 'min-width 0.3s ease'
                         }}>
-                            <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 400 : 500} style={{ overflow: 'visible' }}>
+                            <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 320 : window.innerWidth < 768 ? 400 : 500} style={{ overflow: 'visible' }}>
                                 <BarChart
                                     data={chartData}
-                                    margin={{ top: 40, right: 30, left: 0, bottom: 20 }}
+                                    margin={{ top: 15, right: 30, left: 0, bottom: 10 }}
                                 >
                                     <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                                     <XAxis
