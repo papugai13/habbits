@@ -1530,6 +1530,23 @@ body {
   margin-bottom: 16px;
   padding-bottom: 8px;
   border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.add-category-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.add-category-btn:hover {
+  background-color: #f0f0f0;
 }
 
 /* Drag and Drop Categories */
