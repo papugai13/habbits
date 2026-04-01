@@ -67,6 +67,26 @@ body {
   background-color: #F5F5F5;
 }
 
+.today-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background-color 0.2s;
+  font-size: 15px;
+  padding: 5px 12px;
+  font-weight: 600;
+  color: #333;
+  gap: 5px;
+}
+
+.today-btn:hover {
+  background-color: #F5F5F5;
+}
+
 .profile-avatar {
   width: 36px;
   height: 36px;
@@ -335,6 +355,16 @@ body {
   overflow-y: auto;
   overflow-x: visible !important; /* Changed from hidden to avoid clipping the separator line */
   position: relative;
+}
+
+.habits-container.fading-out {
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+
+.habits-container.fading-in {
+  opacity: 1;
+  transition: opacity 0.25s ease-in;
 }
 
 /* Swipe animation */
@@ -625,14 +655,25 @@ body {
   font-size: 10px;
 }
 
-.third-star-top {
+.crown-top {
   position: absolute;
   top: -16px;
-  /* Поднимаем звезду выше, чтобы она полностью выходила за пределы квадрата */
   left: 50%;
   transform: translateX(-50%);
-  font-size: 10px;
+  font-size: 12px;
   z-index: 4;
+}
+
+.crown-inside {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
+.crown-item {
+  font-size: 14px;
 }
 
 /* Убираем старые стили смещения */
@@ -1099,6 +1140,16 @@ body {
   border-radius: 50%;
 }
 
+.day-col.highlight {
+  animation: highlightPulse 1s ease-in-out;
+}
+
+@keyframes highlightPulse {
+  0% { background-color: rgba(5, 150, 105, 0.05); }
+  50% { background-color: rgba(5, 150, 105, 0.3); }
+  100% { background-color: rgba(5, 150, 105, 0.05); }
+}
+
 .days-placeholder-end {
   width: 72px; /* Increased to accommodate badges and sync with rows */
   flex-shrink: 0;
@@ -1490,6 +1541,23 @@ body {
   margin-bottom: 16px;
   padding-bottom: 8px;
   border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.add-category-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.add-category-btn:hover {
+  background-color: #f0f0f0;
 }
 
 /* Drag and Drop Categories */

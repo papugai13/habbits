@@ -47,6 +47,7 @@ const App = () => {
   const [categories, setCategories] = useState([{ id: 'all', name: 'Все' }]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
+  const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
   const [archivedCategories, setArchivedCategories] = useState([]);
@@ -97,6 +98,13 @@ const App = () => {
   const [dragOverHabitId, setDragOverHabitId] = useState(null);
   const [draggedCategoryId, setDraggedCategoryId] = useState(null);
   const [dragOverCategoryId, setDragOverCategoryId] = useState(null);
+
+  // Today highlight state
+  const [highlightToday, setHighlightToday] = useState(false);
+
+  // Transition animation state
+  const [isFadingOut, setIsFadingOut] = useState(false);
+  const [isFadingIn, setIsFadingIn] = useState(false);
 
   const t = (key) => {
     return translations[language][key] || key;
@@ -220,6 +228,33 @@ const App = () => {
     const nextDate = new Date(currentWeekDate);
     nextDate.setDate(nextDate.getDate() + 7);
     setCurrentWeekDate(nextDate.toLocaleDateString('en-CA'));
+  };
+
+  const handleToday = () => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Monday
+    const monday = new Date(today.setDate(diff));
+    const targetWeek = monday.toLocaleDateString('en-CA');
+
+    if (currentWeekDate === targetWeek) {
+      // Already on the current week, just highlight today
+      setHighlightToday(true);
+      setTimeout(() => setHighlightToday(false), 1000);
+    } else {
+      // Transition to the current week with animation
+      setIsFadingOut(true);
+      setTimeout(() => {
+        setCurrentWeekDate(targetWeek);
+        setIsFadingOut(false);
+        setIsFadingIn(true);
+        setHighlightToday(true);
+        setTimeout(() => {
+          setIsFadingIn(false);
+          setHighlightToday(false);
+        }, 1000);
+      }, 250);
+    }
   };
 
   // Swipe handlers for week navigation
@@ -502,6 +537,7 @@ const App = () => {
         const newCat = await response.json();
         setNewCategoryName('');
         setShowAddCategory(false);
+        setShowCreateCategoryModal(false);
         await fetchCategories();
         if (showEditModal && editingHabit) {
           setEditingHabit({ ...editingHabit, category: newCat.id.toString() });
@@ -587,6 +623,7 @@ const App = () => {
         await fetchCategories();
         await fetchArchivedCategories();
         await fetchHabits();
+        await fetchArchivedHabits();
       } else {
         alert(t('categoryArchiveError'));
       }
@@ -609,6 +646,7 @@ const App = () => {
         await fetchCategories();
         await fetchArchivedCategories();
         await fetchHabits();
+        await fetchArchivedHabits();
       } else {
         alert(t('categoryArchiveError'));
       }
@@ -984,7 +1022,7 @@ const App = () => {
 
   // Эмоджи-награда в зависимости от количества выполнений за неделю
   const getWeeklyAward = (count) => {
-    if (count >= 7) return '🌟🌟🌟';
+    if (count >= 7) return '👑';
     if (count === 6) return '⭐⭐';
     if (count === 5) return '⭐';
     if (count === 4) return '⚡⚡';
@@ -1466,6 +1504,13 @@ const App = () => {
             <span className="profile-name">{user?.username || t('user')}</span>
           </button>
 
+          <button
+            className="today-btn"
+            title={t('today')}
+            onClick={handleToday}
+          >
+            📅 {t('today')}
+          </button>
 
           {showProfileMenu && (
             <div className="profile-menu">
@@ -1543,7 +1588,7 @@ const App = () => {
 
       {/* Список привычек и заголовок - только для вкладки Журналы */}
       {activeTab === 'Habits' && (
-        <div className={`habits-container ${swipeDirection ? 'swipe-' + swipeDirection : ''}`}
+        <div className={`habits-container ${swipeDirection ? 'swipe-' + swipeDirection : ''} ${isFadingOut ? 'fading-out' : ''} ${isFadingIn ? 'fading-in' : ''}`}
           ref={habitsContainerRef}
           onTouchStart={handleSwipeStart}
           onTouchEnd={handleSwipeEnd}
@@ -1569,7 +1614,7 @@ const App = () => {
 
                 return (
                   <React.Fragment key={day}>
-                    <div className={`grid-col day-col ${isTodayCol ? 'today' : ''} ${isMonthStart ? 'month-start' : ''}`}>
+                    <div className={`grid-col day-col ${isTodayCol ? (highlightToday ? 'today highlight' : 'today') : ''} ${isMonthStart ? 'month-start' : ''}`}>
                       <div className="day-name">{day}</div>
                       <div className="day-number">{columnDate.getDate()}</div>
                     </div>
@@ -1754,9 +1799,9 @@ const App = () => {
                   <div className="habit-counts-wrapper">
                     <div className="habit-count-container">
                       <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''}`}>
-                        {/* Третья звезда над квадратиком для серии из 7 дней */}
-                        {weeklyCount >= 7 && (
-                          <span className="third-star-top">⭐</span>
+                        {/* Корона над квадратиком для серии из 7 дней */}
+                        {weeklyAward === '👑' && (
+                          <span className="crown-top">👑</span>
                         )}
                         {/* Lightning icons at the top */}
                         {weeklyAward && weeklyAward.includes('⚡') && (
@@ -1768,10 +1813,10 @@ const App = () => {
                           </div>
                         )}
 
-                        {/* Star icons */}
-                        {weeklyAward && (weeklyAward.includes('⭐') || weeklyAward.includes('🌟')) && (
+                        {/* Star и Crown icons */}
+                        {weeklyAward && weeklyAward.includes('⭐') && (
                           <>
-                            {weeklyCount >= 7 ? (
+                            {weeklyCount >= 6 ? (
                               <div className="stars-three-layout">
                                 <span className="star-item top-row-star">⭐</span>
                                 <span className="star-item top-row-star">⭐</span>
@@ -1786,6 +1831,7 @@ const App = () => {
                             )}
                           </>
                         )}
+
 
                         <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>{weeklyCount}</span>
                       </div>
@@ -1887,7 +1933,15 @@ const App = () => {
           </div>
 
           <div className="settings-section categories-settings">
-            <h3 className="section-title">{t('categories')}</h3>
+            <h3 className="section-title">
+              <span>{t('categories')}</span>
+              <button
+                className="add-category-btn"
+                onClick={() => setShowCreateCategoryModal(true)}
+              >
+                +
+              </button>
+            </h3>
 
             <div className="manage-categories-list">
               {categories.filter(c => c.id !== 'all').length === 0 ? (
@@ -2485,6 +2539,69 @@ const App = () => {
         </div>
       )}
 
+      {/* Модальное окно создания категории */}
+      {showCreateCategoryModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateCategoryModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('createCategory')}</h2>
+              <button
+                className="modal-close"
+                onClick={() => {
+                  setCreateError('');
+                  setNewCategoryName('');
+                  setShowCreateCategoryModal(false);
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCategory} className="habit-form">
+              <div className="form-group">
+                <label htmlFor="category-name">{t('categoryName')}</label>
+                <input
+                  id="category-name"
+                  type="text"
+                  className="form-input"
+                  placeholder={t('newCategoryPlaceholder')}
+                  value={newCategoryName}
+                  onChange={(e) => {
+                    setNewCategoryName(e.target.value);
+                    if (createError) setCreateError('');
+                  }}
+                  minLength="2"
+                  maxLength="20"
+                  autoFocus
+                />
+              </div>
+
+              {createError && <p className="error-message">{createError}</p>}
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setCreateError('');
+                    setNewCategoryName('');
+                    setShowCreateCategoryModal(false);
+                  }}
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                >
+                  {t('create')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Модальное окно для ввода количества, комментария и фото */}
       {showQuantityModal && quantityModalData && (
         <div className="modal-overlay" onClick={() => {
@@ -2553,18 +2670,20 @@ const App = () => {
                       onChange={(val) => setQuantityValue(val)}
                     />
 
-                    <div className="preset-column presets-right">
-                      <div className="preset-btn theme-purple">
-                        <div className="preset-badge">+{quantityModalData.weeklyOverflow || 0}</div>
-                        <div className="preset-label">{t('week')}</div>
-                      </div>
+                    {quantityModalData.dayDate !== new Date().toLocaleDateString('en-CA') && (
+                      <div className="preset-column presets-right">
+                        <div className="preset-btn theme-purple">
+                          <div className="preset-badge">+{quantityModalData.weeklyOverflow || 0}</div>
+                          <div className="preset-label">{t('week')}</div>
+                        </div>
 
-                      <div className="preset-btn theme-purple">
-                        <div className="preset-badge">{quantityModalData.monthlyTotal || 0}</div>
-                        <div className="preset-label">{t('month')}</div>
-                      </div>
+                        <div className="preset-btn theme-purple">
+                          <div className="preset-badge">{quantityModalData.monthlyTotal || 0}</div>
+                          <div className="preset-label">{t('month')}</div>
+                        </div>
 
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
