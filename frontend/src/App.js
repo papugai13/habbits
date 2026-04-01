@@ -130,7 +130,7 @@ const App = () => {
 
         const hasSelectedCategory = data.some(category => category.id.toString() === newHabitCategory);
         if (data.length > 0) {
-          if (!newHabitCategory || !hasSelectedCategory) {
+          if (newHabitCategory !== "" && (!newHabitCategory || !hasSelectedCategory)) {
             setNewHabitCategory(data[0].id.toString());
           }
         } else if (newHabitCategory) {
@@ -1780,6 +1780,7 @@ const App = () => {
                             const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
                             !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, isRestored);
                           }}
+                          onTouchMove={handleLongPressEnd}
                           onTouchEnd={handleLongPressEnd}
                           disabled={isDisabled}
                         >
@@ -2136,7 +2137,7 @@ const App = () => {
 
                       <div className="manage-habit-info">
                         <div className="manage-habit-name">{habit.name}</div>
-                        <div className="manage-habit-category">{habit.category_name}</div>
+                        <div className="manage-habit-category">{habit.category_name || t('noCategory')}</div>
                       </div>
                       <div className="manage-habit-actions">
                         <button
@@ -2196,7 +2197,7 @@ const App = () => {
                       <div key={habit.id} className="archived-habit-item">
                         <div className="manage-habit-info">
                           <div className="manage-habit-name">{habit.name}</div>
-                          <div className="manage-habit-category">{habit.category_name}</div>
+                          <div className="manage-habit-category">{habit.category_name || t('noCategory')}</div>
                         </div>
                         <div className="manage-habit-actions">
                           <button
