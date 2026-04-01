@@ -47,6 +47,7 @@ const App = () => {
   const [categories, setCategories] = useState([{ id: 'all', name: 'Все' }]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
+  const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
   const [archivedCategories, setArchivedCategories] = useState([]);
@@ -536,6 +537,7 @@ const App = () => {
         const newCat = await response.json();
         setNewCategoryName('');
         setShowAddCategory(false);
+        setShowCreateCategoryModal(false);
         await fetchCategories();
         if (showEditModal && editingHabit) {
           setEditingHabit({ ...editingHabit, category: newCat.id.toString() });
@@ -1930,7 +1932,15 @@ const App = () => {
           </div>
 
           <div className="settings-section categories-settings">
-            <h3 className="section-title">{t('categories')}</h3>
+            <h3 className="section-title">
+              <span>{t('categories')}</span>
+              <button
+                className="add-category-btn"
+                onClick={() => setShowCreateCategoryModal(true)}
+              >
+                +
+              </button>
+            </h3>
 
             <div className="manage-categories-list">
               {categories.filter(c => c.id !== 'all').length === 0 ? (
@@ -2522,6 +2532,69 @@ const App = () => {
                   {t('save')}
                 </button>
 
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно создания категории */}
+      {showCreateCategoryModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateCategoryModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('createCategory')}</h2>
+              <button
+                className="modal-close"
+                onClick={() => {
+                  setCreateError('');
+                  setNewCategoryName('');
+                  setShowCreateCategoryModal(false);
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCategory} className="habit-form">
+              <div className="form-group">
+                <label htmlFor="category-name">{t('categoryName')}</label>
+                <input
+                  id="category-name"
+                  type="text"
+                  className="form-input"
+                  placeholder={t('newCategoryPlaceholder')}
+                  value={newCategoryName}
+                  onChange={(e) => {
+                    setNewCategoryName(e.target.value);
+                    if (createError) setCreateError('');
+                  }}
+                  minLength="2"
+                  maxLength="20"
+                  autoFocus
+                />
+              </div>
+
+              {createError && <p className="error-message">{createError}</p>}
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setCreateError('');
+                    setNewCategoryName('');
+                    setShowCreateCategoryModal(false);
+                  }}
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                >
+                  {t('create')}
+                </button>
               </div>
             </form>
           </div>
