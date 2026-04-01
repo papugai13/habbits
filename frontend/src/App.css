@@ -67,6 +67,26 @@ body {
   background-color: #F5F5F5;
 }
 
+.today-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background-color 0.2s;
+  font-size: 15px;
+  padding: 5px 12px;
+  font-weight: 600;
+  color: #333;
+  gap: 5px;
+}
+
+.today-btn:hover {
+  background-color: #F5F5F5;
+}
+
 .profile-avatar {
   width: 36px;
   height: 36px;
@@ -1097,6 +1117,16 @@ body {
   height: 4px;
   background-color: #059669;
   border-radius: 50%;
+}
+
+.day-col.highlight {
+  animation: highlightPulse 1s ease-in-out;
+}
+
+@keyframes highlightPulse {
+  0% { background-color: rgba(5, 150, 105, 0.05); }
+  50% { background-color: rgba(5, 150, 105, 0.3); }
+  100% { background-color: rgba(5, 150, 105, 0.05); }
 }
 
 .days-placeholder-end {
