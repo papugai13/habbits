@@ -101,6 +101,10 @@ const App = () => {
   // Today highlight state
   const [highlightToday, setHighlightToday] = useState(false);
 
+  // Transition animation state
+  const [isFadingOut, setIsFadingOut] = useState(false);
+  const [isFadingIn, setIsFadingIn] = useState(false);
+
   const t = (key) => {
     return translations[language][key] || key;
   };
@@ -230,9 +234,26 @@ const App = () => {
     const day = today.getDay();
     const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Monday
     const monday = new Date(today.setDate(diff));
-    setCurrentWeekDate(monday.toLocaleDateString('en-CA'));
-    setHighlightToday(true);
-    setTimeout(() => setHighlightToday(false), 1000);
+    const targetWeek = monday.toLocaleDateString('en-CA');
+
+    if (currentWeekDate === targetWeek) {
+      // Already on the current week, just highlight today
+      setHighlightToday(true);
+      setTimeout(() => setHighlightToday(false), 1000);
+    } else {
+      // Transition to the current week with animation
+      setIsFadingOut(true);
+      setTimeout(() => {
+        setCurrentWeekDate(targetWeek);
+        setIsFadingOut(false);
+        setIsFadingIn(true);
+        setHighlightToday(true);
+        setTimeout(() => {
+          setIsFadingIn(false);
+          setHighlightToday(false);
+        }, 1000);
+      }, 250);
+    }
   };
 
   // Swipe handlers for week navigation
@@ -1565,7 +1586,7 @@ const App = () => {
 
       {/* Список привычек и заголовок - только для вкладки Журналы */}
       {activeTab === 'Habits' && (
-        <div className={`habits-container ${swipeDirection ? 'swipe-' + swipeDirection : ''}`}
+        <div className={`habits-container ${swipeDirection ? 'swipe-' + swipeDirection : ''} ${isFadingOut ? 'fading-out' : ''} ${isFadingIn ? 'fading-in' : ''}`}
           ref={habitsContainerRef}
           onTouchStart={handleSwipeStart}
           onTouchEnd={handleSwipeEnd}

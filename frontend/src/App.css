@@ -357,6 +357,16 @@ body {
   position: relative;
 }
 
+.habits-container.fading-out {
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+
+.habits-container.fading-in {
+  opacity: 1;
+  transition: opacity 0.25s ease-in;
+}
+
 /* Swipe animation */
 @keyframes slideFromLeft {
   from {
