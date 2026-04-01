@@ -1022,7 +1022,7 @@ const App = () => {
 
   // Эмоджи-награда в зависимости от количества выполнений за неделю
   const getWeeklyAward = (count) => {
-    if (count >= 7) return '🌟🌟🌟';
+    if (count >= 7) return '👑';
     if (count === 6) return '⭐⭐';
     if (count === 5) return '⭐';
     if (count === 4) return '⚡⚡';
@@ -1799,9 +1799,9 @@ const App = () => {
                   <div className="habit-counts-wrapper">
                     <div className="habit-count-container">
                       <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''}`}>
-                        {/* Третья звезда над квадратиком для серии из 7 дней */}
-                        {weeklyCount >= 7 && (
-                          <span className="third-star-top">⭐</span>
+                        {/* Корона над квадратиком для серии из 7 дней */}
+                        {weeklyAward === '👑' && (
+                          <span className="crown-top">👑</span>
                         )}
                         {/* Lightning icons at the top */}
                         {weeklyAward && weeklyAward.includes('⚡') && (
@@ -1813,10 +1813,10 @@ const App = () => {
                           </div>
                         )}
 
-                        {/* Star icons */}
-                        {weeklyAward && (weeklyAward.includes('⭐') || weeklyAward.includes('🌟')) && (
+                        {/* Star и Crown icons */}
+                        {weeklyAward && weeklyAward.includes('⭐') && (
                           <>
-                            {weeklyCount >= 7 ? (
+                            {weeklyCount >= 6 ? (
                               <div className="stars-three-layout">
                                 <span className="star-item top-row-star">⭐</span>
                                 <span className="star-item top-row-star">⭐</span>
@@ -1831,6 +1831,7 @@ const App = () => {
                             )}
                           </>
                         )}
+
 
                         <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>{weeklyCount}</span>
                       </div>
