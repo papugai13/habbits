@@ -351,7 +351,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                         is_done = date_entry.is_done if date_entry else False
                         qty = date_entry.quantity if date_entry else None
                         
-                        if is_done and qty is not None:
+                        if is_done and date_entry and not date_entry.is_restored and qty is not None:
                             weekly_overflow += qty
                         
                         photo_url = None
@@ -379,6 +379,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                         habit=habit,
                         habit_date__range=[start_of_month, end_of_month],
                         is_done=True,
+                        is_restored=False,
                         quantity__isnull=False
                     ).aggregate(total=Sum('quantity'))['total'] or 0
                     
@@ -387,16 +388,9 @@ class HabitViewSet(viewsets.ModelViewSet):
                         user=user_profile,
                         habit=habit,
                         habit_date__range=[start_of_month, end_of_month],
-                        is_done=True
-                    ).aggregate(
-                        total=Sum(
-                            Case(
-                                When(quantity__isnull=True, then=Value(1)),
-                                default=F('quantity'),
-                                output_field=IntegerField()
-                            )
-                        )
-                    )['total'] or 0
+                        is_done=True,
+                        is_restored=False
+                    ).count()
                     
                     habit_data['monthly_overflow'] = monthly_overflow
                     habit_data['monthly_total'] = monthly_total
