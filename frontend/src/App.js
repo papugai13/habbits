@@ -98,6 +98,9 @@ const App = () => {
   const [draggedCategoryId, setDraggedCategoryId] = useState(null);
   const [dragOverCategoryId, setDragOverCategoryId] = useState(null);
 
+  // Today highlight state
+  const [highlightToday, setHighlightToday] = useState(false);
+
   const t = (key) => {
     return translations[language][key] || key;
   };
@@ -220,6 +223,16 @@ const App = () => {
     const nextDate = new Date(currentWeekDate);
     nextDate.setDate(nextDate.getDate() + 7);
     setCurrentWeekDate(nextDate.toLocaleDateString('en-CA'));
+  };
+
+  const handleToday = () => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Monday
+    const monday = new Date(today.setDate(diff));
+    setCurrentWeekDate(monday.toLocaleDateString('en-CA'));
+    setHighlightToday(true);
+    setTimeout(() => setHighlightToday(false), 1000);
   };
 
   // Swipe handlers for week navigation
@@ -1468,6 +1481,13 @@ const App = () => {
             <span className="profile-name">{user?.username || t('user')}</span>
           </button>
 
+          <button
+            className="today-btn"
+            title={t('today')}
+            onClick={handleToday}
+          >
+            📅 {t('today')}
+          </button>
 
           {showProfileMenu && (
             <div className="profile-menu">
@@ -1571,7 +1591,7 @@ const App = () => {
 
                 return (
                   <React.Fragment key={day}>
-                    <div className={`grid-col day-col ${isTodayCol ? 'today' : ''} ${isMonthStart ? 'month-start' : ''}`}>
+                    <div className={`grid-col day-col ${isTodayCol ? (highlightToday ? 'today highlight' : 'today') : ''} ${isMonthStart ? 'month-start' : ''}`}>
                       <div className="day-name">{day}</div>
                       <div className="day-number">{columnDate.getDate()}</div>
                     </div>
