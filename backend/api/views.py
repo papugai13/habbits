@@ -236,157 +236,182 @@ class HabitViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     @method_decorator(ensure_csrf_cookie)
     def weekly_status(self, request):
-        # Get or create UserAll profile for authenticated user
-        user_profile, created = UserAll.objects.get_or_create(
-            auth_user=request.user,
-            defaults={
-                'name': request.user.username,
-                'age': ''
-            }
-        )
-
-        # Get habits for this user
-        habits = Habit.objects.filter(user=user_profile, is_archived=False).order_by('order')
-        
-        # Determine the start of the week
-        date_param = request.query_params.get('date')
-        if date_param:
-            try:
-                reference_date = datetime.strptime(date_param, '%Y-%m-%d').date()
-            except ValueError:
-                reference_date = date.today()
-        else:
-            reference_date = date.today()
-            
-        days_since_monday = reference_date.weekday()
-        start_date = reference_date - timedelta(days=days_since_monday)
-        end_date = start_date + timedelta(days=6)
-        
-        # Monthly range
-        start_of_month = date(reference_date.year, reference_date.month, 1)
-        if reference_date.month == 12:
-            next_month = date(reference_date.year + 1, 1, 1)
-        else:
-            next_month = date(reference_date.year, reference_date.month + 1, 1)
-        end_of_month = next_month - timedelta(days=1)
-        
-        result = []
-        for habit in habits:
-            habit_data = HabitSerializer(habit).data
-            
-            # Fetch latest comment within the viewed week
-            latest_date_entry = Date.objects.filter(
-                user=user_profile,
-                habit=habit, 
-                habit_date__range=[start_date, end_date],
-                comment__isnull=False
-            ).exclude(comment__exact='').order_by('-habit_date').first()
-
-            # Check previous week for streak continuation (Sunday and Saturday)
-            prev_sun = start_date - timedelta(days=1)
-            prev_sat = start_date - timedelta(days=2)
-            habit_data['prev_week_sun_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sun, is_done=True).exists()
-            habit_data['prev_week_sat_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sat, is_done=True).exists()
-            
-            habit_data['latest_comment'] = None
-            habit_data['latest_comment_details'] = None
-            if latest_date_entry:
-                habit_data['latest_comment'] = latest_date_entry.comment
-                habit_data['latest_comment_details'] = {
-                    "id": latest_date_entry.id,
-                    "date": latest_date_entry.habit_date.isoformat(),
-                    "quantity": latest_date_entry.quantity,
-                    "is_done": latest_date_entry.is_done,
-                    "comment": latest_date_entry.comment,
-                    "photo": request.build_absolute_uri(latest_date_entry.photo.url) if latest_date_entry.photo else None
+        try:
+            # Get or create UserAll profile for authenticated user
+            user_profile, created = UserAll.objects.get_or_create(
+                auth_user=request.user,
+                defaults={
+                    'name': request.user.username,
+                    'age': ''
                 }
+            )
+
+            # Get habits for this user
+            habits = Habit.objects.filter(user=user_profile, is_archived=False).order_by('order')
             
-            # Fetch latest photo within the viewed week
-            latest_photo_entry = Date.objects.filter(
-                user=user_profile,
-                habit=habit,
-                habit_date__range=[start_date, end_date]
-            ).exclude(photo=None).exclude(photo='').order_by('-habit_date', '-id').first()
-            
-            habit_data['latest_photo'] = None
-            habit_data['latest_photo_details'] = None
-            if latest_photo_entry:
-                habit_data['latest_photo_details'] = {
-                    "id": latest_photo_entry.id,
-                    "date": latest_photo_entry.habit_date.isoformat(),
-                    "quantity": latest_photo_entry.quantity,
-                    "is_done": latest_photo_entry.is_done,
-                    "comment": latest_photo_entry.comment,
-                    "photo": request.build_absolute_uri(latest_photo_entry.photo.url) if latest_photo_entry.photo else None
-                }
+            # Determine the start of the week
+            date_param = request.query_params.get('date')
+            if date_param:
                 try:
-                    photo_url = latest_photo_entry.photo.url
-                    # Robust check for server environment
-                    if photo_url.startswith('http'):
+                    reference_date = datetime.strptime(date_param, '%Y-%m-%d').date()
+                except ValueError:
+                    reference_date = date.today()
+            else:
+                reference_date = date.today()
+                
+            days_since_monday = reference_date.weekday()
+            start_date = reference_date - timedelta(days=days_since_monday)
+            end_date = start_date + timedelta(days=6)
+            
+            # Monthly range
+            start_of_month = date(reference_date.year, reference_date.month, 1)
+            if reference_date.month == 12:
+                next_month = date(reference_date.year + 1, 1, 1)
+            else:
+                next_month = date(reference_date.year, reference_date.month + 1, 1)
+            end_of_month = next_month - timedelta(days=1)
+            
+            result = []
+            for habit in habits:
+                try:
+                    habit_data = HabitSerializer(habit).data
+                    
+                    # Fetch latest comment within the viewed week
+                    latest_date_entry = Date.objects.filter(
+                        user=user_profile,
+                        habit=habit, 
+                        habit_date__range=[start_date, end_date],
+                        comment__isnull=False
+                    ).exclude(comment__exact='').order_by('-habit_date').first()
+
+                    # Check previous week for streak continuation (Sunday and Saturday)
+                    prev_sun = start_date - timedelta(days=1)
+                    prev_sat = start_date - timedelta(days=2)
+                    habit_data['prev_week_sun_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sun, is_done=True).exists()
+                    habit_data['prev_week_sat_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sat, is_done=True).exists()
+                    
+                    habit_data['latest_comment'] = None
+                    habit_data['latest_comment_details'] = None
+                    if latest_date_entry:
+                        habit_data['latest_comment'] = latest_date_entry.comment
+                        photo_url = None
+                        if latest_date_entry.photo:
+                            try:
+                                photo_url = request.build_absolute_uri(latest_date_entry.photo.url)
+                            except Exception:
+                                pass
+                                
+                        habit_data['latest_comment_details'] = {
+                            "id": latest_date_entry.id,
+                            "date": latest_date_entry.habit_date.isoformat(),
+                            "quantity": latest_date_entry.quantity,
+                            "is_done": latest_date_entry.is_done,
+                            "comment": latest_date_entry.comment,
+                            "photo": photo_url
+                        }
+                    
+                    # Fetch latest photo within the viewed week
+                    latest_photo_entry = Date.objects.filter(
+                        user=user_profile,
+                        habit=habit,
+                        habit_date__range=[start_date, end_date]
+                    ).exclude(photo=None).exclude(photo='').order_by('-habit_date', '-id').first()
+                    
+                    habit_data['latest_photo'] = None
+                    habit_data['latest_photo_details'] = None
+                    if latest_photo_entry:
+                        photo_url = None
+                        if latest_photo_entry.photo:
+                            try:
+                                photo_url = request.build_absolute_uri(latest_photo_entry.photo.url)
+                            except Exception:
+                                pass
+
+                        habit_data['latest_photo_details'] = {
+                            "id": latest_photo_entry.id,
+                            "date": latest_photo_entry.habit_date.isoformat(),
+                            "quantity": latest_photo_entry.quantity,
+                            "is_done": latest_photo_entry.is_done,
+                            "comment": latest_photo_entry.comment,
+                            "photo": photo_url
+                        }
                         habit_data['latest_photo'] = photo_url
-                    else:
-                        habit_data['latest_photo'] = request.build_absolute_uri(photo_url)
-                except Exception as e:
-                    print(f"Error generating photo URL: {e}")
-            
-            # Get statuses for the range (Monday to Sunday)
-            statuses = []
-            weekly_overflow = 0
-            for i in range(7):
-                current_date = start_date + timedelta(days=i)
-                date_entry = Date.objects.filter(
-                    user=user_profile,
-                    habit=habit,
-                    habit_date=current_date
-                ).first()
-                is_done = date_entry.is_done if date_entry else False
-                qty = date_entry.quantity if date_entry else None
+                    
+                    # Get statuses for the range (Monday to Sunday)
+                    statuses = []
+                    weekly_overflow = 0
+                    for i in range(7):
+                        current_date = start_date + timedelta(days=i)
+                        date_entry = Date.objects.filter(
+                            user=user_profile,
+                            habit=habit,
+                            habit_date=current_date
+                        ).first()
+                        
+                        is_done = date_entry.is_done if date_entry else False
+                        qty = date_entry.quantity if date_entry else None
+                        
+                        if is_done and date_entry and not date_entry.is_restored and qty is not None:
+                            weekly_overflow += qty
+                        
+                        photo_url = None
+                        if date_entry and date_entry.photo:
+                            try:
+                                photo_url = request.build_absolute_uri(date_entry.photo.url)
+                            except Exception:
+                                pass
+
+                        statuses.append({
+                            "date": current_date.isoformat(),
+                            "is_done": is_done,
+                            "is_restored": date_entry.is_restored if date_entry else False,
+                            "id": date_entry.id if date_entry else None,
+                            "quantity": qty,
+                            "comment": date_entry.comment if date_entry else None,
+                            "photo": photo_url
+                        })
+                    habit_data['statuses'] = statuses
+                    habit_data['weekly_overflow'] = weekly_overflow
+                    
+                    # Calculate monthly overflow (sum of explicit quantities)
+                    monthly_overflow = Date.objects.filter(
+                        user=user_profile,
+                        habit=habit,
+                        habit_date__range=[start_of_month, end_of_month],
+                        is_done=True,
+                        is_restored=False,
+                        quantity__isnull=False
+                    ).aggregate(total=Sum('quantity'))['total'] or 0
+                    
+                    # Calculate monthly total (sum with default 1 for null quantity)
+                    monthly_total = Date.objects.filter(
+                        user=user_profile,
+                        habit=habit,
+                        habit_date__range=[start_of_month, end_of_month],
+                        is_done=True,
+                        is_restored=False
+                    ).count()
+                    
+                    habit_data['monthly_overflow'] = monthly_overflow
+                    habit_data['monthly_total'] = monthly_total
+                    result.append(habit_data)
+                except Exception as habit_e:
+                    import traceback
+                    print(f"ERROR: processing habit {habit.id}: {habit_e}")
+                    traceback.print_exc()
+                    # Skip problematic habit or add partial data
+                    continue
                 
-                if is_done and qty is not None:
-                    weekly_overflow += qty
-                
-                statuses.append({
-                    "date": current_date.isoformat(),
-                    "is_done": is_done,
-                    "is_restored": date_entry.is_restored if date_entry else False,
-                    "id": date_entry.id if date_entry else None,
-                    "quantity": qty,
-                    "comment": date_entry.comment if date_entry else None,
-                    "photo": (request.build_absolute_uri(date_entry.photo.url) if (date_entry and date_entry.photo) else None)
-                })
-            habit_data['statuses'] = statuses
-            habit_data['weekly_overflow'] = weekly_overflow
-            
-            # Calculate monthly overflow (sum of explicit quantities)
-            monthly_overflow = Date.objects.filter(
-                user=user_profile,
-                habit=habit,
-                habit_date__range=[start_of_month, end_of_month],
-                is_done=True,
-                quantity__isnull=False
-            ).aggregate(total=Sum('quantity'))['total'] or 0
-            
-            # Calculate monthly total (sum with default 1 for null quantity)
-            monthly_total = Date.objects.filter(
-                user=user_profile,
-                habit=habit,
-                habit_date__range=[start_of_month, end_of_month],
-                is_done=True
-            ).aggregate(
-                total=Sum(
-                    Case(
-                        When(quantity__isnull=True, then=Value(1)),
-                        default=F('quantity'),
-                        output_field=IntegerField()
-                    )
-                )
-            )['total'] or 0
-            
-            habit_data['monthly_overflow'] = monthly_overflow
-            habit_data['monthly_total'] = monthly_total
-            result.append(habit_data)
-            
-        return Response(result)
+            return Response(result)
+        except Exception as e:
+            import traceback
+            print(f"CRITICAL ERROR in weekly_status: {e}")
+            traceback.print_exc()
+            return Response(
+                {"error": str(e), "detail": traceback.format_exc()}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
     @action(detail=False, methods=['get'])
     def summary_report(self, request):
@@ -442,222 +467,232 @@ class HabitViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def daily_statistics(self, request):
-        """
-        Возвращает статистику выполненных привычек по дням за указанный период.
-        Параметры:
-        - start_date: начальная дата (формат YYYY-MM-DD), по умолчанию - 7 дней назад
-        - end_date: конечная дата (формат YYYY-MM-DD), по умолчанию - сегодня
-        - period: предустановленный период ('week', 'month', 'year'), переопределяет start_date/end_date
-        """
-        # Get or create UserAll profile for authenticated user
-        user_profile, created = UserAll.objects.get_or_create(
-            auth_user=request.user,
-            defaults={
-                'name': request.user.username,
-                'age': ''
-            }
-        )
-
-        # Определяем период
-        date_param = request.query_params.get('date')
-        if date_param:
-            try:
-                today = datetime.strptime(date_param, '%Y-%m-%d').date()
-            except ValueError:
-                today = date.today()
-        else:
-            today = date.today()
-
-        period = request.query_params.get('period', None)
-        
-        MONTHS_RU = {
-            1: 'Январь', 2: 'Февраль', 3: 'Март', 4: 'Апрель',
-            5: 'Май', 6: 'Июнь', 7: 'Июль', 8: 'Август',
-            9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
-        }
-
-        if period == 'week':
-            days_since_monday = today.weekday()  # 0=Пн, 6=Вс
-            start_date = today - timedelta(days=days_since_monday)
-            end_date = start_date + timedelta(days=6)
-            label = f"{start_date.strftime('%d.%m')} - {end_date.strftime('%d.%m')}"
-        elif period == 'month':
-            first_of_month = date(today.year, today.month, 1)
-            days_since_monday = first_of_month.weekday()
-            start_date = first_of_month - timedelta(days=days_since_monday)
-            
-            if today.month == 12:
-                next_month = date(today.year + 1, 1, 1)
-            else:
-                next_month = date(today.year, today.month + 1, 1)
-            end_date = next_month - timedelta(days=1)
-            label = f"{MONTHS_RU[today.month]} {today.year}"
-        elif period == 'year':
-            start_date = date(today.year, 1, 1)
-            end_date = date(today.year, 12, 31)
-            label = f"{start_date.year}"
-        else:
-            # Используем параметры start_date и end_date
-            start_date_str = request.query_params.get('start_date')
-            end_date_str = request.query_params.get('end_date')
-            
-            if start_date_str:
-                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-            else:
-                start_date = today - timedelta(days=6)
-            
-            if end_date_str:
-                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            else:
-                end_date = today
-
-        # Получаем все привычки пользователя или одну конкретную
-        habit_id = request.query_params.get('habit_id')
-        category_name = request.query_params.get('category')
-        
-        habits = Habit.objects.filter(user=user_profile)
-        if habit_id:
-            habits = habits.filter(id=habit_id)
-        if category_name and category_name != 'Все':
-            if category_name == 'Без категории':
-                habits = habits.filter(category__isnull=True)
-            else:
-                habits = habits.filter(category__name=category_name)
-        
-        # Собираем статистику по дням или агрегированным периодам
-        statistics = []
-        current_date = start_date
-        
-        if period == 'week' or not period:
-            # Daily bars
-            while current_date <= end_date:
-                day_dates = Date.objects.filter(
-                    user=user_profile,
-                    habit__in=habits,
-                    habit_date=current_date,
-                    is_done=True
-                )
-                
-                completed_days = day_dates.filter(is_restored=False).count()
-                restored_days = day_dates.filter(is_restored=True).count()
-                extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
-                    total=Sum('quantity')
-                )['total'] or 0
-
-                completed_count = (
-                    day_dates.filter(quantity__isnull=True).count() + 
-                    extra_quantity
-                )
-
-                # Count habits that existed by this date
-                habit_count = habits.filter(created_at__lte=current_date).count()
-                
-                statistics.append({
-                    'date': current_date.isoformat(),
-                    'label': str(current_date.day),
-                    'days_in_period': 1,
-                    'habit_count': habit_count,
-                    'completed_count': completed_count,
-                    'completed_days': completed_days,
-                    'restored_days': restored_days,
-                    'extra_quantity': extra_quantity,
-                })
-                current_date += timedelta(days=1)
-        
-        elif period == 'month':
-            # Weekly bars (Calendar weeks Mon-Sun)
-            while current_date <= end_date:
-                period_end = current_date + timedelta(days=6)
-                day_dates = Date.objects.filter(
-                    user=user_profile,
-                    habit__in=habits,
-                    habit_date__range=[current_date, period_end],
-                    is_done=True
-                )
-                
-                completed_days = day_dates.filter(is_restored=False).count()
-                restored_days = day_dates.filter(is_restored=True).count()
-                extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
-                    total=Sum('quantity')
-                )['total'] or 0
-
-                completed_count = (
-                    day_dates.filter(quantity__isnull=True).count() + 
-                    extra_quantity
-                )
-                
-                days_in_period = (period_end - current_date).days + 1
-
-                # Count habits that existed by end of this chunk
-                habit_count = habits.filter(created_at__lte=period_end).count()
-                
-                statistics.append({
-                    'date': current_date.isoformat(),
-                    'label': f"{current_date.day}-{period_end.day}",
-                    'days_in_period': days_in_period,
-                    'habit_count': habit_count,
-                    'completed_count': completed_count,
-                    'completed_days': completed_days,
-                    'restored_days': restored_days,
-                    'extra_quantity': extra_quantity,
-                })
-                current_date = period_end + timedelta(days=1)
-
-        elif period == 'year':
-            # Monthly bars (calendar months)
-            while current_date <= end_date:
-                # Get last day of current month
-                if current_date.month == 12:
-                    period_end = date(current_date.year, 12, 31)
-                else:
-                    period_end = date(current_date.year, current_date.month + 1, 1) - timedelta(days=1)
-                
-                period_end = min(period_end, end_date)
-                
-                day_dates = Date.objects.filter(
-                    user=user_profile,
-                    habit__in=habits,
-                    habit_date__range=[current_date, period_end],
-                    is_done=True
-                )
-                
-                completed_days = day_dates.filter(is_restored=False).count()
-                restored_days = day_dates.filter(is_restored=True).count()
-                extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
-                    total=Sum('quantity')
-                )['total'] or 0
-
-                completed_count = (
-                    day_dates.filter(quantity__isnull=True).count() + 
-                    extra_quantity
-                )
-                
-                days_in_period = (period_end - current_date).days + 1
-
-                # Count habits that existed by end of this month
-                habit_count = habits.filter(created_at__lte=period_end).count()
-                
-                months_ru = {
-                    1: 'Янв', 2: 'Фев', 3: 'Мар', 4: 'Апр', 5: 'Май', 6: 'Июн',
-                    7: 'Июл', 8: 'Авг', 9: 'Сен', 10: 'Окт', 11: 'Ноя', 12: 'Дек'
+        try:
+            """
+            Возвращает статистику выполненных привычек по дням за указанный период.
+            Параметры:
+            - start_date: начальная дата (формат YYYY-MM-DD), по умолчанию - 7 дней назад
+            - end_date: конечная дата (формат YYYY-MM-DD), по умолчанию - сегодня
+            - period: предустановленный период ('week', 'month', 'year'), переопределяет start_date/end_date
+            """
+            # Get or create UserAll profile for authenticated user
+            user_profile, created = UserAll.objects.get_or_create(
+                auth_user=request.user,
+                defaults={
+                    'name': request.user.username,
+                    'age': ''
                 }
+            )
+
+            # Определяем период
+            date_param = request.query_params.get('date')
+            if date_param:
+                try:
+                    today = datetime.strptime(date_param, '%Y-%m-%d').date()
+                except ValueError:
+                    today = date.today()
+            else:
+                today = date.today()
+
+            period = request.query_params.get('period', None)
+            
+            MONTHS_RU = {
+                1: 'Январь', 2: 'Февраль', 3: 'Март', 4: 'Апрель',
+                5: 'Май', 6: 'Июнь', 7: 'Июль', 8: 'Август',
+                9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
+            }
+
+            if period == 'week':
+                days_since_monday = today.weekday()  # 0=Пн, 6=Вс
+                start_date = today - timedelta(days=days_since_monday)
+                end_date = start_date + timedelta(days=6)
+                label = f"{start_date.strftime('%d.%m')} - {end_date.strftime('%d.%m')}"
+            elif period == 'month':
+                first_of_month = date(today.year, today.month, 1)
+                days_since_monday = first_of_month.weekday()
+                start_date = first_of_month - timedelta(days=days_since_monday)
                 
-                statistics.append({
-                    'date': current_date.isoformat(),
-                    'label': months_ru[current_date.month],
-                    'days_in_period': days_in_period,
-                    'habit_count': habit_count,
-                    'completed_count': completed_count,
-                    'completed_days': completed_days,
-                    'restored_days': restored_days,
-                    'extra_quantity': extra_quantity,
-                })
-                current_date = period_end + timedelta(days=1)
-        
-        return Response({
-            'data': statistics,
-            'period_label': label
-        })
+                if today.month == 12:
+                    next_month = date(today.year + 1, 1, 1)
+                else:
+                    next_month = date(today.year, today.month + 1, 1)
+                end_date = next_month - timedelta(days=1)
+                label = f"{MONTHS_RU[today.month]} {today.year}"
+            elif period == 'year':
+                start_date = date(today.year, 1, 1)
+                end_date = date(today.year, 12, 31)
+                label = f"{start_date.year}"
+            else:
+                # Используем параметры start_date и end_date
+                start_date_str = request.query_params.get('start_date')
+                end_date_str = request.query_params.get('end_date')
+                
+                if start_date_str:
+                    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                else:
+                    start_date = today - timedelta(days=6)
+                
+                if end_date_str:
+                    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                else:
+                    end_date = today
+
+            # Получаем все привычки пользователя или одну конкретную
+            habit_id = request.query_params.get('habit_id')
+            category_name = request.query_params.get('category')
+            
+            habits = Habit.objects.filter(user=user_profile)
+            if habit_id:
+                habits = habits.filter(id=habit_id)
+            if category_name and category_name != 'Все':
+                if category_name == 'Без категории':
+                    habits = habits.filter(category__isnull=True)
+                else:
+                    habits = habits.filter(category__name=category_name)
+            
+            # Собираем статистику по дням или агрегированным периодам
+            statistics = []
+            current_date = start_date
+            
+            if period == 'week' or not period:
+                # Daily bars
+                while current_date <= end_date:
+                    day_dates = Date.objects.filter(
+                        user=user_profile,
+                        habit__in=habits,
+                        habit_date=current_date,
+                        is_done=True
+                    )
+                    
+                    completed_days = day_dates.filter(is_restored=False).count()
+                    restored_days = day_dates.filter(is_restored=True).count()
+                    extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
+                        total=Sum('quantity')
+                    )['total'] or 0
+
+                    completed_count = (
+                        day_dates.filter(quantity__isnull=True).count() + 
+                        extra_quantity
+                    )
+
+                    # Count habits that existed by this date
+                    habit_count = habits.filter(created_at__lte=current_date).count()
+                    
+                    statistics.append({
+                        'date': current_date.isoformat(),
+                        'label': str(current_date.day),
+                        'days_in_period': 1,
+                        'habit_count': habit_count,
+                        'completed_count': completed_count,
+                        'completed_days': completed_days,
+                        'restored_days': restored_days,
+                        'extra_quantity': extra_quantity,
+                    })
+                    current_date += timedelta(days=1)
+            
+            elif period == 'month':
+                # Weekly bars (Calendar weeks Mon-Sun)
+                while current_date <= end_date:
+                    period_end = current_date + timedelta(days=6)
+                    day_dates = Date.objects.filter(
+                        user=user_profile,
+                        habit__in=habits,
+                        habit_date__range=[current_date, period_end],
+                        is_done=True
+                    )
+                    
+                    completed_days = day_dates.filter(is_restored=False).count()
+                    restored_days = day_dates.filter(is_restored=True).count()
+                    extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
+                        total=Sum('quantity')
+                    )['total'] or 0
+
+                    completed_count = (
+                        day_dates.filter(quantity__isnull=True).count() + 
+                        extra_quantity
+                    )
+                    
+                    days_in_period = (period_end - current_date).days + 1
+
+                    # Count habits that existed by end of this chunk
+                    habit_count = habits.filter(created_at__lte=period_end).count()
+                    
+                    statistics.append({
+                        'date': current_date.isoformat(),
+                        'label': f"{current_date.day}-{period_end.day}",
+                        'days_in_period': days_in_period,
+                        'habit_count': habit_count,
+                        'completed_count': completed_count,
+                        'completed_days': completed_days,
+                        'restored_days': restored_days,
+                        'extra_quantity': extra_quantity,
+                    })
+                    current_date = period_end + timedelta(days=1)
+
+            elif period == 'year':
+                # Monthly bars (calendar months)
+                while current_date <= end_date:
+                    # Get last day of current month
+                    if current_date.month == 12:
+                        period_end = date(current_date.year, 12, 31)
+                    else:
+                        period_end = date(current_date.year, current_date.month + 1, 1) - timedelta(days=1)
+                    
+                    period_end = min(period_end, end_date)
+                    
+                    day_dates = Date.objects.filter(
+                        user=user_profile,
+                        habit__in=habits,
+                        habit_date__range=[current_date, period_end],
+                        is_done=True
+                    )
+                    
+                    completed_days = day_dates.filter(is_restored=False).count()
+                    restored_days = day_dates.filter(is_restored=True).count()
+                    extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(
+                        total=Sum('quantity')
+                    )['total'] or 0
+
+                    completed_count = (
+                        day_dates.filter(quantity__isnull=True).count() + 
+                        extra_quantity
+                    )
+                    
+                    days_in_period = (period_end - current_date).days + 1
+
+                    # Count habits that existed by end of this month
+                    habit_count = habits.filter(created_at__lte=period_end).count()
+                    
+                    months_ru = {
+                        1: 'Янв', 2: 'Фев', 3: 'Мар', 4: 'Апр', 5: 'Май', 6: 'Июн',
+                        7: 'Июл', 8: 'Авг', 9: 'Сен', 10: 'Окт', 11: 'Ноя', 12: 'Дек'
+                    }
+                    
+                    statistics.append({
+                        'date': current_date.isoformat(),
+                        'label': months_ru[current_date.month],
+                        'days_in_period': days_in_period,
+                        'habit_count': habit_count,
+                        'completed_count': completed_count,
+                        'completed_days': completed_days,
+                        'restored_days': restored_days,
+                        'extra_quantity': extra_quantity,
+                    })
+                    current_date = period_end + timedelta(days=1)
+            
+            return Response({
+                'data': statistics,
+                'period_label': label
+            })
+        except Exception as e:
+            import traceback
+            print(f"CRITICAL ERROR in daily_statistics: {e}")
+            traceback.print_exc()
+            return Response(
+                {"error": str(e), "detail": traceback.format_exc()}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
     @action(detail=False, methods=['get'])
     def habit_comparison(self, request):

@@ -540,15 +540,15 @@ body {
 .habit-count {
   background-color: #059669;
   color: #FFFFFF;
-  height: 32px;
-  /* Match .check-box height */
+  height: 34px;
+  /* Match .check-box height slightly larger */
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 10px;
   font-size: 15px;
   font-weight: 800;
-  min-width: 40px;
+  min-width: 46px;
   text-align: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   position: relative;
@@ -575,13 +575,14 @@ body {
 .habit-count.monthly {
   z-index: 1;
   /* Back */
-  margin-left: -12px;
+  margin-left: -14px;
   /* Нахлест */
   padding-left: 14px;
-  /* Чтобы цифра не перекрывалась */
+  /* Center the number in the visible part */
   background-color: #34d399;
   /* Чуть светлее */
   opacity: 0.9;
+  min-width: 46px;
 }
 
 .habit-counts-wrapper {
@@ -590,7 +591,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 72px; /* Increased to match header and prevent crowding */
+  width: 78px; /* Increased to match header and prevent crowding */
   flex-shrink: 0;
 }
 
@@ -1151,7 +1152,7 @@ body {
 }
 
 .days-placeholder-end {
-  width: 72px; /* Increased to accommodate badges and sync with rows */
+  width: 78px; /* Increased to accommodate badges and sync with rows */
   flex-shrink: 0;
   display: flex;
   align-items: center;
