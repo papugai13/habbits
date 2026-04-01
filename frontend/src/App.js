@@ -2670,18 +2670,20 @@ const App = () => {
                       onChange={(val) => setQuantityValue(val)}
                     />
 
-                    <div className="preset-column presets-right">
-                      <div className="preset-btn theme-purple">
-                        <div className="preset-badge">+{quantityModalData.weeklyOverflow || 0}</div>
-                        <div className="preset-label">{t('week')}</div>
-                      </div>
+                    {quantityModalData.dayDate !== new Date().toLocaleDateString('en-CA') && (
+                      <div className="preset-column presets-right">
+                        <div className="preset-btn theme-purple">
+                          <div className="preset-badge">+{quantityModalData.weeklyOverflow || 0}</div>
+                          <div className="preset-label">{t('week')}</div>
+                        </div>
 
-                      <div className="preset-btn theme-purple">
-                        <div className="preset-badge">{quantityModalData.monthlyTotal || 0}</div>
-                        <div className="preset-label">{t('month')}</div>
-                      </div>
+                        <div className="preset-btn theme-purple">
+                          <div className="preset-badge">{quantityModalData.monthlyTotal || 0}</div>
+                          <div className="preset-label">{t('month')}</div>
+                        </div>
 
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
