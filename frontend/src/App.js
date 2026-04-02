@@ -1858,42 +1858,35 @@ const App = () => {
                   </div>
                   <div className="habit-counts-wrapper">
                     <div className="habit-count-container">
-                      <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''}`}>
+                      <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''} ${weeklyCount === 3 ? 'has-single-lightning' : ''} ${weeklyCount === 4 ? 'has-double-lightning' : ''} ${weeklyCount === 5 ? 'has-single-star' : ''} ${weeklyCount === 6 ? 'has-double-star' : ''}`}>
                         {/* Корона над квадратиком для серии из 7 дней */}
                         {weeklyAward === '👑' && (
                           <span className="crown-top">👑</span>
                         )}
-                        {/* Lightning icons at the top */}
-                        {weeklyAward && weeklyAward.includes('⚡') && (
-                          <div className="lightning-behind">
-                            <span className="lightning-item first-lightning">⚡</span>
-                            {weeklyCount >= 4 && (
-                              <span className="lightning-item second-lightning">⚡</span>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Star и Crown icons */}
-                        {weeklyAward && weeklyAward.includes('⭐') && (
-                          <>
-                            {weeklyCount >= 6 ? (
-                              <div className="stars-three-layout">
-                                <span className="star-item top-row-star">⭐</span>
-                                <span className="star-item top-row-star">⭐</span>
-                              </div>
-                            ) : (
-                              <div className="stars-inside">
-                                <span className="star-item first-star">⭐</span>
-                                {weeklyCount >= 6 && (
-                                  <span className="star-item second-star">⭐</span>
-                                )}
-                              </div>
-                            )}
-                          </>
-                        )}
-
-
                         <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>{weeklyCount}</span>
+                        {/* Lightning icons — справа от цифры */}
+                        {weeklyAward && weeklyAward.includes('⚡') && (
+                          weeklyCount >= 4 ? (
+                            <div className="lightning-double">
+                              <span className="lightning-item lightning-left">⚡</span>
+                              <span className="lightning-item lightning-right">⚡</span>
+                            </div>
+                          ) : (
+                            <span className="lightning-item lightning-single">⚡</span>
+                          )
+                        )}
+
+                        {/* Star icons — справа от цифры */}
+                        {weeklyAward && weeklyAward.includes('⭐') && (
+                          weeklyCount >= 6 ? (
+                            <div className="star-double">
+                              <span className="star-item star-left">⭐</span>
+                              <span className="star-item star-right">⭐</span>
+                            </div>
+                          ) : (
+                            <span className="star-item star-single">⭐</span>
+                          )
+                        )}
                       </div>
                       <div className="habit-count monthly">
                         <span className="habit-count-number">{habit.monthly_total || 0}</span>
