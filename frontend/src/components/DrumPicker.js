@@ -171,7 +171,7 @@ const DrumPicker = ({ value, min = 1, max = 999, allowNoQuantity = false, noQuan
                                     height: ITEM_HEIGHT,
                                     opacity,
                                     transform: `scale(${scale})`,
-                                    transition: isSnapping.current ? 'opacity 0.2s, transform 0.2s' : 'none',
+                                    transition: 'opacity 0.35s ease, transform 0.35s ease',
                                     fontWeight: isSelected ? 700 : 400,
                                     fontSize: isSelected ? (item === null ? '18px' : '28px') : (item === null ? '14px' : '20px'),
                                 }}
