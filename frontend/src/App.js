@@ -925,8 +925,8 @@ const App = () => {
     }
   };
 
-  const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, isRestored) => {
-    setQuantityModalData({ habitId, habitName, dayDate, currentStatus, dateId, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow });
+  const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
+    setQuantityModalData({ habitId, habitName, dayDate, currentStatus, currentQuantity, dateId, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow });
 
     // Default quantity logic:
     // If it's explicitly set (1, 2, ...), use it.
@@ -949,9 +949,9 @@ const App = () => {
     setShowQuantityModal(true);
   };
 
-  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, isRestored) => {
+  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
     const timer = setTimeout(() => {
-      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, isRestored);
+      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored);
     }, 200); // 200ms for long press
     setLongPressTimer(timer);
   };
@@ -1547,6 +1547,20 @@ const App = () => {
     }
   };
 
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  const modalCurrentStatus = quantityModalData?.currentStatus;
+  const modalCurrentQuantity = quantityModalData?.currentQuantity;
+  const effectiveQuantity = (typeof quantityValue === 'number' && quantityValue >= 1) ? quantityValue : 1;
+  const currentQuantity = (modalCurrentQuantity !== null && modalCurrentQuantity !== undefined)
+    ? modalCurrentQuantity
+    : (modalCurrentStatus ? 1 : 0);
+  const diff = modalCurrentStatus ? (effectiveQuantity - currentQuantity) : effectiveQuantity;
+
+  const liveWeeklyTotal = Math.max(0, (quantityModalData?.weeklyTotal || 0) + diff);
+  const liveMonthlyTotal = Math.max(0, (quantityModalData?.monthlyTotal || 0) + diff);
+  const liveWeeklyOverflow = (quantityModalData?.weeklyOverflow || 0) + diff;
+  const liveMonthlyOverflow = (quantityModalData?.monthlyOverflow || 0) + diff;
+
   return (
     <div className="app">
       {/* Верхняя панель */}
@@ -1763,7 +1777,7 @@ const App = () => {
                             const d = habit.latest_comment_details;
                             if (d) {
                               const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow);
+                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow);
                             }
                           }}
                           style={{ cursor: 'pointer' }}
@@ -1831,13 +1845,13 @@ const App = () => {
                           }}
                           onMouseDown={() => {
                             const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, isRestored);
+                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
                           }}
                           onMouseUp={handleLongPressEnd}
                           onMouseLeave={handleLongPressEnd}
                           onTouchStart={() => {
                             const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, isRestored);
+                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
                           }}
                           onTouchMove={handleLongPressEnd}
                           onTouchEnd={handleLongPressEnd}
@@ -2701,13 +2715,13 @@ const App = () => {
                   <div className="quantity-selector-container">
                     <div className="preset-column presets-left">
                       <div className="preset-btn theme-green">
-                        <div className="preset-badge">{quantityModalData.weeklyTotal || 0}</div>
+                        <div className="preset-badge">{liveWeeklyTotal}</div>
                         <div className="preset-label">{t('week')}</div>
                       </div>
 
                       <div className="preset-btn theme-green">
                         <div className="preset-badge">
-                          {quantityModalData.monthlyTotal || 0}
+                          {liveMonthlyTotal}
                         </div>
                         <div className="preset-label">{t('month')}</div>
                       </div>
@@ -2723,20 +2737,18 @@ const App = () => {
                       onChange={(val) => setQuantityValue(val)}
                     />
 
-                    {quantityModalData.dayDate !== new Date().toLocaleDateString('en-CA') && (
-                      <div className="preset-column presets-right">
-                        <div className="preset-btn theme-purple">
-                          <div className="preset-badge">+{quantityModalData.weeklyOverflow || 0}</div>
-                          <div className="preset-label">{t('week')}</div>
-                        </div>
-
-                        <div className="preset-btn theme-purple">
-                          <div className="preset-badge">{quantityModalData.monthlyTotal || 0}</div>
-                          <div className="preset-label">{t('month')}</div>
-                        </div>
-
+                    <div className="preset-column presets-right">
+                      <div className="preset-btn theme-purple">
+                        <div className="preset-badge">{liveWeeklyOverflow >= 0 ? `+${liveWeeklyOverflow}` : liveWeeklyOverflow}</div>
+                        <div className="preset-label">{t('week')}</div>
                       </div>
-                    )}
+
+                      <div className="preset-btn theme-purple">
+                        <div className="preset-badge">{liveMonthlyOverflow >= 0 ? `+${liveMonthlyOverflow}` : liveMonthlyOverflow}</div>
+                        <div className="preset-label">{t('month')}</div>
+                      </div>
+
+                    </div>
                   </div>
                 </div>
 
