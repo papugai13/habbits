@@ -2600,20 +2600,19 @@ body {
   overflow: visible !important;
 }
 
-/* Base line piece ONLY in the habit rows (where squares are), NOT in the header */
+/* Убираем разделительную линию между месяцами, оставляем только пространство */
 .habit-checks .grid-col.month-start::before {
   content: '';
   position: absolute;
-  left: -9px; /* Synchronized: 4px gap + 14px margin = 18px / 2 = 9px */
-  top: -45px; /* Heavy overlap with previous row to form a SOLID vertical line */
-  height: calc(100% + 90px); /* Reaches far up and down to close any gaps */
-  width: 4px;
-  background-color: #6d7681;
-  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  background-color: transparent;
   pointer-events: none;
 }
 
-/* Ensure row containers allow the line to pass through */
+/* Ensure row containers allow пространство между месяцами */
 .habit-checks, .days-cols {
   overflow: visible !important;
 }
