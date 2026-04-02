@@ -88,19 +88,24 @@ const CustomBarShape = (props) => {
 };
 
 const PercentageBadge = ({ x, y, width, height, value, badgeW, badgeH, fSize }) => {
-    if (!value) return null;
-    const bw = badgeW || 44;
-    const bh = badgeH || 22;
-    const fs = fSize || 12;
+    if (!value || value === '0%') return null;
+    const fs = fSize || 16;
     const cx = x + width / 2;
-    const cy = y - 14;
+    // place percentage label slightly above bar top without background
+    const cy = y - 12;
     return (
-        <g>
-            <rect x={cx - bw / 2} y={cy - bh / 2} width={bw} height={bh} rx={6} fill="#3B82F6" />
-            <text x={cx} y={cy + 1} fill="#FFF" textAnchor="middle" dominantBaseline="middle" fontSize={fs} fontWeight={700}>
-                {value}
-            </text>
-        </g>
+        <text
+            x={cx}
+            y={cy}
+            fill="#22c55e"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize={fs}
+            fontWeight={800}
+            style={{ pointerEvents: 'none' }}
+        >
+            {value}
+        </text>
     );
 };
 
@@ -149,9 +154,12 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
 
                     const formatted = json.habits.map(item => {
                         const countCapped = item.completed_days || 0;
-                        const percentageStr = totalDaysInPeriod > 0 
-                            ? Math.round((countCapped / totalDaysInPeriod) * 100) + '%' 
-                            : '0%';
+                        const rawPercent = totalDaysInPeriod > 0 
+                            ? (countCapped / totalDaysInPeriod) * 100 
+                            : 0;
+                        const roundedPercent = Math.round(rawPercent);
+                        const finalPercent = (countCapped > 0 && roundedPercent === 0) ? 1 : roundedPercent;
+                        const percentageStr = `${finalPercent}%`;
 
                         return {
                             id: item.id,
@@ -381,7 +389,10 @@ const Charts = ({
                     
                     let percentageStr = '';
                     if (!isFuture && maxPossible > 0) {
-                        percentageStr = Math.round((completed / maxPossible) * 100) + '%';
+                        const rawPercent = (completed / maxPossible) * 100;
+                        const roundedPercent = Math.round(rawPercent);
+                        const finalPercent = (completed > 0 && roundedPercent === 0) ? 1 : roundedPercent;
+                        percentageStr = `${finalPercent}%`;
                     } else if (!isFuture && maxPossible === 0) {
                         percentageStr = '0%';
                     }
