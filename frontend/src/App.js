@@ -70,6 +70,7 @@ const App = () => {
   const [reportData, setReportData] = useState(null);
   const [isReportLoading, setIsReportLoading] = useState(false);
   const [currentWeekDate, setCurrentWeekDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const weekDataCacheRef = React.useRef({});
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const lightboxTouchStartY = React.useRef(null);
   const [lightboxTranslateY, setLightboxTranslateY] = useState(0);
@@ -154,19 +155,62 @@ const App = () => {
     }
   }, []);
 
-  // Fetch habits from API
-  const fetchHabits = React.useCallback(async (targetDate) => {
+  const fetchWeekHabits = async (targetDate) => {
+    const dateToFetch = targetDate;
+    if (!dateToFetch) return null;
+
     try {
-      const dateToFetch = targetDate || currentWeekDate;
       const response = await fetch(`/api/v1/habits/weekly_status/?date=${dateToFetch}`);
       if (response.ok) {
         const data = await response.json();
-        setHabitsData(data);
+        weekDataCacheRef.current[dateToFetch] = data;
+        return data;
       }
     } catch (error) {
-      console.error('Error fetching habits:', error);
+      console.error('Error fetching habits for week', dateToFetch, error);
     }
-  }, [currentWeekDate]);
+    return null;
+  };
+
+  const loadWeekData = React.useCallback(async (targetDate) => {
+    if (!targetDate) return;
+    const cached = weekDataCacheRef.current[targetDate];
+    if (cached) {
+      setHabitsData(cached);
+      return;
+    }
+
+    const data = await fetchWeekHabits(targetDate);
+    if (data) {
+      setHabitsData(data);
+    }
+  }, []);
+
+  const prefetchAdjacentWeeks = React.useCallback(async (anchorDate) => {
+    if (!anchorDate) return;
+
+    const date = new Date(anchorDate);
+    const prev = new Date(date);
+    prev.setDate(date.getDate() - 7);
+    const next = new Date(date);
+    next.setDate(date.getDate() + 7);
+
+    const prevStr = prev.toLocaleDateString('en-CA');
+    const nextStr = next.toLocaleDateString('en-CA');
+
+    if (!weekDataCacheRef.current[prevStr]) {
+      fetchWeekHabits(prevStr);
+    }
+    if (!weekDataCacheRef.current[nextStr]) {
+      fetchWeekHabits(nextStr);
+    }
+  }, []);
+
+  const fetchHabits = React.useCallback(async (targetDate) => {
+    const dateKey = targetDate || currentWeekDate;
+    delete weekDataCacheRef.current[dateKey];
+    return loadWeekData(dateKey);
+  }, [currentWeekDate, loadWeekData]);
 
   // Fetch archived habits
   const fetchArchivedHabits = React.useCallback(async () => {
@@ -214,20 +258,37 @@ const App = () => {
   // Fetch habits when currentWeekDate changes
   useEffect(() => {
     if (isAuthenticated) {
-      fetchHabits();
+      loadWeekData(currentWeekDate);
+      prefetchAdjacentWeeks(currentWeekDate);
     }
-  }, [currentWeekDate, isAuthenticated, fetchHabits]);
+  }, [currentWeekDate, isAuthenticated, loadWeekData, prefetchAdjacentWeeks]);
+
+  const goToWeek = (weekDate, direction) => {
+    const date = new Date(weekDate);
+    const weekString = date.toLocaleDateString('en-CA');
+
+    // Apply page slide direction class first
+    setSwipeDirection(direction);
+    setTimeout(() => setSwipeDirection(null), 300);
+
+    // If cached, show immediately, иначе загрузится параллельно
+    if (weekDataCacheRef.current[weekString]) {
+      setHabitsData(weekDataCacheRef.current[weekString]);
+    }
+
+    setCurrentWeekDate(weekString);
+  };
 
   const handlePrevWeek = () => {
     const prevDate = new Date(currentWeekDate);
     prevDate.setDate(prevDate.getDate() - 7);
-    setCurrentWeekDate(prevDate.toLocaleDateString('en-CA'));
+    goToWeek(prevDate, 'right');
   };
 
   const handleNextWeek = () => {
     const nextDate = new Date(currentWeekDate);
     nextDate.setDate(nextDate.getDate() + 7);
-    setCurrentWeekDate(nextDate.toLocaleDateString('en-CA'));
+    goToWeek(nextDate, 'left');
   };
 
   const handleToday = () => {
@@ -295,13 +356,10 @@ const App = () => {
     const diffX = touch.clientX - swipeStartPos.current.x;
     if (Math.abs(diffX) >= 50) {
       if (diffX > 0) {
-        setSwipeDirection('right');
         handlePrevWeek();
       } else {
-        setSwipeDirection('left');
         handleNextWeek();
       }
-      setTimeout(() => setSwipeDirection(null), 300);
     }
     swipeStartPos.current = { x: 0, y: 0 };
     isSwiping.current = false;
@@ -1630,6 +1688,7 @@ const App = () => {
 
           {habitsData.filter(habit => {
             if (selectedCategory === 'Все') return true;
+            if (selectedCategory === 'Без категории') return !habit.category_name;
             return habit.category_name === selectedCategory;
           }).map((habit) => {
 
