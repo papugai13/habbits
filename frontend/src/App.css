@@ -564,16 +564,21 @@ body {
 .habit-count.weekly {
   z-index: 2;
   position: relative;
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(5, 150, 105, 0.3);
+  background-color: #FFFFFF;
+  color: #059669;
+  border: 2px solid #059669;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .habit-count.monthly {
   z-index: 1;
   margin-left: -14px;
   padding-left: 14px;
-  background-color: #34d399;
-  opacity: 0.9;
+  background-color: #059669;
+  color: #FFFFFF;
+  opacity: 1;
   min-width: 46px;
+  border: none;
 }
 
 .habit-counts-wrapper {
@@ -822,13 +827,17 @@ body {
   /* Нахлест */
   padding-right: 14px;
   /* Чтобы цифра не перекрывалась */
-  background-color: #A78BFA;
-  /* Чуть светлее, так как он "сзади" */
-  opacity: 0.9;
+  background-color: #FFFFFF;
+  color: #8B5CF6;
+  border: 1.5px solid #8B5CF6;
+  opacity: 1;
 }
 
 .habit-count-overflow.monthly {
   z-index: 2;
+  background-color: #8B5CF6;
+  color: #FFFFFF;
+  border: none;
   box-shadow: -2px 0 4px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(139, 92, 246, 0.3);
 }
 
@@ -2228,7 +2237,13 @@ body {
   color: #059669;
 }
 
-.preset-btn.theme-green .preset-badge {
+.preset-btn.theme-green.weekly .preset-badge {
+  background-color: #FFFFFF;
+  color: #059669;
+  border: 2px solid #059669;
+}
+
+.preset-btn.theme-green.monthly .preset-badge {
   background-color: #059669;
   color: white;
 }
@@ -2237,7 +2252,13 @@ body {
   color: #8B5CF6;
 }
 
-.preset-btn.theme-purple .preset-badge {
+.preset-btn.theme-purple.weekly .preset-badge {
+  background-color: #FFFFFF;
+  color: #8B5CF6;
+  border: 2px solid #8B5CF6;
+}
+
+.preset-btn.theme-purple.monthly .preset-badge {
   background-color: #8B5CF6;
   color: white;
 }
