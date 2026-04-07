@@ -82,7 +82,24 @@ const App = () => {
   const swipeStartPos = React.useRef({ x: 0, y: 0 });
   const isSwiping = React.useRef(false);
   const [swipeDirection, setSwipeDirection] = useState(null);
+  const [isDraggingWeekSwipe, setIsDraggingWeekSwipe] = useState(false);
+  const swipeOffsetRef = React.useRef(0);
+  const pendingRafRef = React.useRef(null);
   const habitsContainerRef = React.useRef(null);
+  const weekPagesRef = React.useRef(null);
+
+  const getSwipeWidth = () => habitsContainerRef.current?.clientWidth || window.innerWidth;
+
+  const applySwipeOffset = (offset) => {
+    if (!weekPagesRef.current) return;
+    const width = getSwipeWidth();
+    weekPagesRef.current.style.transform = `translate3d(${ -width + offset }px, 0, 0)`;
+  };
+
+  const setSwipeTransitionStyle = (value) => {
+    if (!weekPagesRef.current) return;
+    weekPagesRef.current.style.transition = value;
+  };
 
   // Modal swipe navigation refs
   const modalSwipeStartPos = React.useRef({ x: 0, y: 0 });
@@ -185,6 +202,11 @@ const App = () => {
       setHabitsData(data);
     }
   }, []);
+
+  const prefetchWeekIfNeeded = async (weekDate) => {
+    if (!weekDate || weekDataCacheRef.current[weekDate]) return;
+    await fetchWeekHabits(weekDate);
+  };
 
   const prefetchAdjacentWeeks = React.useCallback(async (anchorDate) => {
     if (!anchorDate) return;
@@ -324,43 +346,100 @@ const App = () => {
     const touch = e.touches[0];
     swipeStartPos.current = { x: touch.clientX, y: touch.clientY };
     isSwiping.current = false;
+    swipeOffsetRef.current = 0;
+    setIsDraggingWeekSwipe(false);
+    setSwipeTransitionStyle('none');
+    applySwipeOffset(0);
+    if (pendingRafRef.current) {
+      cancelAnimationFrame(pendingRafRef.current);
+      pendingRafRef.current = null;
+    }
+
+    const date = new Date(currentWeekDate);
+    const prev = new Date(date);
+    prev.setDate(date.getDate() - 7);
+    const next = new Date(date);
+    next.setDate(date.getDate() + 7);
+    const prevStr = prev.toLocaleDateString('en-CA');
+    const nextStr = next.toLocaleDateString('en-CA');
+
+    prefetchWeekIfNeeded(prevStr);
+    prefetchWeekIfNeeded(nextStr);
   };
 
   const handleSwipeMove = (e) => {
     if (!swipeStartPos.current.x) return;
     const touch = e.touches[0];
-    const distX = Math.abs(touch.clientX - swipeStartPos.current.x);
+    const diffX = touch.clientX - swipeStartPos.current.x;
+    const distX = Math.abs(diffX);
     const distY = Math.abs(touch.clientY - swipeStartPos.current.y);
-    // Start horizontal week swipe only when gesture is clearly horizontal.
-    // Don't block vertical scrolling.
-    if (distX > 30 && distX > distY) {
-      isSwiping.current = true;
+
+    if (distX > 15 && distX > distY) {
+      if (!isSwiping.current) {
+        isSwiping.current = true;
+        setIsDraggingWeekSwipe(true);
+        setSwipeDirection(diffX > 0 ? 'right' : 'left');
+      }
       if (e.cancelable) e.preventDefault();
+      swipeOffsetRef.current = diffX;
+      if (!pendingRafRef.current) {
+        pendingRafRef.current = requestAnimationFrame(() => {
+          pendingRafRef.current = null;
+          applySwipeOffset(swipeOffsetRef.current);
+        });
+      }
     }
   };
-
-  // Non-passive touchmove listener for swipe (allows preventDefault)
-  useEffect(() => {
-    const el = habitsContainerRef.current;
-    if (!el) return;
-    el.addEventListener('touchmove', handleSwipeMove, { passive: false });
-    return () => el.removeEventListener('touchmove', handleSwipeMove);
-  });
 
   const handleSwipeEnd = (e) => {
     if (!isSwiping.current) {
       swipeStartPos.current = { x: 0, y: 0 };
+      setIsDraggingWeekSwipe(false);
+      setSwipeTransitionStyle('none');
+      applySwipeOffset(0);
       return;
     }
+
+    if (pendingRafRef.current) {
+      cancelAnimationFrame(pendingRafRef.current);
+      pendingRafRef.current = null;
+    }
+
     const touch = e.changedTouches[0];
     const diffX = touch.clientX - swipeStartPos.current.x;
-    if (Math.abs(diffX) >= 50) {
+    const absDiffX = Math.abs(diffX);
+    const width = getSwipeWidth();
+    const threshold = Math.max(50, width * 0.15);
+    const direction = diffX > 0 ? 'right' : 'left';
+
+    if (absDiffX >= threshold) {
+      const targetWeek = new Date(currentWeekDate);
       if (diffX > 0) {
-        handlePrevWeek();
+        targetWeek.setDate(targetWeek.getDate() - 7);
       } else {
-        handleNextWeek();
+        targetWeek.setDate(targetWeek.getDate() + 7);
       }
+      const targetWeekString = targetWeek.toLocaleDateString('en-CA');
+      const finalOffset = diffX > 0 ? width : -width;
+      setSwipeTransitionStyle('transform 0.15s cubic-bezier(0.22, 0.61, 0.36, 1)');
+      applySwipeOffset(finalOffset);
+      setIsDraggingWeekSwipe(false);
+      if (e.cancelable) e.preventDefault();
+      setTimeout(() => {
+        goToWeek(targetWeekString, direction);
+        setSwipeTransitionStyle('none');
+        applySwipeOffset(0);
+      }, 170);
+    } else {
+      setSwipeTransitionStyle('transform 0.15s cubic-bezier(0.22, 0.61, 0.36, 1)');
+      applySwipeOffset(0);
+      setIsDraggingWeekSwipe(false);
+      setSwipeDirection(null);
+      setTimeout(() => {
+        setSwipeTransitionStyle('none');
+      }, 170);
     }
+
     swipeStartPos.current = { x: 0, y: 0 };
     isSwiping.current = false;
   };
@@ -466,6 +545,262 @@ const App = () => {
 
     const langSub = language === 'ru' ? 'ru-RU' : 'en-US';
     return `${firstDay.toLocaleDateString(langSub, { day: 'numeric', month: 'short' })} - ${lastDay.toLocaleDateString(langSub, { day: 'numeric', month: 'short' })}`;
+  };
+
+  const prevWeekDate = (() => {
+    const date = new Date(currentWeekDate);
+    date.setDate(date.getDate() - 7);
+    return date.toLocaleDateString('en-CA');
+  })();
+
+  const nextWeekDate = (() => {
+    const date = new Date(currentWeekDate);
+    date.setDate(date.getDate() + 7);
+    return date.toLocaleDateString('en-CA');
+  })();
+
+  const getWeekData = (weekDate) => {
+    if (weekDate === currentWeekDate) {
+      return habitsData;
+    }
+    return weekDataCacheRef.current[weekDate] || [];
+  };
+
+  const renderWeekPage = (weekDate, highlightWeekToday = false) => {
+    const currentWeekDate = weekDate;
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const pageHabitsData = getWeekData(weekDate);
+
+    return (
+      <div className="habits-container">
+        <div className="days-header">
+          <div className="days-cols">
+            {WEEK_DAYS.map((day, index) => {
+              const baseDate = new Date(currentWeekDate);
+              const dayOfWeek = baseDate.getDay();
+              const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+              const diff = index - currentDayIndex;
+
+              const columnDate = new Date(baseDate);
+              columnDate.setDate(baseDate.getDate() + diff);
+              const columnDateStr = columnDate.toLocaleDateString('en-CA');
+
+              const isTodayCol = columnDateStr === todayStr;
+              const isMonthStart = index > 0 && columnDate.getDate() === 1;
+
+              return (
+                <React.Fragment key={day}>
+                  <div className={`grid-col day-col ${isTodayCol ? (highlightWeekToday ? 'today highlight' : 'today') : ''} ${isMonthStart ? 'month-start' : ''}`}>
+                    <div className="day-name">{day}</div>
+                    <div className="day-number">{columnDate.getDate()}</div>
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+          <div className="days-placeholder-end header-counts-container">
+            <div className="header-count-badge weekly">{t('week').substring(0, 3).toUpperCase()}</div>
+            <div className="header-count-badge monthly">{t('month').substring(0, 3).toUpperCase()}</div>
+          </div>
+        </div>
+
+        {pageHabitsData.filter(habit => {
+          if (selectedCategory === 'Все') return true;
+          if (selectedCategory === 'Без категории') return !habit.category_name;
+          return habit.category_name === selectedCategory;
+        }).map((habit) => {
+          const weeklyCount = getHabitCount(habit);
+          const weeklyAward = getWeeklyAward(weeklyCount);
+          const statuses = habit.statuses || [];
+
+          const getStreakInfo = (stats, habit) => {
+            let lastMark = -1;
+            if (!stats || !Array.isArray(stats)) return { lastMark: -1, isLastMarkInStreak: false };
+
+            for (let i = stats.length - 1; i >= 0; i--) {
+              if (stats[i] && stats[i].is_done) {
+                lastMark = i;
+                break;
+              }
+            }
+
+            let isLastMarkInStreak = false;
+            if (lastMark >= 1) {
+              isLastMarkInStreak = (stats[lastMark].is_done && !stats[lastMark].is_restored) &&
+                (stats[lastMark - 1].is_done && !stats[lastMark - 1].is_restored);
+            } else if (lastMark === 0) {
+              isLastMarkInStreak = (stats[0].is_done && !stats[0].is_restored) && habit.prev_week_sun_done;
+            } else if (lastMark === -1) {
+              isLastMarkInStreak = habit.prev_week_sun_done && habit.prev_week_sat_done;
+            }
+
+            const today = new Date();
+            const baseDate = new Date(currentWeekDate);
+            const displayedWeekStarts = baseDate;
+            const nextWeekStarts = new Date(baseDate);
+            nextWeekStarts.setDate(baseDate.getDate() + 7);
+
+            let comparisonIndex = -1;
+            if (today >= displayedWeekStarts && today < nextWeekStarts) {
+              const day = today.getDay();
+              comparisonIndex = day === 0 ? 6 : day - 1;
+            } else if (today >= nextWeekStarts) {
+              comparisonIndex = 6;
+            }
+
+            if (comparisonIndex !== -1 && (comparisonIndex - lastMark) > 2) {
+              isLastMarkInStreak = false;
+            }
+
+            return { lastMark, isLastMarkInStreak };
+          };
+
+          const { lastMark, isLastMarkInStreak } = getStreakInfo(statuses, habit);
+
+          return (
+            <div key={habit.id} className="habit-row">
+              <div className="habit-name">
+                <span className="habit-text">{habit.name}</span>
+                {(habit.latest_comment || habit.latest_photo) && (
+                  <div className="habit-meta-row">
+                    {habit.latest_comment && (
+                      <div
+                        className="habit-latest-comment"
+                        title={habit.latest_comment}
+                        onClick={() => {
+                          const d = habit.latest_comment_details;
+                          if (d) {
+                            const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                            openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow);
+                          }
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <span className="comment-indicator-circle"></span>
+                        <span className="comment-text">{habit.latest_comment}</span>
+                      </div>
+                    )}
+                    {habit.latest_photo && (
+                      <img
+                        src={habit.latest_photo}
+                        alt=""
+                        className="habit-thumbnail"
+                        onClick={() => setLightboxUrl(habit.latest_photo)}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="habit-row-content">
+                <div className="habit-checks">
+                  {WEEK_DAYS.map((_, index) => {
+                    const baseDate = new Date(currentWeekDate);
+                    const dayOfWeek = baseDate.getDay();
+                    const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                    const diff = index - currentDayIndex;
+
+                    const slotDate = new Date(baseDate);
+                    slotDate.setDate(baseDate.getDate() + diff);
+                    const slotDateStr = slotDate.toLocaleDateString('en-CA');
+
+                    const status = statuses.find(s => s && s.date === slotDateStr);
+                    const isDone = status ? status.is_done : false;
+                    const isRestored = status ? status.is_restored : false;
+                    const statusId = status ? status.id : null;
+                    const quantity = status ? status.quantity : null;
+
+                    const isToday = slotDateStr === todayStr;
+                    const isPast = slotDateStr < todayStr;
+                    const isFuture = slotDateStr > todayStr;
+                    const isMissed = isPast && !isDone;
+                    const hasComment = status && status.comment;
+                    const hasPhoto = status && status.photo;
+                    const isDisabled = isFuture;
+                    const showDotClass = (!isDone && isLastMarkInStreak && index > lastMark) ? 'has-dot-1' : '';
+                    const isMonthStart = index > 0 && slotDate.getDate() === 1;
+
+                    const checkBoxBtn = (
+                      <button
+                        className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''} ${showDotClass}`}
+                        onClick={() => {
+                          if (!isDisabled && !longPressTimer) {
+                            toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
+                          }
+                        }}
+                        onMouseDown={() => {
+                          const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                          !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
+                        }}
+                        onMouseUp={handleLongPressEnd}
+                        onMouseLeave={handleLongPressEnd}
+                        onTouchStart={() => {
+                          const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                          !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
+                        }}
+                        onTouchMove={handleLongPressEnd}
+                        onTouchEnd={handleLongPressEnd}
+                        disabled={isDisabled}
+                      >
+                        {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
+                        {hasComment && <span className="attachment-indicator"></span>}
+                        {hasPhoto && <span className="photo-indicator"></span>}
+                      </button>
+                    );
+
+                    return (
+                      <div key={slotDateStr} className={`grid-col ${isMonthStart ? 'month-start' : ''}`}>
+                        {checkBoxBtn}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="habit-counts-wrapper">
+                  <div className="habit-count-container">
+                    <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''} ${weeklyCount === 3 ? 'has-single-lightning' : ''} ${weeklyCount === 4 ? 'has-double-lightning' : ''} ${weeklyCount === 5 ? 'has-single-star' : ''} ${weeklyCount === 6 ? 'has-double-star' : ''}`}>
+                      {weeklyAward === '👑' && (
+                        <span className="crown-top">👑</span>
+                      )}
+                      <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>{weeklyCount}</span>
+                      {weeklyAward && weeklyAward.includes('⚡') && (
+                        weeklyCount >= 4 ? (
+                          <div className="lightning-double">
+                            <span className="lightning-item lightning-left">⚡</span>
+                            <span className="lightning-item lightning-right">⚡</span>
+                          </div>
+                        ) : (
+                          <span className="lightning-item lightning-single">⚡</span>
+                        )
+                      )}
+                      {weeklyAward && weeklyAward.includes('⭐') && (
+                        weeklyCount >= 6 ? (
+                          <div className="star-double">
+                            <span className="star-item star-left">⭐</span>
+                            <span className="star-item star-right">⭐</span>
+                          </div>
+                        ) : (
+                          <span className="star-item star-single">⭐</span>
+                        )
+                      )}
+                    </div>
+                    <div className="habit-count monthly">
+                      <span className="habit-count-number">{habit.monthly_total || 0}</span>
+                    </div>
+                  </div>
+                  <div className="habit-overflow-container">
+                    {(habit.weekly_overflow > 0) && (
+                      <div className="habit-count-overflow weekly">{habit.weekly_overflow}</div>
+                    )}
+                    {(habit.monthly_overflow > 0) && (
+                      <div className="habit-count-overflow monthly">{habit.monthly_overflow}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
 
@@ -1652,267 +1987,25 @@ const App = () => {
 
       {/* Список привычек и заголовок - только для вкладки Журналы */}
       {activeTab === 'Habits' && (
-        <div className={`habits-container ${swipeDirection ? 'swipe-' + swipeDirection : ''} ${isFadingOut ? 'fading-out' : ''} ${isFadingIn ? 'fading-in' : ''}`}
+        <div className="habits-swipe-wrapper"
           ref={habitsContainerRef}
           onTouchStart={handleSwipeStart}
+          onTouchMove={handleSwipeMove}
           onTouchEnd={handleSwipeEnd}
+          onTouchCancel={handleSwipeEnd}
         >
-          {/* Заголовки дней недели внутри контейнера для синхронизации с сеткой и полосой прокрутки */}
-          <div className="days-header">
-            <div className="days-cols">
-              {WEEK_DAYS.map((day, index) => {
-                // Calculate date for this column based on currentWeekDate
-                const baseDate = new Date(currentWeekDate);
-                const dayOfWeek = baseDate.getDay();
-                const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                const diff = index - currentDayIndex;
-
-                const columnDate = new Date(baseDate);
-                columnDate.setDate(baseDate.getDate() + diff);
-                const columnDateStr = columnDate.toLocaleDateString('en-CA');
-
-                const todayStr = new Date().toLocaleDateString('en-CA');
-                const isTodayCol = columnDateStr === todayStr;
-
-                const isMonthStart = index > 0 && columnDate.getDate() === 1;
-
-                return (
-                  <React.Fragment key={day}>
-                    <div className={`grid-col day-col ${isTodayCol ? (highlightToday ? 'today highlight' : 'today') : ''} ${isMonthStart ? 'month-start' : ''}`}>
-                      <div className="day-name">{day}</div>
-                      <div className="day-number">{columnDate.getDate()}</div>
-                    </div>
-                  </React.Fragment>
-                );
-              })}
+          <div className="week-pages" ref={weekPagesRef}>
+            <div className="week-page prev-week">
+              {renderWeekPage(prevWeekDate)}
             </div>
-            <div className="days-placeholder-end header-counts-container">
-              <div className="header-count-badge weekly">{t('week').substring(0, 3).toUpperCase()}</div>
-              <div className="header-count-badge monthly">{t('month').substring(0, 3).toUpperCase()}</div>
+            <div className="week-page current-week">
+              {renderWeekPage(currentWeekDate, highlightToday)}
+            </div>
+            <div className="week-page next-week">
+              {renderWeekPage(nextWeekDate)}
             </div>
           </div>
-
-          {habitsData.filter(habit => {
-            if (selectedCategory === 'Все') return true;
-            if (selectedCategory === 'Без категории') return !habit.category_name;
-            return habit.category_name === selectedCategory;
-          }).map((habit) => {
-
-            const weeklyCount = getHabitCount(habit);
-            const weeklyAward = getWeeklyAward(weeklyCount);
-            // Безопасное получение статусов
-            const statuses = habit.statuses || [];
-            // Show dots based on weekly completions (user request: "при двух отмеченых... точки... на все неделю")
-            // Проверяем, является ли последняя отметка частью серии 2+
-            const getStreakInfo = (stats, habit) => {
-              let lastMark = -1;
-              if (!stats || !Array.isArray(stats)) return { lastMark: -1, isLastMarkInStreak: false };
-
-              for (let i = stats.length - 1; i >= 0; i--) {
-                if (stats[i] && stats[i].is_done) {
-                  lastMark = i;
-                  break;
-                }
-              }
-
-              let isLastMarkInStreak = false;
-              if (lastMark >= 1) {
-                // Серия внутри текущей недели
-                isLastMarkInStreak = (stats[lastMark].is_done && !stats[lastMark].is_restored) &&
-                  (stats[lastMark - 1].is_done && !stats[lastMark - 1].is_restored);
-              } else if (lastMark === 0) {
-                // Только понедельник отмечен, проверяем воскресенье прошлой недели
-                isLastMarkInStreak = (stats[0].is_done && !stats[0].is_restored) && habit.prev_week_sun_done;
-              } else if (lastMark === -1) {
-                // Нет отметок на этой неделе, проверяем субботу и воскресенье прошлой недели
-                isLastMarkInStreak = habit.prev_week_sun_done && habit.prev_week_sat_done;
-              }
-
-              // Проверка на пропадание точек при пропуске более 2 дней
-              const today = new Date();
-              const baseDate = new Date(currentWeekDate);
-
-              // Находим "текущий" индекс для сравнения (сегодня или конец недели, если неделя прошлая)
-
-              const displayedWeekStarts = baseDate;
-              const nextWeekStarts = new Date(baseDate);
-              nextWeekStarts.setDate(baseDate.getDate() + 7);
-
-              let comparisonIndex = -1;
-              if (today >= displayedWeekStarts && today < nextWeekStarts) {
-                // Отображаемая неделя — текущая
-                const day = today.getDay();
-                comparisonIndex = day === 0 ? 6 : day - 1;
-              } else if (today >= nextWeekStarts) {
-                // Отображаемая неделя в прошлом
-                comparisonIndex = 6;
-              }
-
-              if (comparisonIndex !== -1 && (comparisonIndex - lastMark) > 2) {
-                isLastMarkInStreak = false;
-              }
-
-              return { lastMark, isLastMarkInStreak };
-            };
-            const { lastMark, isLastMarkInStreak } = getStreakInfo(statuses, habit);
-            return (
-              <div key={habit.id} className="habit-row">
-                <div className="habit-name">
-                  <span className="habit-text">{habit.name}</span>
-                  {(habit.latest_comment || habit.latest_photo) && (
-                    <div className="habit-meta-row">
-                      {habit.latest_comment && (
-                        <div
-                          className="habit-latest-comment"
-                          title={habit.latest_comment}
-                          onClick={() => {
-                            const d = habit.latest_comment_details;
-                            if (d) {
-                              const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow);
-                            }
-                          }}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          <span className="comment-indicator-circle"></span>
-                          <span className="comment-text">{habit.latest_comment}</span>
-                        </div>
-                      )}
-                      {habit.latest_photo && (
-                        <img
-                          src={habit.latest_photo}
-                          alt=""
-                          className="habit-thumbnail"
-                          onClick={() => setLightboxUrl(habit.latest_photo)}
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="habit-row-content">
-                  <div className="habit-checks">
-                    {WEEK_DAYS.map((_, index) => {
-                      // Calculate date for this slot based on currentWeekDate
-                      const baseDate = new Date(currentWeekDate);
-                      const dayOfWeek = baseDate.getDay();
-                      const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                      const diff = index - currentDayIndex;
-
-                      const slotDate = new Date(baseDate);
-                      slotDate.setDate(baseDate.getDate() + diff);
-                      const slotDateStr = slotDate.toLocaleDateString('en-CA');
-
-                      const today = new Date();
-                      const todayStr = today.toLocaleDateString('en-CA');
-
-                      // Find status for this date
-                      const status = statuses.find(s => s && s.date === slotDateStr);
-                      const isDone = status ? status.is_done : false;
-                      const isRestored = status ? status.is_restored : false;
-                      const statusId = status ? status.id : null;
-                      const quantity = status ? status.quantity : null;
-
-                      const isToday = slotDateStr === todayStr;
-                      const isPast = slotDateStr < todayStr;
-                      const isFuture = slotDateStr > todayStr;
-                      const isMissed = isPast && !isDone;
-                      const hasComment = status && status.comment;
-                      const hasPhoto = status && status.photo;
-
-                      // Disable only IF it's in the future
-                      const isDisabled = isFuture;
-
-                      // Show 1 dot in ONLY UNMARKED squares if exactly 2 are marked this week
-                      const showDotClass = (!isDone && isLastMarkInStreak && index > lastMark) ? 'has-dot-1' : '';
-
-                      const isMonthStart = index > 0 && slotDate.getDate() === 1;
-
-                      const checkBoxBtn = (
-                        <button
-                          className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''} ${showDotClass}`}
-                          onClick={() => {
-                            if (!isDisabled && !longPressTimer) {
-                              toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
-                            }
-                          }}
-                          onMouseDown={() => {
-                            const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
-                          }}
-                          onMouseUp={handleLongPressEnd}
-                          onMouseLeave={handleLongPressEnd}
-                          onTouchStart={() => {
-                            const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
-                          }}
-                          onTouchMove={handleLongPressEnd}
-                          onTouchEnd={handleLongPressEnd}
-                          disabled={isDisabled}
-                        >
-                          {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
-                          {hasComment && <span className="attachment-indicator"></span>}
-                          {hasPhoto && <span className="photo-indicator"></span>}
-                        </button>
-                      );
-
-                      return (
-                        <div key={slotDateStr} className={`grid-col ${isMonthStart ? 'month-start' : ''}`}>
-                          {checkBoxBtn}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="habit-counts-wrapper">
-                    <div className="habit-count-container">
-                      <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''} ${weeklyCount === 3 ? 'has-single-lightning' : ''} ${weeklyCount === 4 ? 'has-double-lightning' : ''} ${weeklyCount === 5 ? 'has-single-star' : ''} ${weeklyCount === 6 ? 'has-double-star' : ''}`}>
-                        {/* Корона над квадратиком для серии из 7 дней */}
-                        {weeklyAward === '👑' && (
-                          <span className="crown-top">👑</span>
-                        )}
-                        <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>{weeklyCount}</span>
-                        {/* Lightning icons — справа от цифры */}
-                        {weeklyAward && weeklyAward.includes('⚡') && (
-                          weeklyCount >= 4 ? (
-                            <div className="lightning-double">
-                              <span className="lightning-item lightning-left">⚡</span>
-                              <span className="lightning-item lightning-right">⚡</span>
-                            </div>
-                          ) : (
-                            <span className="lightning-item lightning-single">⚡</span>
-                          )
-                        )}
-
-                        {/* Star icons — справа от цифры */}
-                        {weeklyAward && weeklyAward.includes('⭐') && (
-                          weeklyCount >= 6 ? (
-                            <div className="star-double">
-                              <span className="star-item star-left">⭐</span>
-                              <span className="star-item star-right">⭐</span>
-                            </div>
-                          ) : (
-                            <span className="star-item star-single">⭐</span>
-                          )
-                        )}
-                      </div>
-                      <div className="habit-count monthly">
-                        <span className="habit-count-number">{habit.monthly_total || 0}</span>
-                      </div>
-                    </div>
-                    <div className="habit-overflow-container">
-                      {(habit.weekly_overflow > 0) && (
-                        <div className="habit-count-overflow weekly">{habit.weekly_overflow}</div>
-                      )}
-                      {(habit.monthly_overflow > 0) && (
-                        <div className="habit-count-overflow monthly">{habit.monthly_overflow}</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+        </div>      )}
 
       {/* Компонент графиков - для вкладки Графики */}
       {activeTab === 'Charts' && (
