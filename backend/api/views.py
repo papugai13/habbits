@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.db.models import Case, F, IntegerField, Max, Sum, Value, When
+from django.db.models import Case, F, IntegerField, Max, Min, Sum, Value, When
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
@@ -212,26 +212,126 @@ class HabitViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def report(self, request, pk=None):
         habit = self.get_object()
-        # Return all done dates ordered chronologically
-        dates = Date.objects.filter(habit=habit, is_done=True).order_by('habit_date')
-        
-        entries = []
-        for d in dates:
-            entries.append({
-                "date": d.habit_date.isoformat(),
-                "quantity": d.quantity,
-                "comment": d.comment,
-                "photo": request.build_absolute_uri(d.photo.url) if d.photo else None
+        period = request.query_params.get('period', 'day')
+        # date_param is used for the reference point (which week, which month, which year)
+        date_param = request.query_params.get('date', date.today().isoformat())
+        try:
+            today = datetime.strptime(date_param, '%Y-%m-%d').date()
+        except ValueError:
+            today = date.today()
+
+        # Date ranges based on period
+        if period == 'day':
+            # Week range (current week)
+            days_since_monday = today.weekday()
+            start_date = today - timedelta(days=days_since_monday)
+            end_date = start_date + timedelta(days=6)
+            
+            # Return daily entries (with comments/photos)
+            dates = Date.objects.filter(habit=habit, habit_date__range=[start_date, end_date], is_done=True).order_by('habit_date')
+            entries = []
+            for d in dates:
+                entries.append({
+                    "date": d.habit_date.isoformat(),
+                    "quantity": d.quantity,
+                    "comment": d.comment,
+                    "photo": request.build_absolute_uri(d.photo.url) if d.photo else None
+                })
+            return Response({
+                "habit": {"id": habit.id, "name": habit.name},
+                "period": period,
+                "entries": entries
             })
             
-        return Response({
-            "habit": {
-                "id": habit.id,
-                "name": habit.name,
-                "category_name": habit.category.name if habit.category else None
-            },
-            "entries": entries
-        })
+        elif period == 'week':
+            # Monthly range (current month, broken by weeks)
+            start_date = date(today.year, today.month, 1)
+            if today.month == 12:
+                next_month = date(today.year + 1, 1, 1)
+            else:
+                next_month = date(today.year, today.month + 1, 1)
+            end_date = next_month - timedelta(days=1)
+            
+            items = []
+            curr = start_date
+            while curr <= end_date:
+                # Find Monday of this week range
+                monday = curr - timedelta(days=curr.weekday())
+                sunday = monday + timedelta(days=6)
+                monday_in_month = max(monday, start_date)
+                sunday_in_month = min(sunday, end_date)
+                
+                # Check if this "chunk" is already handled (if range overlaps weeks)
+                # But we'll just use calendar weeks for simplicity
+                week_dates = Date.objects.filter(habit=habit, habit_date__range=[monday, sunday], is_done=True)
+                
+                # We show week label as Mon-Sun
+                label = f"{monday.strftime('%d.%m')} - {sunday.strftime('%d.%m')}"
+                
+                completions = week_dates.filter(is_restored=False).count()
+                quantity = week_dates.aggregate(
+                    total=Sum(Case(When(quantity__isnull=True, then=Value(1)), default=F('quantity'), output_field=IntegerField()))
+                )['total'] or 0
+                
+                items.append({
+                    "label": label,
+                    "completions": completions,
+                    "quantity": quantity
+                })
+                # Skip to next Monday
+                curr = sunday + timedelta(days=1)
+                
+            return Response({"habit": {"id": habit.id, "name": habit.name}, "period": period, "items": items})
+
+        elif period == 'month':
+            # Yearly range (current year, broken by months)
+            items = []
+            months_ru = {1: 'Янв', 2: 'Фев', 3: 'Мар', 4: 'Апр', 5: 'Май', 6: 'Июн', 7: 'Июл', 8: 'Авг', 9: 'Сен', 10: 'Окт', 11: 'Ноя', 12: 'Дек'}
+            for m in range(1, 13):
+                m_start = date(today.year, m, 1)
+                if m == 12:
+                    m_end = date(today.year, 12, 31)
+                else:
+                    m_end = date(today.year, m + 1, 1) - timedelta(days=1)
+                
+                month_dates = Date.objects.filter(habit=habit, habit_date__range=[m_start, m_end], is_done=True)
+                completions = month_dates.filter(is_restored=False).count()
+                quantity = month_dates.aggregate(
+                    total=Sum(Case(When(quantity__isnull=True, then=Value(1)), default=F('quantity'), output_field=IntegerField()))
+                )['total'] or 0
+                
+                items.append({
+                    "label": months_ru[m],
+                    "completions": completions,
+                    "quantity": quantity
+                })
+            return Response({"habit": {"id": habit.id, "name": habit.name}, "period": period, "items": items})
+
+        elif period == 'year':
+            # All years
+            items = []
+            earliest_date = Date.objects.filter(habit=habit).aggregate(Min('habit_date'))['habit_date__min']
+            if not earliest_date:
+                earliest_date = date.today()
+            
+            for y in range(earliest_date.year, date.today().year + 1):
+                y_start = date(y, 1, 1)
+                y_end = date(y, 12, 31)
+                
+                year_dates = Date.objects.filter(habit=habit, habit_date__range=[y_start, y_end], is_done=True)
+                completions = year_dates.filter(is_restored=False).count()
+                quantity = year_dates.aggregate(
+                    total=Sum(Case(When(quantity__isnull=True, then=Value(1)), default=F('quantity'), output_field=IntegerField()))
+                )['total'] or 0
+                
+                items.append({
+                    "label": str(y),
+                    "completions": completions,
+                    "quantity": quantity
+                })
+            return Response({"habit": {"id": habit.id, "name": habit.name}, "period": period, "items": items})
+
+        return Response({"error": "Invalid period"}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'])
     @method_decorator(ensure_csrf_cookie)
@@ -426,50 +526,118 @@ class HabitViewSet(viewsets.ModelViewSet):
                 auth_user=request.user,
                 defaults={'name': request.user.username, 'age': ''}
             )
+            period = request.query_params.get('period', 'all')
+            date_param = request.query_params.get('date', date.today().isoformat())
+            try:
+                today = datetime.strptime(date_param, '%Y-%m-%d').date()
+            except ValueError:
+                today = date.today()
+
             habits = Habit.objects.filter(user=user_profile, is_archived=False)
             
-            habit_summaries = []
-            total_completions = 0
-            total_quantity = 0
-            
-            for habit in habits:
-                dates = Date.objects.filter(habit=habit, is_done=True)
-                habit_completions = dates.filter(is_restored=False).count()
-                
-                # Calculate quantity for this habit
-                habit_quantity = dates.aggregate(
-                    total=Sum(
-                        Case(
-                            When(quantity__isnull=True, then=Value(1)),
-                            default=F('quantity'),
-                            output_field=IntegerField()
-                        )
-                    )
-                )['total'] or 0
-                
-                total_completions += habit_completions
-                total_quantity += habit_quantity
-                
-                habit_summaries.append({
-                    "id": habit.id,
-                    "name": habit.name,
-                    "category": habit.category.name if habit.category else None,
-                    "completions": habit_completions,
-                    "quantity": habit_quantity
+            # Default "all" view (Original habit-based list)
+            if period == 'all':
+                habit_summaries = []
+                total_completions = 0
+                total_quantity = 0
+                for habit in habits:
+                    dates = Date.objects.filter(habit=habit, is_done=True)
+                    habit_completions = dates.filter(is_restored=False).count()
+                    habit_quantity = dates.aggregate(
+                        total=Sum(Case(When(quantity__isnull=True, then=Value(1)), default=F('quantity'), output_field=IntegerField()))
+                    )['total'] or 0
+                    total_completions += habit_completions
+                    total_quantity += habit_quantity
+                    habit_summaries.append({
+                        "id": habit.id,
+                        "name": habit.name,
+                        "category": habit.category.name if habit.category else None,
+                        "completions": habit_completions,
+                        "quantity": habit_quantity
+                    })
+                return Response({
+                    "is_general": True, "period": "all",
+                    "habit": {"name": "Общий итог"},
+                    "total_completions": total_completions, "total_quantity": total_quantity,
+                    "habits": habit_summaries
                 })
+
+            # New Period-based views (Grouped by Date/Week/Month/Year)
+            items = []
+            if period == 'day':
+                # Last 7 days including today, or current week
+                days_since_monday = today.weekday()
+                start_date = today - timedelta(days=days_since_monday)
+                end_date = start_date + timedelta(days=6)
                 
+                curr = start_date
+                while curr <= end_date:
+                    day_dates = Date.objects.filter(user=user_profile, habit__in=habits, habit_date=curr, is_done=True)
+                    items.append({
+                        "label": curr.strftime('%d.%m'),
+                        "completions": day_dates.filter(is_restored=False).count(),
+                        "quantity": day_dates.aggregate(total=Sum(Case(When(quantity__isnull=True, then=Value(1)), default=F('quantity'), output_field=IntegerField())))['total'] or 0
+                    })
+                    curr += timedelta(days=1)
+            
+            elif period == 'week':
+                # Weeks of current month
+                start_date = date(today.year, today.month, 1)
+                if today.month == 12:
+                    next_month = date(today.year + 1, 1, 1)
+                else:
+                    next_month = date(today.year, today.month + 1, 1)
+                end_date = next_month - timedelta(days=1)
+                
+                curr = start_date
+                while curr <= end_date:
+                    monday = curr - timedelta(days=curr.weekday())
+                    sunday = monday + timedelta(days=6)
+                    week_dates = Date.objects.filter(user=user_profile, habit__in=habits, habit_date__range=[monday, sunday], is_done=True)
+                    items.append({
+                        "label": f"{monday.strftime('%d.%m')} - {sunday.strftime('%d.%m')}",
+                        "completions": week_dates.filter(is_restored=False).count(),
+                        "quantity": week_dates.aggregate(total=Sum(Case(When(quantity__isnull=True, then=Value(1)), default=F('quantity'), output_field=IntegerField())))['total'] or 0
+                    })
+                    curr = sunday + timedelta(days=1)
+
+            elif period == 'month':
+                months_ru = {1: 'Янв', 2: 'Фев', 3: 'Мар', 4: 'Апр', 5: 'Май', 6: 'Июн', 7: 'Июл', 8: 'Авг', 9: 'Сен', 10: 'Окт', 11: 'Ноя', 12: 'Дек'}
+                for m in range(1, 13):
+                    m_start = date(today.year, m, 1)
+                    if m == 12:
+                        m_end = date(today.year, 12, 31)
+                    else:
+                        m_end = date(today.year, m + 1, 1) - timedelta(days=1)
+                    month_dates = Date.objects.filter(user=user_profile, habit__in=habits, habit_date__range=[m_start, m_end], is_done=True)
+                    items.append({
+                        "label": months_ru[m],
+                        "completions": month_dates.filter(is_restored=False).count(),
+                        "quantity": month_dates.aggregate(total=Sum(Case(When(quantity__isnull=True, then=Value(1)), default=F('quantity'), output_field=IntegerField())))['total'] or 0
+                    })
+
+            elif period == 'year':
+                earliest_date = Date.objects.filter(user=user_profile).aggregate(Min('habit_date'))['habit_date__min'] or date.today()
+                for y in range(earliest_date.year, date.today().year + 1):
+                    y_start = date(y, 1, 1)
+                    y_end = date(y, 12, 31)
+                    year_dates = Date.objects.filter(user=user_profile, habit__in=habits, habit_date__range=[y_start, y_end], is_done=True)
+                    items.append({
+                        "label": str(y),
+                        "completions": year_dates.filter(is_restored=False).count(),
+                        "quantity": year_dates.aggregate(total=Sum(Case(When(quantity__isnull=True, then=Value(1)), default=F('quantity'), output_field=IntegerField())))['total'] or 0
+                    })
+
             return Response({
-                "is_general": True,
+                "is_general": True, "period": period,
                 "habit": {"name": "Общий итог"},
-                "total_completions": total_completions,
-                "total_quantity": total_quantity,
-                "habits": habit_summaries
+                "items": items
             })
+
         except Exception as e:
-            return Response(
-                {"error": str(e)}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            import traceback
+            traceback.print_exc()
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['get'])
     def daily_statistics(self, request):
@@ -508,11 +676,13 @@ class HabitViewSet(viewsets.ModelViewSet):
                 9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
             }
 
-            if period == 'week':
-                days_since_monday = today.weekday()  # 0=Пн, 6=Вс
-                start_date = today - timedelta(days=days_since_monday)
-                end_date = start_date + timedelta(days=6)
+            if period == 'day' or (not period and not request.query_params.get('start_date')):
+                # Последние 7 дней до указанной даты (или сегодня)
+                start_date = today - timedelta(days=6)
+                end_date = today
                 label = f"{start_date.strftime('%d.%m')} - {end_date.strftime('%d.%m')}"
+            elif period == 'week':
+                days_since_monday = today.weekday()  # 0=Пн, 6=Вс
             elif period == 'month':
                 first_of_month = date(today.year, today.month, 1)
                 days_since_monday = first_of_month.weekday()
@@ -560,7 +730,7 @@ class HabitViewSet(viewsets.ModelViewSet):
             statistics = []
             current_date = start_date
             
-            if period == 'week' or not period:
+            if period == 'day' or period == 'week' or not period:
                 # Daily bars
                 while current_date <= end_date:
                     day_dates = Date.objects.filter(

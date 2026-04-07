@@ -2706,3 +2706,57 @@ body {
 .days-cols {
   overflow: visible !important;
 }
+
+/* Report Period Selector */
+.report-period-selector {
+  display: flex;
+  gap: 8px;
+  background: #f5f5f5;
+  padding: 4px;
+  border-radius: 12px;
+  margin: 15px 0;
+  flex-wrap: wrap;
+}
+
+.report-period-selector .period-btn {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.report-period-selector .period-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #333;
+}
+
+.report-period-selector .period-btn.active {
+  background: white;
+  color: #333;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.report-modal-content {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 480px) {
+  .report-period-selector {
+    gap: 4px;
+    padding: 2px;
+    justify-content: center;
+  }
+  .report-period-selector .period-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+    flex: 1;
+    min-width: 50px;
+  }
+}

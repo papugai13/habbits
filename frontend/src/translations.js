@@ -13,6 +13,10 @@ const translations = {
     fri: 'Пт',
     sat: 'Сб',
     sun: 'Вс',
+    days: 'Дни',
+    weeks: 'Недели',
+    months: 'Месяцы',
+    years: 'Годы',
 
     // Months (short)
     jan: 'Янв',
@@ -125,12 +129,13 @@ const translations = {
 
     // Entry modal
     entryDetails: 'Детали выполнения',
-    comment: 'Комментарий',
+    comment: 'Заметка',
     addPhoto: 'Добавить фото',
     deletePhoto: 'Удалить фото',
     saveEntry: 'Сохранить',
     restoreEntry: 'Восполнить',
     today: 'Сегодня',
+    notes: 'Заметки',
 
     // Other
     name: 'Имя',
@@ -206,6 +211,10 @@ const translations = {
     fri: 'Fri',
     sat: 'Sat',
     sun: 'Sun',
+    days: 'Days',
+    weeks: 'Weeks',
+    months: 'Months',
+    years: 'Years',
 
     // Months (short)
     jan: 'Jan',
@@ -318,12 +327,13 @@ const translations = {
 
     // Entry modal
     entryDetails: 'Entry Details',
-    comment: 'Comment',
+    comment: 'Note',
     addPhoto: 'Add Photo',
     deletePhoto: 'Delete Photo',
     saveEntry: 'Save',
     restoreEntry: 'Restore',
     today: 'Today',
+    notes: 'Notes',
 
     // Other
     name: 'Name',
