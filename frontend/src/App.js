@@ -1547,7 +1547,7 @@ const App = () => {
     }
   };
 
-  const todayStr = new Date().toLocaleDateString('en-CA');
+
   const modalCurrentStatus = quantityModalData?.currentStatus;
   const modalCurrentQuantity = quantityModalData?.currentQuantity;
   const effectiveQuantity = (typeof quantityValue === 'number' && quantityValue >= 1) ? quantityValue : 1;
@@ -1908,7 +1908,7 @@ const App = () => {
                     </div>
                     <div className="habit-overflow-container">
                       {(habit.weekly_overflow > 0) && (
-                        <div className="habit-count-overflow weekly">+{habit.weekly_overflow}</div>
+                        <div className="habit-count-overflow weekly">{habit.weekly_overflow}</div>
                       )}
                       {(habit.monthly_overflow > 0) && (
                         <div className="habit-count-overflow monthly">{habit.monthly_overflow}</div>
@@ -2714,12 +2714,12 @@ const App = () => {
 
                   <div className="quantity-selector-container">
                     <div className="preset-column presets-left">
-                      <div className="preset-btn theme-green">
+                      <div className="preset-btn theme-green weekly">
                         <div className="preset-badge">{liveWeeklyTotal}</div>
                         <div className="preset-label">{t('week')}</div>
                       </div>
 
-                      <div className="preset-btn theme-green">
+                      <div className="preset-btn theme-green monthly">
                         <div className="preset-badge">
                           {liveMonthlyTotal}
                         </div>
@@ -2738,12 +2738,12 @@ const App = () => {
                     />
 
                     <div className="preset-column presets-right">
-                      <div className="preset-btn theme-purple">
-                        <div className="preset-badge">{liveWeeklyOverflow >= 0 ? `+${liveWeeklyOverflow}` : liveWeeklyOverflow}</div>
+                      <div className="preset-btn theme-purple weekly">
+                        <div className="preset-badge">{liveWeeklyOverflow}</div>
                         <div className="preset-label">{t('week')}</div>
                       </div>
 
-                      <div className="preset-btn theme-purple">
+                      <div className="preset-btn theme-purple monthly">
                         <div className="preset-badge">{liveMonthlyOverflow >= 0 ? `+${liveMonthlyOverflow}` : liveMonthlyOverflow}</div>
                         <div className="preset-label">{t('month')}</div>
                       </div>
