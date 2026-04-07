@@ -357,6 +357,12 @@ body {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   position: relative;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.habits-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 .habits-swipe-wrapper {
@@ -1314,6 +1320,12 @@ body {
   overflow-y: auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   animation: slideUp 0.3s ease-out;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.modal-content::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 @keyframes slideUp {
@@ -1542,6 +1554,12 @@ body {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.settings-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 .settings-header {
@@ -2032,6 +2050,12 @@ body {
   width: 90%;
   max-height: 85vh;
   overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.report-modal-content::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 .general-report-card {
@@ -2219,11 +2243,7 @@ body {
 }
 
 .preset-column {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 80px;
-  align-items: center;
+  display: none;
 }
 
 .preset-btn {
@@ -2238,26 +2258,21 @@ body {
 }
 
 .preset-badge {
-  width: 100%;
-  height: 48px;
-  display: flex;
+  width: auto;
+  height: auto;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  padding: 0;
+  border-radius: 0;
   font-size: 24px;
   font-weight: 800;
   margin-bottom: 4px;
   position: relative;
 }
 
-/* Double border effect like in the screenshot */
 .preset-badge::before {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border: 2px solid currentColor;
-  border-radius: 16px;
-  opacity: 0.3;
+  display: none;
 }
 
 .preset-label {
@@ -2271,30 +2286,22 @@ body {
   color: #059669;
 }
 
-.preset-btn.theme-green.weekly .preset-badge {
-  background-color: #FFFFFF;
-  color: #059669;
-  border: 2px solid #059669;
-}
-
+.preset-btn.theme-green.weekly .preset-badge,
 .preset-btn.theme-green.monthly .preset-badge {
-  background-color: #059669;
-  color: white;
+  background-color: transparent;
+  color: #059669;
+  border: none;
 }
 
 .preset-btn.theme-purple {
   color: #8B5CF6;
 }
 
-.preset-btn.theme-purple.weekly .preset-badge {
-  background-color: #FFFFFF;
-  color: #8B5CF6;
-  border: 2px solid #8B5CF6;
-}
-
+.preset-btn.theme-purple.weekly .preset-badge,
 .preset-btn.theme-purple.monthly .preset-badge {
-  background-color: #8B5CF6;
-  color: white;
+  background-color: transparent;
+  color: #8B5CF6;
+  border: none;
 }
 
 /* Adjust DrumPicker width when presets are present */
@@ -2759,4 +2766,4 @@ body {
     flex: 1;
     min-width: 50px;
   }
-}
+}
