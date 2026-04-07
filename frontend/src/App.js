@@ -417,6 +417,7 @@ const App = () => {
 
     const status = habit.statuses.find(s => s.date === newDateStr);
     const isDone = status ? status.is_done : false;
+    const isRestored = status ? status.is_restored : false;
     const statusId = status ? status.id : null;
     const quantity = status ? status.quantity : null;
     const comment = status ? status.comment : '';
@@ -427,17 +428,13 @@ const App = () => {
       ...quantityModalData,
       dayDate: newDateStr,
       currentStatus: isDone,
+      currentQuantity: quantity,
+      currentComment: comment,
       dateId: statusId,
       currentPhoto: photo
     });
 
-    // Default quantity logic for swipe:
-    // If today, default to null (shows as "≤1" in DrumPicker).
-    // If past date, default to 1 if no quantity exists.
-    const isTodayNew = newDateStr === todayStr;
-    const initialQuantity = (quantity !== null && quantity !== undefined)
-      ? quantity
-      : (isTodayNew ? null : 1);
+    const initialQuantity = getDefaultModalQuantity(isDone, isRestored, newDateStr);
 
     setQuantityValue(initialQuantity);
     setCommentValue(comment || '');
@@ -925,22 +922,16 @@ const App = () => {
     }
   };
 
+  const getDefaultModalQuantity = (currentStatus, isRestored, dayDate) => {
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const isLightGreenTarget = currentStatus ? isRestored : (dayDate < todayStr);
+    return isLightGreenTarget ? 1 : null;
+  };
+
   const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
     setQuantityModalData({ habitId, habitName, dayDate, currentStatus, currentQuantity, dateId, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow });
 
-    // Default quantity logic:
-    // If it's explicitly set (1, 2, ...), use it.
-    // If it's light green (isRestored implies marked restored, or unmarked past date), default to 1.
-    // If it's dark green (today, or unmarked today), default to null (<=1).
-    const todayStr = new Date().toLocaleDateString('en-CA');
-    const isLightGreenTarget = currentStatus ? isRestored : (dayDate < todayStr);
-
-    let initialQuantity;
-    if (currentQuantity !== null && currentQuantity !== undefined) {
-      initialQuantity = currentQuantity;
-    } else {
-      initialQuantity = isLightGreenTarget ? 1 : null;
-    }
+    const initialQuantity = getDefaultModalQuantity(currentStatus, isRestored, dayDate);
 
     setQuantityValue(initialQuantity);
     setCommentValue(currentComment || '');
