@@ -430,6 +430,7 @@ const App = () => {
       currentStatus: isDone,
       currentQuantity: quantity,
       currentComment: comment,
+      currentIsRestored: isRestored,
       dateId: statusId,
       currentPhoto: photo
     });
@@ -929,7 +930,7 @@ const App = () => {
   };
 
   const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
-    setQuantityModalData({ habitId, habitName, dayDate, currentStatus, currentQuantity, dateId, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow });
+    setQuantityModalData({ habitId, habitName, dayDate, currentStatus, currentQuantity, currentComment, currentPhoto, dateId, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, currentIsRestored: isRestored });
 
     const initialQuantity = getDefaultModalQuantity(currentStatus, isRestored, dayDate);
 
@@ -2728,18 +2729,20 @@ const App = () => {
                       onChange={(val) => setQuantityValue(val)}
                     />
 
-                    <div className="preset-column presets-right">
-                      <div className="preset-btn theme-purple weekly">
-                        <div className="preset-badge">{liveWeeklyOverflow}</div>
-                        <div className="preset-label">{t('week')}</div>
-                      </div>
+                    {getDefaultModalQuantity(quantityModalData.currentStatus, quantityModalData.currentIsRestored, quantityModalData.dayDate) !== null && (
+                      <div className="preset-column presets-right">
+                        <div className="preset-btn theme-purple weekly">
+                          <div className="preset-badge">{liveWeeklyOverflow}</div>
+                          <div className="preset-label">{t('week')}</div>
+                        </div>
 
-                      <div className="preset-btn theme-purple monthly">
-                        <div className="preset-badge">{liveMonthlyOverflow >= 0 ? `+${liveMonthlyOverflow}` : liveMonthlyOverflow}</div>
-                        <div className="preset-label">{t('month')}</div>
-                      </div>
+                        <div className="preset-btn theme-purple monthly">
+                          <div className="preset-badge">{liveMonthlyOverflow >= 0 ? `+${liveMonthlyOverflow}` : liveMonthlyOverflow}</div>
+                          <div className="preset-label">{t('month')}</div>
+                        </div>
 
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
