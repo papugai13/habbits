@@ -351,8 +351,8 @@ class HabitViewSet(viewsets.ModelViewSet):
                         is_done = date_entry.is_done if date_entry else False
                         qty = date_entry.quantity if date_entry else None
                         
-                        if is_done and date_entry and not date_entry.is_restored and qty is not None:
-                            weekly_overflow += qty
+                        if is_done and date_entry:
+                            weekly_overflow += (qty or 1)
                         
                         photo_url = None
                         if date_entry and date_entry.photo:
@@ -373,17 +373,23 @@ class HabitViewSet(viewsets.ModelViewSet):
                     habit_data['statuses'] = statuses
                     habit_data['weekly_overflow'] = weekly_overflow
                     
-                    # Calculate monthly overflow (sum of explicit quantities)
+                    # Calculate monthly overflow (sum of ALL quantities, including restored)
                     monthly_overflow = Date.objects.filter(
                         user=user_profile,
                         habit=habit,
                         habit_date__range=[start_of_month, end_of_month],
-                        is_done=True,
-                        is_restored=False,
-                        quantity__isnull=False
-                    ).aggregate(total=Sum('quantity'))['total'] or 0
+                        is_done=True
+                    ).aggregate(
+                        total=Sum(
+                            Case(
+                                When(quantity__isnull=True, then=Value(1)),
+                                default=F('quantity'),
+                                output_field=IntegerField()
+                            )
+                        )
+                    )['total'] or 0
                     
-                    # Calculate monthly total (sum with default 1 for null quantity)
+                    # Calculate monthly total (ONLY on-time completions, daily count)
                     monthly_total = Date.objects.filter(
                         user=user_profile,
                         habit=habit,
@@ -428,7 +434,7 @@ class HabitViewSet(viewsets.ModelViewSet):
             
             for habit in habits:
                 dates = Date.objects.filter(habit=habit, is_done=True)
-                habit_completions = dates.count()
+                habit_completions = dates.filter(is_restored=False).count()
                 
                 # Calculate quantity for this habit
                 habit_quantity = dates.aggregate(
