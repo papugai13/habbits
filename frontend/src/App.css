@@ -590,6 +590,43 @@ body {
   flex-shrink: 0;
 }
 
+.habit-note-box {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  transition: all 0.2s;
+  width: 100%;
+  border-left: 3px solid #059669;
+}
+
+.habit-note-box:hover {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.note-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.note-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4b5563;
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-style: italic;
+}
+
 .habit-count-number {
   position: relative;
   z-index: 2;
@@ -1834,6 +1871,21 @@ body {
 /* Quantity Modal Styles */
 .quantity-modal-body {
   margin-bottom: 20px;
+}
+
+.note-form-group {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-textarea {
+  min-height: 120px !important;
+  font-size: 15px !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+  line-height: 1.5 !important;
 }
 
 .habit-info {

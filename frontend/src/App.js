@@ -1759,36 +1759,22 @@ const App = () => {
               <div key={habit.id} className="habit-row">
                 <div className="habit-name">
                   <span className="habit-text">{habit.name}</span>
-                  {(habit.latest_comment || habit.latest_photo) && (
-                    <div className="habit-meta-row">
-                      {habit.latest_comment && (
-                        <div
-                          className="habit-latest-comment"
-                          title={habit.latest_comment}
-                          onClick={() => {
-                            const d = habit.latest_comment_details;
-                            if (d) {
-                              const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow);
-                            }
-                          }}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          <span className="comment-indicator-circle"></span>
-                          <span className="comment-text">{habit.latest_comment}</span>
-                        </div>
-                      )}
-                      {habit.latest_photo && (
-                        <img
-                          src={habit.latest_photo}
-                          alt=""
-                          className="habit-thumbnail"
-                          onClick={() => setLightboxUrl(habit.latest_photo)}
-                        />
-                      )}
-                    </div>
-                  )}
                 </div>
+                {habit.latest_comment && (
+                  <div 
+                    className="habit-note-box"
+                    onClick={() => {
+                      const d = habit.latest_comment_details;
+                      if (d) {
+                        const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                        openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow);
+                      }
+                    }}
+                  >
+                    <span className="note-icon">📝</span>
+                    <span className="note-text">{habit.latest_comment}</span>
+                  </div>
+                )}
                 <div className="habit-row-content">
                   <div className="habit-checks">
                     {WEEK_DAYS.map((_, index) => {
@@ -2746,69 +2732,16 @@ const App = () => {
                   </div>
                 </div>
 
-                <div className="form-group-row">
-                  <div className="form-group form-group-flex">
-                    <label htmlFor="comment-input">{t('comment')}</label>
-                    <textarea
-                      id="comment-input"
-                      className="form-input"
-                      placeholder={t('commentPlaceholder')}
-                      value={commentValue}
-
-                      onChange={(e) => setCommentValue(e.target.value)}
-                      rows="2"
-                    ></textarea>
-                  </div>
-
-                  <div className="form-group form-group-flex">
-                    <label htmlFor="photo-input">{t('photo')}</label>
-                    {quantityModalData.currentPhoto && !photoFile && !deletePhoto && (
-                      <div className="current-photo-preview">
-                        <img
-                          src={quantityModalData.currentPhoto}
-                          alt={t('currentPhoto')}
-                          className="photo-thumbnail"
-                          style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', borderRadius: '8px', cursor: 'zoom-in' }}
-                          onClick={() => setLightboxUrl(quantityModalData.currentPhoto)}
-                        />
-                        <button
-                          className="delete-photo-btn"
-                          type="button"
-                          onClick={() => setDeletePhoto(true)}
-                        >
-                          🗑️ {t('deletePhoto')}
-                        </button>
-
-                      </div>
-                    )}
-                    {deletePhoto && !photoFile && (
-                      <div className="photo-deletion-notice">
-                        {t('photoDeletionNotice')}
-                        <button
-
-                          className="btn-link"
-                          type="button"
-                          onClick={() => setDeletePhoto(false)}
-                          style={{ marginLeft: '10px', fontSize: '12px' }}
-                        >
-                          {t('cancel')}
-                        </button>
-
-                      </div>
-                    )}
-                    <input
-                      id="photo-input"
-                      type="file"
-                      accept="image/*"
-                      className="form-input"
-                      onChange={(e) => {
-                        const files = e.target.files;
-                        if (files && files.length > 0) {
-                          setPhotoFile(files[0]);
-                        }
-                      }}
-                    />
-                  </div>
+                <div className="form-group note-form-group">
+                  <label htmlFor="comment-input">{t('note') || 'Заметка / Отчет'}</label>
+                  <textarea
+                    id="comment-input"
+                    className="form-input note-textarea"
+                    placeholder={t('commentPlaceholder')}
+                    value={commentValue}
+                    onChange={(e) => setCommentValue(e.target.value)}
+                    rows="4"
+                  ></textarea>
                 </div>
 
               </div>
