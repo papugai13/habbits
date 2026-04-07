@@ -477,6 +477,12 @@ const Charts = ({
                     </div>
                     <div className="period-selector">
                         <button
+                            className={`period-btn ${period === 'day' ? 'active' : ''}`}
+                            onClick={() => setPeriod('day')}
+                        >
+                            {t('days')}
+                        </button>
+                        <button
                             className={`period-btn ${period === 'week' ? 'active' : ''}`}
                             onClick={() => setPeriod('week')}
                         >

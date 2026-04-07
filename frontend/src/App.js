@@ -68,6 +68,7 @@ const App = () => {
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [editProfileData, setEditProfileData] = useState({ username: '', email: '', age: '' });
   const [reportData, setReportData] = useState(null);
+  const [reportPeriod, setReportPeriod] = useState('day');
   const [isReportLoading, setIsReportLoading] = useState(false);
   const [currentWeekDate, setCurrentWeekDate] = useState(new Date().toLocaleDateString('en-CA'));
   const weekDataCacheRef = React.useRef({});
@@ -1824,10 +1825,11 @@ const App = () => {
 
   }
 
-  const handleGenerateReport = async (habitId) => {
+  const handleGenerateReport = async (habitId, period = 'day') => {
     setIsReportLoading(true);
+    setReportPeriod(period);
     try {
-      const response = await fetch(`/api/v1/habits/${habitId}/report/`, {
+      const response = await fetch(`/api/v1/habits/${habitId}/report/?period=${period}&date=${currentWeekDate}`, {
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
@@ -1849,10 +1851,11 @@ const App = () => {
     }
   };
 
-  const handleGenerateSummaryReport = async () => {
+  const handleGenerateSummaryReport = async (period = 'all') => {
     setIsReportLoading(true);
+    setReportPeriod(period);
     try {
-      const response = await fetch(`/api/v1/habits/summary_report/`, {
+      const response = await fetch(`/api/v1/habits/summary_report/?period=${period}&date=${currentWeekDate}`, {
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
@@ -1871,6 +1874,15 @@ const App = () => {
 
     } finally {
       setIsReportLoading(false);
+    }
+  };
+
+  const changeReportPeriod = (newPeriod) => {
+    if (!reportData) return;
+    if (reportData.is_general) {
+      handleGenerateSummaryReport(newPeriod);
+    } else {
+      handleGenerateReport(reportData.habit.id, newPeriod);
     }
   };
 
@@ -2355,7 +2367,6 @@ const App = () => {
                             className="manage-btn unarchive-btn"
                             onClick={() => handleUnarchiveHabit(habit.id)}
                             title={t('unarchiveHabit')}
-
                           >
                             📤
                           </button>
@@ -2847,63 +2858,12 @@ const App = () => {
                       className="form-input"
                       placeholder={t('commentPlaceholder')}
                       value={commentValue}
-
                       onChange={(e) => setCommentValue(e.target.value)}
-                      rows="2"
+                      rows="4"
+                      style={{ minHeight: '120px', resize: 'vertical' }}
                     ></textarea>
                   </div>
-
-                  <div className="form-group form-group-flex">
-                    <label htmlFor="photo-input">{t('photo')}</label>
-                    {quantityModalData.currentPhoto && !photoFile && !deletePhoto && (
-                      <div className="current-photo-preview">
-                        <img
-                          src={quantityModalData.currentPhoto}
-                          alt={t('currentPhoto')}
-                          className="photo-thumbnail"
-                          style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', borderRadius: '8px', cursor: 'zoom-in' }}
-                          onClick={() => setLightboxUrl(quantityModalData.currentPhoto)}
-                        />
-                        <button
-                          className="delete-photo-btn"
-                          type="button"
-                          onClick={() => setDeletePhoto(true)}
-                        >
-                          🗑️ {t('deletePhoto')}
-                        </button>
-
-                      </div>
-                    )}
-                    {deletePhoto && !photoFile && (
-                      <div className="photo-deletion-notice">
-                        {t('photoDeletionNotice')}
-                        <button
-
-                          className="btn-link"
-                          type="button"
-                          onClick={() => setDeletePhoto(false)}
-                          style={{ marginLeft: '10px', fontSize: '12px' }}
-                        >
-                          {t('cancel')}
-                        </button>
-
-                      </div>
-                    )}
-                    <input
-                      id="photo-input"
-                      type="file"
-                      accept="image/*"
-                      className="form-input"
-                      onChange={(e) => {
-                        const files = e.target.files;
-                        if (files && files.length > 0) {
-                          setPhotoFile(files[0]);
-                        }
-                      }}
-                    />
-                  </div>
                 </div>
-
               </div>
 
               <div className="form-actions">
@@ -2948,23 +2908,73 @@ const App = () => {
         <div className="modal-overlay report-modal-overlay" onClick={() => setReportData(null)}>
           <div className="modal-content report-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header no-print">
-              <h2>{t('report')}: {reportData.is_general ? t('generalSummary') : reportData.habit.name}</h2>
-              <div>
+              <h2 style={{ color: '#059669', borderBottom: '3px solid #059669', paddingBottom: '5px' }}>
+                {t('report')}: {reportData.is_general ? t('generalSummary') : reportData.habit.name} [V2]
+              </h2>
+              <button className="modal-close" onClick={() => setReportData(null)}>×</button>
+            </div>
 
-                <button className="btn-primary" onClick={() => window.print()} style={{ marginRight: '10px' }}>
+            <div className="report-period-selector-container no-print" style={{ padding: '15px', background: '#f0fdf4', borderBottom: '1px solid #dcfce7' }}>
+              <div style={{ marginBottom: '10px', fontWeight: 'bold', color: '#166534' }}>{t('period')}:</div>
+              <div className="report-period-selector" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {reportData.is_general && (
+                  <button 
+                    className={`period-btn ${reportPeriod === 'all' ? 'active' : ''}`}
+                    onClick={() => changeReportPeriod('all')}
+                  >
+                    {t('all')}
+                  </button>
+                )}
+                <button 
+                  className={`period-btn ${reportPeriod === 'day' ? 'active' : ''}`}
+                  onClick={() => changeReportPeriod('day')}
+                >
+                    {t('days')}
+                </button>
+                <button 
+                  className={`period-btn ${reportPeriod === 'week' ? 'active' : ''}`}
+                  onClick={() => changeReportPeriod('week')}
+                >
+                  {t('weeks')}
+                </button>
+                <button 
+                  className={`period-btn ${reportPeriod === 'month' ? 'active' : ''}`}
+                  onClick={() => changeReportPeriod('month')}
+                >
+                  {t('months')}
+                </button>
+                <button 
+                  className={`period-btn ${reportPeriod === 'year' ? 'active' : ''}`}
+                  onClick={() => changeReportPeriod('year')}
+                >
+                  {t('years')}
+                </button>
+              </div>
+              <div style={{ marginTop: '15px' }}>
+                <button className="btn-primary" onClick={() => window.print()}>
                   🖨️ {t('savePdf')}
                 </button>
-                <button className="modal-close" onClick={() => setReportData(null)} style={{ position: 'relative', top: '0', right: '0' }}>×</button>
               </div>
             </div>
 
-            <div className="printable-report">
+            <div className="printable-report" style={{ position: 'relative' }}>
+
+              {isReportLoading && (
+                <div className="report-loading-overlay" style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                  display: 'flex', justifyContent: 'center', alignItems: 'center',
+                  zIndex: 20, borderRadius: '8px'
+                }}>
+                  <div className="loading-spinner"></div>
+                </div>
+              )}
               <div className="report-header print-only" style={{ display: 'none' }}>
                 <h2>{reportData.habit.name} - {t('progressReport')}</h2>
               </div>
 
 
-              {reportData.is_general ? (
+              {reportData.period === 'all' ? (
                 <div className="summary-report-content">
                   <div className="report-stats" style={{ padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px', marginBottom: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                     <div>
@@ -3000,7 +3010,7 @@ const App = () => {
                     </tbody>
                   </table>
                 </div>
-              ) : (
+              ) : reportData.period === 'day' ? (
                 <>
                   <div className="report-stats" style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '8px', marginBottom: '20px' }}>
                     <p><strong>{t('totalEntries')}:</strong> {reportData.entries.length}</p>
@@ -3021,22 +3031,37 @@ const App = () => {
                           </div>
 
                           {entry.comment && <p className="report-entry-comment" style={{ fontStyle: 'italic', marginBottom: '10px' }}>{entry.comment}</p>}
-                          {entry.photo && (
-                            <div style={{ marginTop: '10px' }}>
-                              <img
-                                src={entry.photo}
-                                alt={t('progress')}
-                                className="report-entry-photo"
-                                style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', objectFit: 'contain', cursor: 'zoom-in' }}
-                                onClick={() => setLightboxUrl(entry.photo)}
-                              />
-                            </div>
-                          )}
                         </div>
                       ))
                     )}
                   </div>
                 </>
+              ) : (
+                <div className="summary-report-content">
+                  <table className="summary-table" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                    <thead>
+                      <tr style={{ textAlign: 'left', borderBottom: '2px solid #eee' }}>
+                        <th style={{ padding: '10px' }}>
+                          {reportData.period === 'day' ? t('days') :
+                           reportData.period === 'week' ? t('weeks') : 
+                           reportData.period === 'month' ? t('months') : 
+                           reportData.period === 'year' ? t('years') : ''}
+                        </th>
+                        <th style={{ padding: '10px', textAlign: 'right' }}>{t('completed')}</th>
+                        <th style={{ padding: '10px', textAlign: 'right' }}>{t('summary')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reportData.items.map((item, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                          <td style={{ padding: '10px' }}>{item.label}</td>
+                          <td style={{ padding: '10px', textAlign: 'right' }}>{item.completions}</td>
+                          <td style={{ padding: '10px', textAlign: 'right' }}>{item.quantity}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </div>
