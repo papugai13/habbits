@@ -27,7 +27,7 @@ body {
   padding-bottom: 80px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
   overflow-x: hidden;
-  overflow-y: hidden;
+  overflow-y: auto;
 }
 
 /* Верхняя панель */
@@ -350,7 +350,7 @@ body {
 
 /* Список привычек */
 .habits-container {
-  flex: 1;
+  height: 100%;
   padding: 0 16px 15px;
   overflow-y: auto;
   overflow-x: visible !important; /* Changed from hidden to avoid clipping the separator line */
@@ -359,6 +359,7 @@ body {
   position: relative;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE/Edge */
+  touch-action: pan-y;
 }
 
 .habits-container::-webkit-scrollbar {
@@ -367,10 +368,10 @@ body {
 
 .habits-swipe-wrapper {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   flex: 1;
   min-height: 0;
-  touch-action: pan-y;
+  touch-action: pan-x pan-y;
   transform-style: preserve-3d;
   will-change: transform;
 }
@@ -392,7 +393,9 @@ body {
   min-height: 100%;
   height: 100%;
   background: #fff;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   backface-visibility: hidden;
   contain: paint;
 }
