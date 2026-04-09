@@ -76,7 +76,7 @@ const App = () => {
   const [editingHabit, setEditingHabit] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
-  const [editProfileData, setEditProfileData] = useState({ username: '', email: '', age: '' });
+  const [editProfileData, setEditProfileData] = useState({ username: '', email: '', age: '', date_of_birth: '', profile_photo: null });
   const [reportData, setReportData] = useState(null);
   const [reportPeriod, setReportPeriod] = useState('day');
   const [isReportLoading, setIsReportLoading] = useState(false);
@@ -140,6 +140,18 @@ const App = () => {
   };
 
   const WEEK_DAYS = [t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat'), t('sun')];
+
+  const calculateAge = (birthDate) => {
+    if (!birthDate) return '';
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age.toString();
+  };
 
   const bottomTabs = [
     { id: 'Habits', label: t('journals'), icon: '✔️', disabled: false },
@@ -1754,7 +1766,11 @@ const App = () => {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
 
-    if (editProfileData.age) {
+    // Calculate age from date_of_birth if provided
+    const dataToSend = { ...editProfileData };
+    if (editProfileData.date_of_birth) {
+      dataToSend.age = calculateAge(editProfileData.date_of_birth);
+    } else if (editProfileData.age) {
       const ageNum = parseInt(editProfileData.age, 10);
       if (isNaN(ageNum) || ageNum < 0 || ageNum > 150) {
         alert('Возраст должен быть числом от 0 до 150 лет');
@@ -1764,16 +1780,23 @@ const App = () => {
 
     try {
       const csrf = getCookie('csrftoken');
-      console.log('UpdateProfile: data:', editProfileData, 'csrf:', csrf);
+      console.log('UpdateProfile: data:', dataToSend, 'csrf:', csrf);
+
+      // Use FormData for file upload
+      const formData = new FormData();
+      for (const [key, value] of Object.entries(dataToSend)) {
+        if (value !== null && value !== undefined && value !== '') {
+          formData.append(key, value);
+        }
+      }
 
       const response = await fetch('/api/auth/me/', {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
           'X-CSRFToken': csrf
         },
         credentials: 'include',
-        body: JSON.stringify(editProfileData)
+        body: formData
       });
 
       if (response.ok) {
@@ -1909,7 +1932,11 @@ const App = () => {
             onClick={() => setShowProfileMenu(!showProfileMenu)}
           >
             <div className="profile-avatar">
-              {user?.username?.charAt(0).toUpperCase() || 'U'}
+              {user?.profile_photo ? (
+                <img src={user.profile_photo} alt="Profile" style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%'}} />
+              ) : (
+                user?.username?.charAt(0).toUpperCase() || 'U'
+              )}
             </div>
             <span className="profile-name">{user?.username || t('user')}</span>
           </button>
@@ -2079,9 +2106,31 @@ const App = () => {
                 <span className="info-value">{user?.email}</span>
               </div>
               <div className="profile-info-row">
+                <span className="info-label">{t('dateOfBirth')}:</span>
+                <span className="info-value">{user?.date_of_birth ? new Date(user.date_of_birth).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US') : t('notSpecified')}</span>
+              </div>
+              <div className="profile-info-row">
                 <span className="info-label">{t('age')}:</span>
                 <span className="info-value">{user?.age || t('notSpecified')}</span>
-
+              </div>
+              <div className="profile-info-row">
+                <span className="info-label">{t('profilePhoto')}:</span>
+                <span className="info-value">
+                  {user?.profile_photo ? (
+                    <img
+                      src={user.profile_photo}
+                      alt="Profile"
+                      style={{width: '50px', height: '50px', objectFit: 'cover', borderRadius: '50%', cursor: 'pointer', WebkitTapHighlightColor: 'transparent'}}
+                      onClick={() => setLightboxUrl(user.profile_photo)}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        setLightboxUrl(user.profile_photo);
+                      }}
+                    />
+                  ) : (
+                    t('notSpecified')
+                  )}
+                </span>
               </div>
               <button
                 className="btn-secondary btn-small edit-profile-btn"
@@ -2089,7 +2138,9 @@ const App = () => {
                   setEditProfileData({
                     username: user?.username || '',
                     email: user?.email || '',
-                    age: user?.age || ''
+                    age: user?.age || '',
+                    date_of_birth: user?.date_of_birth || '',
+                    profile_photo: null
                   });
                   setShowEditProfileModal(true);
                 }}
@@ -2673,6 +2724,41 @@ const App = () => {
               </div>
 
               <div className="form-group">
+                <label htmlFor="profile-photo">{t('profilePhoto')}</label>
+                <input
+                  id="profile-photo"
+                  type="file"
+                  className="form-input"
+                  accept="image/*"
+                  onChange={(e) => setEditProfileData({ ...editProfileData, profile_photo: e.target.files[0] })}
+                />
+                {user?.profile_photo && (
+                  <div className="current-photo">
+                    <p>{t('currentPhoto')}:</p>
+                    <img src={user.profile_photo} alt="Current profile" style={{width: '100px', height: '100px', objectFit: 'cover', borderRadius: '50%'}} />
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="profile-birthdate">{t('dateOfBirth')}</label>
+                <input
+                  id="profile-birthdate"
+                  type="date"
+                  className="form-input"
+                  value={editProfileData.date_of_birth}
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    setEditProfileData({ 
+                      ...editProfileData, 
+                      date_of_birth: newDate,
+                      age: calculateAge(newDate) // Auto-calculate age
+                    });
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
                 <label htmlFor="profile-age">{t('age')}</label>
                 <input
                   id="profile-age"
@@ -2680,7 +2766,7 @@ const App = () => {
                   className="form-input"
                   placeholder={t('agePlaceholder')}
                   value={editProfileData.age}
-                  onChange={(e) => setEditProfileData({ ...editProfileData, age: e.target.value })}
+                  readOnly // Make age read-only since it's calculated
                 />
               </div>
 
