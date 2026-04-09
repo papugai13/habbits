@@ -234,7 +234,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
 
     if (filteredData.length === 0) return null;
 
-    const chartMinWidth = filteredData.length > 5 ? `${filteredData.length * 80}px` : '100%';
+    const chartMinWidth = '100%';
     const showScroll = filteredData.length > 5;
 
     const activeKey = viewType === 'habits' ? 'countCapped' : 'countExtra';
@@ -560,7 +560,7 @@ const Charts = ({
                 <div className="chart-wrapper">
                     <div className="main-chart-scroll-wrapper" onScroll={handleMainScroll} ref={mainScrollRef}>
                         <div className="main-chart-inner" style={{ 
-                            minWidth: period === 'year' ? '700px' : (chartData.length > 7 ? `${chartData.length * (isMobile ? 50 : 70)}px` : '100%'),
+                            minWidth: '100%',
                             transition: 'min-width 0.3s ease'
                         }}>
                             <ResponsiveContainer width="100%" height={CHART_HEIGHT} style={{ overflow: 'visible' }}>
