@@ -767,26 +767,19 @@ const App = () => {
                       {weeklyAward === '👑' && (
                         <span className="crown-top">👑</span>
                       )}
-                      <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>{weeklyCount}</span>
-                      {weeklyAward && weeklyAward.includes('⚡') && (
-                        weeklyCount >= 4 ? (
-                          <div className="lightning-double">
-                            <span className="lightning-item lightning-left">⚡</span>
-                            <span className="lightning-item lightning-right">⚡</span>
-                          </div>
-                        ) : (
-                          <span className="lightning-item lightning-single">⚡</span>
-                        )
+                      
+                      {/* Left side emoji for double awards */}
+                      {((weeklyCount === 4 && weeklyAward.includes('⚡')) || (weeklyCount === 6 && weeklyAward.includes('⭐'))) && (
+                        <span className="award-side award-left">{weeklyCount === 4 ? '⚡' : '⭐'}</span>
                       )}
-                      {weeklyAward && weeklyAward.includes('⭐') && (
-                        weeklyCount >= 6 ? (
-                          <div className="star-double">
-                            <span className="star-item star-left">⭐</span>
-                            <span className="star-item star-right">⭐</span>
-                          </div>
-                        ) : (
-                          <span className="star-item star-single">⭐</span>
-                        )
+
+                      <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>
+                        {weeklyCount}
+                      </span>
+                      
+                      {/* Right side emoji for all awards 3-6 */}
+                      {weeklyAward && !weeklyAward.includes('👑') && (
+                        <span className="award-side award-right">{weeklyAward.includes('⚡') ? '⚡' : '⭐'}</span>
                       )}
                     </div>
                     <div className="habit-count monthly">
