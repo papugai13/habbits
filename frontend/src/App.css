@@ -14,6 +14,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #F5F5F5;
   overflow: hidden;
+  /* Support for iOS safe areas (notch / home-bar) */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .app {
@@ -24,7 +26,7 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
-  padding-bottom: 80px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
   overflow-x: hidden;
   overflow-y: auto;
@@ -881,6 +883,7 @@ body {
   background-color: #E8E8E8;
   border-top: 1px solid #D0D0D0;
   padding: 10px 0;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
   z-index: 1000;
 }
 
@@ -955,6 +958,36 @@ body {
 
   .bottom-nav {
     max-width: 100%;
+  }
+}
+
+/* ─── Bottom-sheet modal on mobile ─── */
+@media (max-width: 600px) {
+  .modal-overlay {
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 92vh !important;
+    padding: 20px 16px calc(16px + env(safe-area-inset-bottom)) !important;
+    /* Drag handle indicator */
+    background-image: linear-gradient(transparent 0%, transparent calc(100% - 3px)),
+      linear-gradient(#ddd 3px, transparent 0);
+    background-size: 40px 4px;
+    background-position: center 10px;
+    background-repeat: no-repeat, no-repeat;
+  }
+
+  .modal-header {
+    padding-top: 12px;
+  }
+
+  .form-actions {
+    flex-direction: row !important;
+    gap: 8px;
   }
 }
 
@@ -1518,21 +1551,25 @@ body {
 
 @media (max-width: 480px) {
   .modal-content {
-    width: 95%;
-    padding: 20px;
+    width: 100%;
+    padding: 20px 14px calc(14px + env(safe-area-inset-bottom));
   }
 
   .modal-header h2 {
-    font-size: 18px;
+    font-size: 17px;
   }
 
   .form-actions {
-    flex-direction: column-reverse;
+    flex-direction: row;
+    gap: 8px;
   }
 
   .btn-primary,
   .btn-secondary {
-    width: 100%;
+    width: auto;
+    flex: 1;
+    padding: 12px 8px;
+    font-size: 13px;
   }
 }
 
@@ -3418,4 +3455,117 @@ body {
   background-color: #059669;
   color: #FFFFFF;
   border-color: #059669;
+/* Habit Note Box (Daily Reports) */
+.habit-note-container {
+  margin-top: 20px;
+  margin-bottom: 24px;
+  padding: 0 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.habit-note-box {
+  background-color: #f8fafc;
+  border-left: 3px solid #059669;
+  border-radius: 4px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: transform 0.1s ease, background-color 0.2s ease;
+}
+
+.habit-note-container:hover .habit-note-box {
+  background-color: #f1f5f9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.habit-note-container:active .habit-note-box {
+  transform: translateY(0);
+  background-color: #e2e8f0;
+}
+
+.habit-note-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #059669;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.habit-note-text {
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* Removing photo-related indicators if not used elsewhere */
+.photo-indicator, .habit-thumbnail {
+  display: none !important;
+}
+
+/* ─── Extra small screens (< 360px) ─── */
+@media (max-width: 360px) {
+  .habit-note-text {
+    font-size: 12px;
+    -webkit-line-clamp: 2;
+  }
+
+  .habit-note-container {
+    margin-top: 14px;
+    margin-bottom: 16px;
+  }
+
+  .habit-note-box {
+    padding: 6px 10px;
+  }
+}
+
+/* ─── Tablet / iPad (600-1024px) ─── */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .app {
+    max-width: 700px;
+  }
+
+  .bottom-nav {
+    max-width: 700px;
+  }
+
+  .modal-content {
+    max-width: 480px;
+  }
+
+  .check-box {
+    height: 38px;
+  }
+
+  .habit-count {
+    height: 38px;
+    font-size: 16px;
+    min-width: 52px;
+  }
+}
+
+/* ─── Large desktop (> 1024px) ─── */
+@media (min-width: 1025px) {
+  .app {
+    max-width: 600px;
+    border-radius: 16px;
+    height: calc(100vh - 40px);
+    margin-top: 20px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
+  }
+
+  .bottom-nav {
+    max-width: 600px;
+    border-radius: 0 0 16px 16px;
+  }
 }
