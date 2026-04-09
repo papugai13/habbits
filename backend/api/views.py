@@ -363,12 +363,12 @@ class HabitViewSet(viewsets.ModelViewSet):
             start_date = reference_date - timedelta(days=days_since_monday)
             end_date = start_date + timedelta(days=6)
             
-            # Monthly range
-            start_of_month = date(reference_date.year, reference_date.month, 1)
-            if reference_date.month == 12:
-                next_month = date(reference_date.year + 1, 1, 1)
+            # Monthly range anchored to the start of the week
+            start_of_month = date(start_date.year, start_date.month, 1)
+            if start_date.month == 12:
+                next_month = date(start_date.year + 1, 1, 1)
             else:
-                next_month = date(reference_date.year, reference_date.month + 1, 1)
+                next_month = date(start_date.year, start_date.month + 1, 1)
             end_of_month = next_month - timedelta(days=1)
             
             result = []

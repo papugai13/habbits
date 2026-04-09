@@ -7,6 +7,16 @@ import DrumPicker from './components/DrumPicker';
 import translations from './translations';
 
 
+const getMondayString = (dateInput = new Date()) => {
+  const d = new Date(dateInput);
+  const day = d.getDay();
+  // Adjust logic to find Monday: Sunday(0) -> -6, Monday(1) -> 0, Tuesday(2) -> -1, etc.
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+  return monday.toLocaleDateString('en-CA');
+};
+
+
 const App = () => {
   // Helper to get CSRF token
   function getCookie(name) {
@@ -70,7 +80,7 @@ const App = () => {
   const [reportData, setReportData] = useState(null);
   const [reportPeriod, setReportPeriod] = useState('day');
   const [isReportLoading, setIsReportLoading] = useState(false);
-  const [currentWeekDate, setCurrentWeekDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [currentWeekDate, setCurrentWeekDate] = useState(getMondayString());
   const weekDataCacheRef = React.useRef({});
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const lightboxTouchStartY = React.useRef(null);
@@ -315,11 +325,7 @@ const App = () => {
   };
 
   const handleToday = () => {
-    const today = new Date();
-    const day = today.getDay();
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Monday
-    const monday = new Date(today.setDate(diff));
-    const targetWeek = monday.toLocaleDateString('en-CA');
+    const targetWeek = getMondayString();
 
     if (currentWeekDate === targetWeek) {
       // Already on the current week, just highlight today
