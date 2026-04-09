@@ -2988,6 +2988,165 @@ body {
   border-color: #059669;
 }
 
+.dark-theme .form-input::placeholder {
+  color: #666 !important;
+}
+
+.dark-theme input.form-input::placeholder {
+  color: #666 !important;
+}
+
+.dark-theme input[type="file"].form-input::placeholder {
+  color: #666 !important;
+}
+
+.dark-theme input[type="text"].form-input::placeholder {
+  color: #666 !important;
+}
+
+.dark-theme textarea.form-input::placeholder {
+  color: #666 !important;
+}
+
+.dark-theme input::placeholder {
+  color: #666 !important;
+}
+
+.dark-theme textarea::placeholder {
+  color: #666 !important;
+}
+
+.dark-theme *::placeholder {
+  color: #666 !important;
+}
+
+.dark-theme *::-webkit-input-placeholder {
+  color: #666 !important;
+}
+
+.dark-theme *::-moz-placeholder {
+  color: #666 !important;
+}
+
+.dark-theme *::-ms-input-placeholder {
+  color: #666 !important;
+}
+
+.dark-theme ::-webkit-input-placeholder {
+  color: #666 !important;
+}
+
+.dark-theme ::-moz-placeholder {
+  color: #666 !important;
+}
+
+.dark-theme ::-ms-input-placeholder {
+  color: #666 !important;
+}
+
+.dark-theme .manage-habit-actions {
+  scrollbar-width: thin !important;
+  scrollbar-color: #404040 #555 !important;
+}
+
+.dark-theme .manage-habit-actions::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dark-theme .manage-habit-actions::-webkit-scrollbar-track {
+  background: #2D2D2D;
+}
+
+.dark-theme .manage-habit-actions::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+
+.dark-theme .manage-habit-actions::-moz-scrollbar {
+  width: thin;
+}
+
+.dark-theme .manage-habit-actions::-moz-scrollbar-track {
+  background: #2D2D2D;
+}
+
+.dark-theme .manage-habit-actions::-moz-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+
+.dark-theme .manage-habit-actions *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: #404040;
+}
+
+.dark-theme .manage-habit-actions *::-webkit-scrollbar-track {
+  background: #2D2D2D;
+}
+
+.dark-theme .manage-habit-actions *::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+
+.dark-theme .manage-habit-actions ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: #404040;
+}
+
+.dark-theme .manage-habit-actions ::-webkit-scrollbar-track {
+  background: #2D2D2D;
+}
+
+.dark-theme .manage-habit-actions ::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+
+.dark-theme .manage-habit-item {
+  background: #2D2D2D;
+  border: 1px solid #404040;
+  color: #E0E0E0;
+}
+
+.dark-theme .manage-habit-item:hover {
+  border-color: #059669;
+  background: #404040;
+}
+
+/* Chrome specific dark theme scrollbar */
+.dark-theme .manage-habit-actions::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+  background: #404040 !important;
+}
+
+.dark-theme .manage-habit-actions::-webkit-scrollbar-track {
+  background: #2D2D2D !important;
+}
+
+.dark-theme .manage-habit-actions::-webkit-scrollbar-thumb {
+  background: #555 !important;
+  border-radius: 3px !important;
+}
+
+/* Edge specific dark theme scrollbar */
+.dark-theme .manage-habit-actions::-ms-scrollbar {
+  width: 6px !important;
+  background: #404040 !important;
+}
+
+.dark-theme .manage-habit-actions::-ms-scrollbar-track {
+  background: #2D2D2D !important;
+}
+
+.dark-theme .manage-habit-actions::-ms-scrollbar-thumb {
+  background: #555 !important;
+  border-radius: 3px !important;
+}
+
 .dark-theme .btn-secondary {
   background-color: #404040;
   color: #E0E0E0;
