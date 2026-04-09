@@ -765,7 +765,7 @@ const App = () => {
                   <div className="habit-count-container">
                     <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''} ${weeklyCount === 3 ? 'has-single-lightning' : ''} ${weeklyCount === 4 ? 'has-double-lightning' : ''} ${weeklyCount === 5 ? 'has-single-star' : ''} ${weeklyCount === 6 ? 'has-double-star' : ''}`}>
                       {weeklyAward === '👑' && (
-                        <span className="crown-top">👑</span>
+                        <span className="crown-top">👑{habit.crown_streak > 1 ? <span className="crown-streak">x{habit.crown_streak}</span> : ''}</span>
                       )}
                       
                       {/* Left side emoji for double awards */}
