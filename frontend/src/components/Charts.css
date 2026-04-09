@@ -146,6 +146,8 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     position: relative;
     margin-bottom: 20px;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .main-chart-scroll-wrapper {
@@ -153,6 +155,7 @@
     overflow-y: hidden;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    width: 100%;
 }
 
 .main-chart-scroll-wrapper::-webkit-scrollbar {
