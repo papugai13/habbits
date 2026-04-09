@@ -10,7 +10,6 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -228,28 +227,20 @@ class HabitViewSet(viewsets.ModelViewSet):
             start_date = today - timedelta(days=days_since_monday)
             end_date = start_date + timedelta(days=6)
             
-            items = []
-            curr = start_date
-            WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
-            
-            while curr <= end_date:
-                day_dates = Date.objects.filter(habit=habit, habit_date=curr, is_done=True)
-                completions = day_dates.filter(is_restored=False).count()
-                quantity = day_dates.aggregate(
-                    total=Sum(Case(When(quantity__isnull=True, then=Value(1)), default=F('quantity'), output_field=IntegerField()))
-                )['total'] or 0
-                
-                items.append({
-                    "label": f"{curr.strftime('%d.%m')} ({WEEKDAYS[curr.weekday()]})",
-                    "completions": completions,
-                    "quantity": quantity
+            # Return daily entries (with comments/photos)
+            dates = Date.objects.filter(habit=habit, habit_date__range=[start_date, end_date], is_done=True).order_by('habit_date')
+            entries = []
+            for d in dates:
+                entries.append({
+                    "date": d.habit_date.isoformat(),
+                    "quantity": d.quantity,
+                    "comment": d.comment,
+                    "photo": request.build_absolute_uri(d.photo.url) if d.photo else None
                 })
-                curr += timedelta(days=1)
-
             return Response({
                 "habit": {"id": habit.id, "name": habit.name},
                 "period": period,
-                "items": items
+                "entries": entries
             })
             
         elif period == 'week':
@@ -388,20 +379,10 @@ class HabitViewSet(viewsets.ModelViewSet):
                     # Fetch latest comment within the viewed week
                     latest_date_entry = Date.objects.filter(
                         user=user_profile,
-                        habit=habit,
+                        habit=habit, 
                         habit_date__range=[start_date, end_date],
                         comment__isnull=False
                     ).exclude(comment__exact='').order_by('-habit_date').first()
-
-                    # If no comment in current week, check previous Sunday (carry over to Monday)
-                    if not latest_date_entry:
-                        prev_sunday = start_date - timedelta(days=1)  # Sunday of previous week
-                        latest_date_entry = Date.objects.filter(
-                            user=user_profile,
-                            habit=habit,
-                            habit_date=prev_sunday,
-                            comment__isnull=False
-                        ).exclude(comment__exact='').first()
 
                     # Check previous week for streak continuation (Sunday and Saturday)
                     prev_sun = start_date - timedelta(days=1)
@@ -435,15 +416,6 @@ class HabitViewSet(viewsets.ModelViewSet):
                         habit=habit,
                         habit_date__range=[start_date, end_date]
                     ).exclude(photo=None).exclude(photo='').order_by('-habit_date', '-id').first()
-
-                    # If no photo in current week, check previous Sunday (carry over to Monday)
-                    if not latest_photo_entry:
-                        prev_sunday = start_date - timedelta(days=1)  # Sunday of previous week
-                        latest_photo_entry = Date.objects.filter(
-                            user=user_profile,
-                            habit=habit,
-                            habit_date=prev_sunday
-                        ).exclude(photo=None).exclude(photo='').first()
                     
                     habit_data['latest_photo'] = None
                     habit_data['latest_photo_details'] = None
@@ -1148,7 +1120,6 @@ class LogoutView(APIView):
 class CurrentUserView(APIView):
     """Получение и обновление данных текущего пользователя"""
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]  # Add support for file uploads
     
     @method_decorator(ensure_csrf_cookie)
     def dispatch(self, *args, **kwargs):
