@@ -37,6 +37,7 @@ const App = () => {
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const [activeTab, setActiveTab] = useState('Habits');
   const [language, setLanguage] = useState(localStorage.getItem('language') || 'ru');
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'auto');
 
   const [habitsData, setHabitsData] = useState([]);
 
@@ -303,6 +304,23 @@ const App = () => {
       prefetchAdjacentWeeks(currentWeekDate);
     }
   }, [currentWeekDate, isAuthenticated, loadWeekData, prefetchAdjacentWeeks]);
+
+  // Apply theme
+  useEffect(() => {
+    const applyTheme = () => {
+      let currentTheme = theme;
+      if (theme === 'auto') {
+        const hour = new Date().getHours();
+        currentTheme = (hour >= 6 && hour < 18) ? 'light' : 'dark';
+      }
+      document.body.className = currentTheme === 'dark' ? 'dark-theme' : '';
+    };
+    applyTheme();
+    if (theme === 'auto') {
+      const interval = setInterval(applyTheme, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [theme]);
 
   const goToWeek = (weekDate, direction) => {
     const date = new Date(weekDate);
@@ -2442,6 +2460,39 @@ const App = () => {
                   )}
                 </div>
               )}
+            </div>
+          </div>
+
+          <div className="settings-section theme-settings">
+            <h3 className="section-title">{t('theme')}</h3>
+            <div className="theme-options">
+              <button
+                className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
+                onClick={() => {
+                  setTheme('light');
+                  localStorage.setItem('theme', 'light');
+                }}
+              >
+                ☀️ {t('lightTheme')}
+              </button>
+              <button
+                className={`theme-btn ${theme === 'dark' ? 'active' : ''}`}
+                onClick={() => {
+                  setTheme('dark');
+                  localStorage.setItem('theme', 'dark');
+                }}
+              >
+                🌙 {t('darkTheme')}
+              </button>
+              <button
+                className={`theme-btn ${theme === 'auto' ? 'active' : ''}`}
+                onClick={() => {
+                  setTheme('auto');
+                  localStorage.setItem('theme', 'auto');
+                }}
+              >
+                🌓 {t('autoTheme')}
+              </button>
             </div>
           </div>
         </div>
