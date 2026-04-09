@@ -6,7 +6,10 @@ const generatePeriodLabel = (period, referenceDate, t) => {
     const today = new Date(referenceDate);
     const months = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
 
-    if (period === 'week') {
+    if (period === 'day') {
+        const monthName = t(months[today.getMonth()]);
+        return `${today.getDate()} ${monthName}`;
+    } else if (period === 'week') {
         const day = today.getDay();
         const diff = today.getDate() - (day === 0 ? 6 : day - 1);
         const start_date = new Date(today.getFullYear(), today.getMonth(), diff);
@@ -38,7 +41,7 @@ const CustomXAxisTick = ({ x, y, payload, period }) => {
 
     return (
         <g transform={`translate(${x},${y})`}>
-            <text x={0} y={0} dy={16} textAnchor="middle" fill="#666" fontSize={fontSize} fontWeight={period === 'week' ? 600 : 500}>
+            <text x={0} y={0} dy={16} textAnchor="middle" fill={document.body.classList.contains('dark-theme') ? "#E0E0E0" : "#666"} fontSize={fontSize} fontWeight={period === 'week' ? 600 : 500}>
                 {displayValue}
             </text>
         </g>
@@ -272,11 +275,11 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                     <div className="comparison-chart-inner" style={{ minWidth: chartMinWidth }}>
                         <ResponsiveContainer width="100%" height={CHART_HEIGHT} style={{ overflow: 'visible' }}>
                             <BarChart data={filteredData} margin={{ top: 40, right: 30, left: 15, bottom: 40 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={document.body.classList.contains('dark-theme') ? "#404040" : "#f0f0f0"} />
                                 <XAxis
                                     dataKey="shortName"
-                                    stroke="#999"
-                                    tick={{ fill: '#666', fontSize: 10 }}
+                                    stroke={document.body.classList.contains('dark-theme') ? "#666" : "#999"}
+                                    tick={{ fill: document.body.classList.contains('dark-theme') ? "#E0E0E0" : "#666", fontSize: 10 }}
                                     interval={0}
                                     angle={0}
                                     textAnchor="middle"
@@ -351,6 +354,11 @@ const Charts = ({
 
     const mainScrollRef = useRef(null);
     const mainIndicatorRef = useRef(null);
+
+    // Set initial period label
+    useEffect(() => {
+        setPeriodLabel(generatePeriodLabel(period, chartDate, t));
+    }, []);
 
     const handleMainScroll = (e) => {
         if (!mainIndicatorRef.current) return;
@@ -539,17 +547,17 @@ const Charts = ({
                                     data={chartData}
                                     margin={{ top: 15, right: 30, left: 0, bottom: 10 }}
                                 >
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                                    <CartesianGrid strokeDasharray="3 3" stroke={document.body.classList.contains('dark-theme') ? "#404040" : "#e0e0e0"} />
                                     <XAxis
                                         dataKey="date"
-                                        stroke="#666"
+                                        stroke={document.body.classList.contains('dark-theme') ? "#666" : "#666"}
                                         tick={<CustomXAxisTick period={period} />}
                                         height={period === 'week' ? 50 : 30}
                                         interval={0}
                                     />
                                     <YAxis
-                                        stroke="#666"
-                                        tick={{ fill: '#666', fontSize: 12 }}
+                                        stroke={document.body.classList.contains('dark-theme') ? "#666" : "#666"}
+                                        tick={{ fill: document.body.classList.contains('dark-theme') ? "#E0E0E0" : "#666", fontSize: 12 }}
                                         allowDecimals={false}
                                     />
                                     {viewType === 'habits' ? (
@@ -633,46 +641,6 @@ const Charts = ({
                 t={t}
                 language={language}
             />
-
-            <div className="reports-section">
-                <h3>{t('reportsTitle')}</h3>
-                <div className="reports-grid">
-                    <div className="report-card general-report-card">
-                        <div className="report-card-info">
-                            <div className="report-card-name">📊 {t('generalSummary')}</div>
-                            <div className="report-card-category">{t('allHabits')}</div>
-                        </div>
-                        <button
-                            className="gen-report-btn general-report-btn"
-                            onClick={() => handleGenerateSummaryReport()}
-                            disabled={isReportLoading}
-                            title={t('generateGeneralReport')}
-                        >
-                            {isReportLoading ? '⌛' : `📄 ${t('reportButton')}`}
-                        </button>
-                    </div>
-                    {habitsData && habitsData.length > 0 ? (
-                        habitsData.map(habit => (
-                            <div key={habit.id} className="report-card">
-                                <div className="report-card-info">
-                                    <div className="report-card-name">{habit.name}</div>
-                                    <div className="report-card-category">{habit.category_name}</div>
-                                </div>
-                                <button
-                                    className="gen-report-btn"
-                                    onClick={() => handleGenerateReport(habit.id)}
-                                    disabled={isReportLoading}
-                                    title={t('generateReport')}
-                                >
-                                    {isReportLoading ? '⌛' : `📄 ${t('reportButton')}`}
-                                </button>
-                            </div>
-                        ))
-                    ) : (
-                        <p className="no-habits-text">{t('noHabitsForReport')}</p>
-                    )}
-                </div>
-            </div>
         </div>
     );
 };

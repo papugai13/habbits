@@ -464,3 +464,149 @@
         margin: 0 -20px;
     }
 }
+
+/* Dark Theme Styles */
+.dark-theme .charts-header h2 {
+    color: #E0E0E0;
+}
+
+.dark-theme .nav-arrow-btn {
+    background: #404040;
+    color: #E0E0E0;
+}
+
+.dark-theme .nav-arrow-btn:hover {
+    background: #059669;
+    color: #fff;
+}
+
+.dark-theme .current-period-label {
+    color: #E0E0E0;
+}
+
+.dark-theme .view-selector,
+.dark-theme .period-selector {
+    background: #2D2D2D;
+}
+
+.dark-theme .view-btn,
+.dark-theme .period-btn {
+    color: #E0E0E0;
+}
+
+.dark-theme .view-btn:hover,
+.dark-theme .period-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #E0E0E0;
+}
+
+.dark-theme .view-btn.active,
+.dark-theme .period-btn.active {
+    background: #404040;
+    color: #E0E0E0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.dark-theme .chart-wrapper {
+    background: #2D2D2D;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.dark-theme .main-scroll-indicator-container {
+    background: #404040;
+}
+
+.dark-theme .no-data-message {
+    color: #999;
+}
+
+.dark-theme .no-data-hint {
+    color: #bbb;
+}
+
+.dark-theme .reports-section {
+    border-top: 1px solid #404040;
+}
+
+.dark-theme .reports-section h3 {
+    color: #E0E0E0;
+}
+
+.dark-theme .report-card {
+    background: #2D2D2D;
+    border: 1px solid #404040;
+}
+
+.dark-theme .report-card:hover {
+    border-color: #059669;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark-theme .report-card-name {
+    color: #E0E0E0;
+}
+
+.dark-theme .gen-report-btn {
+    background: #404040;
+    border: 1px solid #059669;
+    color: #E0E0E0;
+}
+
+.dark-theme .gen-report-btn:hover:not(:disabled) {
+    background: #059669;
+    color: #fff;
+}
+
+.dark-theme .no-habits-text {
+    color: #999;
+}
+
+.dark-theme .habits-comparison-section {
+    background: #2D2D2D;
+    border: 1px solid #404040;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.dark-theme .comparison-header h3 {
+    color: #E0E0E0;
+}
+
+.dark-theme .comparison-period {
+    color: #999;
+    background: #404040;
+}
+
+.dark-theme .comparison-yaxis-fixed {
+    background: #2D2D2D;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.dark-theme .scroll-indicator-container {
+    background: #404040;
+}
+
+.dark-theme .comparison-chart-loading {
+    background: #2D2D2D;
+    color: #999;
+    border: 1px solid #404040;
+}
+
+.dark-theme .mini-spinner {
+    border: 3px solid #404040;
+    border-top: 3px solid #059669;
+}
+
+/* Chart axes colors for dark theme */
+.dark-theme .recharts-cartesian-axis-tick-value {
+    fill: #E0E0E0 !important;
+}
+
+.dark-theme .recharts-x-axis .recharts-cartesian-axis-tick-value,
+.dark-theme .recharts-y-axis .recharts-cartesian-axis-tick-value {
+    fill: #E0E0E0 !important;
+}
+
+.dark-theme .recharts-x-axis .recharts-cartesian-axis-line,
+.dark-theme .recharts-y-axis .recharts-cartesian-axis-line {
+    stroke: #666 !important;
+}
