@@ -92,8 +92,6 @@ const App = () => {
   // Swipe navigation refs
   const swipeStartPos = React.useRef({ x: 0, y: 0 });
   const isSwiping = React.useRef(false);
-  const [swipeDirection, setSwipeDirection] = useState(null);
-  const [isDraggingWeekSwipe, setIsDraggingWeekSwipe] = useState(false);
   const swipeOffsetRef = React.useRef(0);
   const pendingRafRef = React.useRef(null);
   const habitsContainerRef = React.useRef(null);
@@ -132,8 +130,6 @@ const App = () => {
   const [highlightToday, setHighlightToday] = useState(false);
 
   // Transition animation state
-  const [isFadingOut, setIsFadingOut] = useState(false);
-  const [isFadingIn, setIsFadingIn] = useState(false);
 
   const t = (key) => {
     return translations[language][key] || key;
@@ -3099,32 +3095,6 @@ const App = () => {
                     </tbody>
                   </table>
                 </div>
-              ) : reportData.period === 'day' ? (
-                <>
-                  <div className="report-stats" style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '8px', marginBottom: '20px' }}>
-                    <p><strong>{t('totalEntries')}:</strong> {reportData.entries.length}</p>
-                    <p><strong>{t('totalActions')}:</strong> {reportData.entries.reduce((sum, e) => sum + (e.quantity || 1), 0)}</p>
-                  </div>
-
-
-                  <div className="report-entries" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {reportData.entries.length === 0 ? (
-                      <p>{t('noReportData')}</p>
-                    ) : (
-
-                      reportData.entries.map((entry, idx) => (
-                        <div key={idx} className="report-entry" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px' }}>
-                          <div className="report-entry-header" style={{ borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
-                            <strong>{new Date(entry.date).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US')}</strong>
-                            {(entry.quantity !== null && entry.quantity > 1) && <span style={{ marginLeft: '10px', color: '#666' }}>({t('actionsCount')} {entry.quantity})</span>}
-                          </div>
-
-                          {entry.comment && <p className="report-entry-comment" style={{ fontStyle: 'italic', marginBottom: '10px' }}>{entry.comment}</p>}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </>
               ) : (
                 <div className="summary-report-content">
                   <table className="summary-table" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>

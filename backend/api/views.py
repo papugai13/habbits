@@ -228,20 +228,28 @@ class HabitViewSet(viewsets.ModelViewSet):
             start_date = today - timedelta(days=days_since_monday)
             end_date = start_date + timedelta(days=6)
             
-            # Return daily entries (with comments/photos)
-            dates = Date.objects.filter(habit=habit, habit_date__range=[start_date, end_date], is_done=True).order_by('habit_date')
-            entries = []
-            for d in dates:
-                entries.append({
-                    "date": d.habit_date.isoformat(),
-                    "quantity": d.quantity,
-                    "comment": d.comment,
-                    "photo": request.build_absolute_uri(d.photo.url) if d.photo else None
+            items = []
+            curr = start_date
+            WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+            
+            while curr <= end_date:
+                day_dates = Date.objects.filter(habit=habit, habit_date=curr, is_done=True)
+                completions = day_dates.filter(is_restored=False).count()
+                quantity = day_dates.aggregate(
+                    total=Sum(Case(When(quantity__isnull=True, then=Value(1)), default=F('quantity'), output_field=IntegerField()))
+                )['total'] or 0
+                
+                items.append({
+                    "label": f"{curr.strftime('%d.%m')} ({WEEKDAYS[curr.weekday()]})",
+                    "completions": completions,
+                    "quantity": quantity
                 })
+                curr += timedelta(days=1)
+
             return Response({
                 "habit": {"id": habit.id, "name": habit.name},
                 "period": period,
-                "entries": entries
+                "items": items
             })
             
         elif period == 'week':
