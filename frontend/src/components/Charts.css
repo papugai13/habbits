@@ -1,12 +1,16 @@
 .charts-container {
     padding: 20px;
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE/Edge */
+    box-sizing: border-box;
 }
 
 .charts-container::-webkit-scrollbar {
@@ -146,8 +150,11 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     position: relative;
     margin-bottom: 20px;
+    width: 100%;
     max-width: 100%;
+    min-width: 0;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .main-chart-scroll-wrapper {
@@ -445,7 +452,16 @@
 }
 
 .comparison-chart-wrapper {
-    margin: 0 -10px;
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 15px;
+    position: relative;
+    border: 1px solid #e2e8f0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .comparison-chart-loading {
