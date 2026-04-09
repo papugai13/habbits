@@ -1410,6 +1410,28 @@ const App = () => {
     return null;
   };
 
+  // Эмоджи в зависимости от дня недели для кнопки "Сегодня"
+  const getTodayEmoji = () => {
+    const day = new Date().getDay();
+    const emojis = ['😌', '😫', '😐', '🐪', '🙂', '🎉', '😎']; // Вс, Пн, Вт, Ср, Чт, Пт, Сб
+    return emojis[day];
+  };
+
+  // Компонент иконки календаря с текущей датой
+  const CalendarIcon = () => {
+    const today = new Date();
+    const dayNum = today.getDate();
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const month = monthNames[today.getMonth()];
+
+    return (
+      <span className="calendar-icon">
+        <span className="calendar-month">{month}</span>
+        <span className="calendar-day">{dayNum}</span>
+      </span>
+    );
+  };
+
   // Sort and filter categories
   const sortedCategories = React.useMemo(() => {
     const counts = habitsData.reduce((acc, habit) => {
@@ -1930,7 +1952,7 @@ const App = () => {
               title={t('today')}
               onClick={handleToday}
             >
-              📅 {t('today')}
+              <CalendarIcon /> {t('today')}
             </button>
           )}
 
@@ -2729,11 +2751,12 @@ const App = () => {
                   id="profile-birthdate"
                   type="date"
                   className="form-input"
+                  max={new Date().toLocaleDateString('en-CA')}
                   value={editProfileData.date_of_birth}
                   onChange={(e) => {
                     const newDate = e.target.value;
-                    setEditProfileData({ 
-                      ...editProfileData, 
+                    setEditProfileData({
+                      ...editProfileData,
                       date_of_birth: newDate,
                       age: calculateAge(newDate) // Auto-calculate age
                     });
