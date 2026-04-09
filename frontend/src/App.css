@@ -2930,6 +2930,18 @@ body {
   border-color: #059669;
 }
 
+.dark-theme input[type="file"].form-input {
+  background-color: #404040;
+  border: 1px solid #555;
+  color: #E0E0E0;
+  padding: 12px 16px;
+}
+
+.dark-theme input[type="file"].form-input:focus {
+  background-color: #2D2D2D;
+  border-color: #059669;
+}
+
 .dark-theme .btn-secondary {
   background-color: #404040;
   color: #E0E0E0;
@@ -3045,6 +3057,122 @@ body {
 
 .dark-theme .add-category-inline-btn:hover {
   color: #E0E0E0;
+}
+
+/* Language selector dark theme */
+.dark-theme .lang-toggle-btn {
+  background: #2D2D2D;
+  border: 1px solid #404040;
+  color: #E0E0E0;
+}
+
+.dark-theme .lang-toggle-btn:hover {
+  background: #404040;
+  border-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.dark-theme .lang-option {
+  color: #E0E0E0;
+}
+
+.dark-theme .lang-option.active {
+  color: #059669;
+}
+
+.dark-theme .lang-separator {
+  color: #666;
+}
+
+/* Archive section dark theme */
+.dark-theme .archive-section {
+  background: transparent;
+}
+
+.dark-theme .archive-toggle-btn {
+  background: #2D2D2D;
+  border: 1px solid #404040;
+  color: #E0E0E0;
+}
+
+.dark-theme .archive-toggle-btn:hover {
+  background: #404040;
+  border-color: #059669;
+}
+
+.dark-theme .archived-habits-list {
+  background: #2D2D2D;
+  border: 1px solid #404040;
+}
+
+.dark-theme .archived-habit-item {
+  background: #2D2D2D;
+  border: 1px solid #404040;
+  color: #E0E0E0;
+}
+
+.dark-theme .archived-habit-item:hover {
+  border-color: #059669;
+  background: #404040;
+}
+
+.dark-theme .archive-toggle-icon {
+  color: #E0E0E0;
+}
+
+.dark-theme .no-habits-msg {
+  color: #999;
+}
+
+/* Category edit input dark theme */
+.dark-theme .category-edit-input {
+  background-color: #404040;
+  border: 1px solid #059669;
+  color: #E0E0E0;
+}
+
+.dark-theme .category-edit-input:focus {
+  background-color: #2D2D2D;
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(31, 102, 59, 0.1);
+}
+
+/* Settings category filter dark theme */
+.dark-theme .settings-cat-btn {
+  background-color: #404040;
+  border: 1px solid #555;
+  color: #E0E0E0;
+}
+
+.dark-theme .settings-cat-btn:hover {
+  background-color: #555;
+  border-color: #666;
+}
+
+.dark-theme .settings-cat-btn.active {
+  background-color: #1F663B;
+  color: white;
+  border-color: #1F663B;
+}
+
+/* Purple habit count badges dark theme */
+.dark-theme .habit-count-overflow {
+  background-color: #8B5CF6;
+  color: #FFFFFF;
+}
+
+.dark-theme .habit-count-overflow.weekly {
+  background-color: #2D2D2D;
+  color: #8B5CF6;
+  border: 1.5px solid #8B5CF6;
+}
+
+.dark-theme .habit-count-overflow.monthly {
+  background-color: #8B5CF6;
+  color: #FFFFFF;
+  border: none;
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(139, 92, 246, 0.3);
 }
 
 .dark-theme .preset-label {

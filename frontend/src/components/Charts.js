@@ -345,7 +345,7 @@ const Charts = ({
     t,
     language
 }) => {
-    const [period, setPeriod] = useState('week');
+    const [period, setPeriod] = useState('day');
     const [viewType, setViewType] = useState('habits'); // 'habits' or 'quantity'
     const [chartData, setChartData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -357,7 +357,7 @@ const Charts = ({
 
     // Set initial period label
     useEffect(() => {
-        setPeriodLabel(generatePeriodLabel(period, chartDate, t));
+        setPeriodLabel(generatePeriodLabel(period, currentWeekDate, t));
     }, []);
 
     const handleMainScroll = (e) => {
