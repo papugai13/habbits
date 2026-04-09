@@ -500,6 +500,27 @@ class HabitViewSet(viewsets.ModelViewSet):
                     
                     habit_data['monthly_overflow'] = monthly_overflow
                     habit_data['monthly_total'] = monthly_total
+
+                    # Calculate crown streak (consecutive weeks of 7/7 on-time completions)
+                    crown_streak = 0
+                    temp_week_start = start_date
+                    # Limit lookback to prevent excessive queries
+                    for _ in range(100):
+                        week_completions = Date.objects.filter(
+                            user=user_profile,
+                            habit=habit,
+                            habit_date__range=[temp_week_start, temp_week_start + timedelta(days=6)],
+                            is_done=True,
+                            is_restored=False
+                        ).count()
+                        
+                        if week_completions >= 7:
+                            crown_streak += 1
+                            temp_week_start -= timedelta(days=7)
+                        else:
+                            break
+                    habit_data['crown_streak'] = crown_streak
+                    
                     result.append(habit_data)
                 except Exception as habit_e:
                     import traceback
