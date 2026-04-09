@@ -70,8 +70,6 @@ const App = () => {
   const [quantityModalData, setQuantityModalData] = useState(null);
   const [quantityValue, setQuantityValue] = useState(null);
   const [commentValue, setCommentValue] = useState('');
-  const [photoFile, setPhotoFile] = useState(null);
-  const [deletePhoto, setDeletePhoto] = useState(false);
   const [longPressTimer, setLongPressTimer] = useState(null);
   const [editingHabit, setEditingHabit] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -520,8 +518,6 @@ const App = () => {
 
     setQuantityValue(initialQuantity);
     setCommentValue(comment || '');
-    setPhotoFile(null);
-    setDeletePhoto(false);
 
     // Clear animation class after it finishes
     setTimeout(() => {
@@ -663,35 +659,7 @@ const App = () => {
             <div key={habit.id} className="habit-row">
               <div className="habit-name">
                 <span className="habit-text">{habit.name}</span>
-                {(habit.latest_comment || habit.latest_photo) && (
-                  <div className="habit-meta-row">
-                    {habit.latest_comment && (
-                      <div
-                        className="habit-latest-comment"
-                        title={habit.latest_comment}
-                        onClick={() => {
-                          const d = habit.latest_comment_details;
-                          if (d) {
-                            const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow);
-                          }
-                        }}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <span className="comment-indicator-circle"></span>
-                        <span className="comment-text">{habit.latest_comment}</span>
-                      </div>
-                    )}
-                    {habit.latest_photo && (
-                      <img
-                        src={habit.latest_photo}
-                        alt=""
-                        className="habit-thumbnail"
-                        onClick={() => setLightboxUrl(habit.latest_photo)}
-                      />
-                    )}
-                  </div>
-                )}
+                {/* Notes and photos moved to a dedicated container below */}
               </div>
               <div className="habit-row-content">
                 <div className="habit-checks">
@@ -723,7 +691,7 @@ const App = () => {
 
                     const checkBoxBtn = (
                       <button
-                        className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''} ${showDotClass}`}
+                        className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${showDotClass}`}
                         onClick={() => {
                           if (!isDisabled && !longPressTimer) {
                             toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
@@ -745,7 +713,6 @@ const App = () => {
                       >
                         {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
                         {hasComment && <span className="attachment-indicator"></span>}
-                        {hasPhoto && <span className="photo-indicator"></span>}
                       </button>
                     );
 
@@ -791,6 +758,23 @@ const App = () => {
                   </div>
                 </div>
               </div>
+              {habit.latest_comment && (
+                <div 
+                  className="habit-note-container"
+                  onClick={() => {
+                    const d = habit.latest_comment_details;
+                    if (d) {
+                      const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                      openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, d.is_restored);
+                    }
+                  }}
+                >
+                  <div className="habit-note-box">
+                    <span className="habit-note-label">{t('comment')}:</span>
+                    <span className="habit-note-text">{habit.latest_comment}</span>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
@@ -1266,14 +1250,12 @@ const App = () => {
 
     setQuantityValue(initialQuantity);
     setCommentValue(currentComment || '');
-    setPhotoFile(null);
-    setDeletePhoto(false);
     setShowQuantityModal(true);
   };
 
   const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
     const timer = setTimeout(() => {
-      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored);
+      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored);
     }, 200); // 200ms for long press
     setLongPressTimer(timer);
   };
@@ -1303,90 +1285,54 @@ const App = () => {
     try {
       let response;
       const csrf = getCookie('csrftoken');
-      console.log('EntrySubmit: data:', { habitId, dayDate, dateId, qty, commentValue }, 'csrf:', csrf);
+      
+      const payload = {
+        is_done: true,
+        is_restored: isRestored,
+        quantity: qty,
+        comment: commentValue
+      };
 
-      if (photoFile) {
-        const formData = new FormData();
-        formData.append('is_done', 'true');
-        formData.append('is_restored', isRestored ? 'true' : 'false');
-        if (qty !== null) formData.append('quantity', qty);
-        formData.append('comment', commentValue);
-        formData.append('photo', photoFile);
-
-        if (dateId) {
-          response = await fetch(`/api/v1/date/${dateId}/`, {
-            method: 'PATCH',
-            headers: { 'X-CSRFToken': csrf },
-            credentials: 'include',
-            body: formData
-          });
-        } else {
-          formData.append('habit', habitId);
-          formData.append('habit_date', dayDate);
-          response = await fetch(`/api/v1/dates/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrf },
-            credentials: 'include',
-            body: formData
-          });
-        }
+      if (dateId) {
+        response = await fetch(`/api/v1/date/${dateId}/`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
       } else {
-        const payload = {
-          is_done: true,
-          is_restored: isRestored,
-          quantity: qty,
-          comment: commentValue,
-          ...(deletePhoto && { photo: null })
-        };
-
-        if (dateId) {
-          response = await fetch(`/api/v1/date/${dateId}/`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': csrf
-            },
-            credentials: 'include',
-            body: JSON.stringify(payload)
-          });
-        } else {
-          payload.habit = habitId;
-          payload.habit_date = dayDate;
-          response = await fetch(`/api/v1/dates/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': csrf
-            },
-            credentials: 'include',
-            body: JSON.stringify(payload)
-          });
-        }
+        payload.habit = habitId;
+        payload.habit_date = dayDate;
+        response = await fetch(`/api/v1/dates/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
       }
 
       if (!response.ok) {
-        console.error('EntrySubmit response error:', response.status, response.statusText);
-        const errData = await response.json().catch(() => ({}));
-        console.error('Error detail:', errData);
         throw new Error(`API error ${response.status}`);
       }
       setShowQuantityModal(false);
       setQuantityModalData(null);
       setQuantityValue(null);
       setCommentValue('');
-      setPhotoFile(null);
       await fetchHabits();
     } catch (error) {
       console.error('Error saving data:', error);
       alert(`${t('saveDataError')}: ${error.message}`);
-
     } finally {
       setShowQuantityModal(false);
       setQuantityModalData(null);
       setQuantityValue(null);
       setCommentValue('');
-      setPhotoFile(null);
-      setDeletePhoto(false);
     }
   };
 
@@ -2867,8 +2813,6 @@ const App = () => {
           setQuantityModalData(null);
           setQuantityValue(null);
           setCommentValue('');
-          setPhotoFile(null);
-          setDeletePhoto(false);
         }}>
           <div className="modal-content quantity-modal"
             ref={modalContentRef}
@@ -2888,8 +2832,6 @@ const App = () => {
                     setQuantityModalData(null);
                     setQuantityValue(null);
                     setCommentValue('');
-                    setPhotoFile(null);
-                    setDeletePhoto(false);
                   }}
                 >
                   ×
@@ -2970,8 +2912,6 @@ const App = () => {
                     setQuantityModalData(null);
                     setQuantityValue(null);
                     setCommentValue('');
-                    setPhotoFile(null);
-                    setDeletePhoto(false);
                   }}
                 >
                   {t('cancel')}

@@ -14,10 +14,10 @@
 }
 
 .charts-header {
-    margin-bottom: 25px;
+    margin-bottom: 20px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 12px;
 }
 
 .charts-header h2 {
@@ -59,10 +59,10 @@
 }
 
 .current-period-label {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     color: #333;
-    min-width: 120px;
+    min-width: 100px;
     text-align: center;
 }
 
@@ -205,7 +205,22 @@
 
     .charts-header h2 {
         font-size: 18px;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
+    }
+
+    .chart-navigation-controls {
+        gap: 10px;
+    }
+
+    .nav-arrow-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+
+    .current-period-label {
+        font-size: 14px;
+        min-width: 80px;
     }
 
     .selectors-container {
@@ -227,8 +242,14 @@
     }
 
     .chart-wrapper {
-        padding: 10px;
-        min-height: 300px;
+        padding: 5px;
+        min-height: 250px;
+        border-radius: 12px;
+    }
+    
+    .charts-category-filter {
+        padding: 0 5px;
+        gap: 6px;
     }
 }
 
@@ -454,13 +475,45 @@
     }
 }
 
-@media (max-width: 600px) {
-    .comparison-header {
-        flex-direction: column;
-        align-items: flex-start;
+/* ─── Mobile charts additional improvements ─── */
+@media (max-width: 380px) {
+    .charts-container {
+        padding: 8px;
     }
 
-    .comparison-chart-wrapper {
-        margin: 0 -20px;
+    .charts-header h2 {
+        font-size: 16px;
+    }
+
+    .view-btn,
+    .period-btn {
+        padding: 6px 4px;
+        font-size: 11px;
+    }
+
+    .habits-comparison-section {
+        padding: 12px;
+    }
+
+    .comparison-header h3 {
+        font-size: 1rem;
     }
 }
+
+/* ─── Tablet (601px - 1024px) ─── */
+@media (min-width: 601px) and (max-width: 1024px) {
+    .selectors-container {
+        flex-direction: row;
+        flex-wrap: nowrap;
+    }
+
+    .view-selector,
+    .period-selector {
+        width: auto;
+        flex: none;
+    }
+
+    .habits-comparison-section {
+        padding: 20px;
+    }
+}

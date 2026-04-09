@@ -113,6 +113,17 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     const [data, setData] = useState([]);
     const [periodLabel, setPeriodLabel] = useState('');
     const [loading, setLoading] = useState(true);
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const isMobile = windowWidth < 480;
+    const isTablet = windowWidth < 768;
+    const CHART_HEIGHT = isMobile ? 280 : isTablet ? 320 : 350;
 
     const shortenName = (name) => {
         if (name.length > 5) {
@@ -184,8 +195,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
 
     const scrollRef = useRef(null);
     const indicatorRef = useRef(null);
-    const CHART_HEIGHT = 300;
-    const Y_AXIS_WIDTH = 35;
+    const Y_AXIS_WIDTH = isMobile ? 30 : 35;
 
     const handleScroll = (e) => {
         if (!indicatorRef.current) return;
@@ -347,6 +357,17 @@ const Charts = ({
     const [chartData, setChartData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [chartDate, setChartDate] = useState(currentWeekDate);
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const isMobile = windowWidth < 480;
+    const isTablet = windowWidth < 768;
+    const CHART_HEIGHT = isMobile ? 300 : isTablet ? 400 : 500;
     const [periodLabel, setPeriodLabel] = useState('');
 
     const mainScrollRef = useRef(null);
@@ -486,19 +507,19 @@ const Charts = ({
                             className={`period-btn ${period === 'week' ? 'active' : ''}`}
                             onClick={() => setPeriod('week')}
                         >
-                            {t('week')}
+                            {t('weeks')}
                         </button>
                         <button
                             className={`period-btn ${period === 'month' ? 'active' : ''}`}
                             onClick={() => setPeriod('month')}
                         >
-                            {t('month')}
+                            {t('months')}
                         </button>
                         <button
                             className={`period-btn ${period === 'year' ? 'active' : ''}`}
                             onClick={() => setPeriod('year')}
                         >
-                            {t('year')}
+                            {t('years')}
                         </button>
                     </div>
                 </div>
@@ -531,10 +552,10 @@ const Charts = ({
                 <div className="chart-wrapper">
                     <div className="main-chart-scroll-wrapper" onScroll={handleMainScroll} ref={mainScrollRef}>
                         <div className="main-chart-inner" style={{ 
-                            minWidth: period === 'year' ? '600px' : '100%',
+                            minWidth: period === 'year' ? '700px' : (chartData.length > 7 ? `${chartData.length * (isMobile ? 50 : 70)}px` : '100%'),
                             transition: 'min-width 0.3s ease'
                         }}>
-                            <ResponsiveContainer width="100%" height={window.innerWidth < 480 ? 320 : window.innerWidth < 768 ? 400 : 500} style={{ overflow: 'visible' }}>
+                            <ResponsiveContainer width="100%" height={CHART_HEIGHT} style={{ overflow: 'visible' }}>
                                 <BarChart
                                     data={chartData}
                                     margin={{ top: 15, right: 30, left: 0, bottom: 10 }}
