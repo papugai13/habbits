@@ -639,6 +639,7 @@ body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   transition: transform 0.2s;
   line-height: 1;
+  font-size: 16px; /* Slightly larger than before */
 }
 
 .habit-count.has-double-lightning .habit-count-number,
@@ -652,50 +653,22 @@ body {
   transform: translateY(3px) !important;
 }
 
-/* === ЗВЁЗДЫ === */
-
-/* Одиночная звезда (серия 5) */
-.star-single {
-  position: absolute;
-  left: 50%;
-  margin-left: 3px; /* небольшой отступ от цифры */
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 13px;
+/* === ОБЩИЕ СТИЛИ НАГРАД (звезды и молнии) === */
+.award-side {
+  font-size: 11px; /* Emojis smaller than digit */
   line-height: 1;
   z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Двойная звезда с перекрытием (серия 6) */
-.star-double {
-  position: absolute;
-  left: 50%;
-  margin-left: 3px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 18px;
-  height: 16px;
-  z-index: 3;
+.award-left {
+  margin-right: 2px;
 }
 
-.star-left {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 13px;
-  line-height: 1;
-  z-index: 2; /* Левая поверх правой */
-}
-
-.star-right {
-  position: absolute;
-  left: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 13px;
-  line-height: 1;
-  z-index: 1;
+.award-right {
+  margin-left: 2px;
 }
 
 /* === КОРОНА === */
@@ -721,53 +694,7 @@ body {
   font-size: 14px;
 }
 
-/* === МОЛНИИ === */
-
-/* Одиночная молния (серия 3) */
-.lightning-single {
-  position: absolute;
-  left: 50%;
-  margin-left: 3px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 15px;
-  line-height: 1;
-  z-index: 3;
-}
-
-/* Двойная молния с перекрытием (серия 4) */
-.lightning-double {
-  position: absolute;
-  left: 50%;
-  margin-left: 3px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 18px;
-  height: 16px;
-  z-index: 3;
-}
-
-.lightning-left {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 15px;
-  line-height: 1;
-  z-index: 1;
-}
-
-/* Правая молния перекрывает левую на половину */
-.lightning-right {
-  position: absolute;
-  left: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 15px;
-  line-height: 1;
-  z-index: 2;
-}
-
+/* === МОЛНИИ (Legacy removed, using .award-side) === */
 .lightning-item {
   display: inline-block;
   line-height: 1;
