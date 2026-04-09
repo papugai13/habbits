@@ -1915,13 +1915,15 @@ const App = () => {
             <span className="profile-name">{user?.username || t('user')}</span>
           </button>
 
-          <button
-            className="today-btn"
-            title={t('today')}
-            onClick={handleToday}
-          >
-            📅 {t('today')}
-          </button>
+          {activeTab !== 'Settings' && (
+            <button
+              className="today-btn"
+              title={t('today')}
+              onClick={handleToday}
+            >
+              📅 {t('today')}
+            </button>
+          )}
 
           {showProfileMenu && (
             <div className="profile-menu">
@@ -1953,13 +1955,15 @@ const App = () => {
         </div>
 
 
-        <div className="date-section">
-          <div className="week-navigation">
-            <button className="week-nav-btn" onClick={handlePrevWeek}>&lt;</button>
-            <div className="week-range-text">{currentWeekRange()}</div>
-            <button className="week-nav-btn" onClick={handleNextWeek}>&gt;</button>
+        {activeTab !== 'Settings' && (
+          <div className="date-section">
+            <div className="week-navigation">
+              <button className="week-nav-btn" onClick={handlePrevWeek}>&lt;</button>
+              <div className="week-range-text">{currentWeekRange()}</div>
+              <button className="week-nav-btn" onClick={handleNextWeek}>&gt;</button>
+            </div>
           </div>
-        </div>
+        )}
 
         <button
           className="add-btn"

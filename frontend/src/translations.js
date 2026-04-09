@@ -1,7 +1,7 @@
 const translations = {
   ru: {
     // Tabs
-    journals: 'Журналы',
+    journals: 'Треки',
     charts: 'Графики',
     settings: 'Настройки',
 
@@ -199,7 +199,7 @@ const translations = {
   },
   en: {
     // Tabs
-    journals: 'Journals',
+    journals: 'Tracks',
     charts: 'Charts',
     settings: 'Settings',
 
