@@ -309,8 +309,6 @@ const App = () => {
     const weekString = date.toLocaleDateString('en-CA');
 
     // Apply page slide direction class first
-    setSwipeDirection(direction);
-    setTimeout(() => setSwipeDirection(null), 300);
 
     // If cached, show immediately, иначе загрузится параллельно
     if (weekDataCacheRef.current[weekString]) {
@@ -340,15 +338,11 @@ const App = () => {
       setHighlightToday(true);
       setTimeout(() => setHighlightToday(false), 1000);
     } else {
-      // Transition to the current week with animation
-      setIsFadingOut(true);
+      // Transition to the current week
       setTimeout(() => {
         setCurrentWeekDate(targetWeek);
-        setIsFadingOut(false);
-        setIsFadingIn(true);
         setHighlightToday(true);
         setTimeout(() => {
-          setIsFadingIn(false);
           setHighlightToday(false);
         }, 1000);
       }, 250);
@@ -362,7 +356,6 @@ const App = () => {
     swipeStartPos.current = { x: touch.clientX, y: touch.clientY };
     isSwiping.current = false;
     swipeOffsetRef.current = 0;
-    setIsDraggingWeekSwipe(false);
     setSwipeTransitionStyle('none');
     applySwipeOffset(0);
     if (pendingRafRef.current) {
@@ -392,8 +385,6 @@ const App = () => {
     if (distX > 15 && distX > distY) {
       if (!isSwiping.current) {
         isSwiping.current = true;
-        setIsDraggingWeekSwipe(true);
-        setSwipeDirection(diffX > 0 ? 'right' : 'left');
       }
       if (e.cancelable) e.preventDefault();
       swipeOffsetRef.current = diffX;
@@ -409,7 +400,6 @@ const App = () => {
   const handleSwipeEnd = (e) => {
     if (!isSwiping.current) {
       swipeStartPos.current = { x: 0, y: 0 };
-      setIsDraggingWeekSwipe(false);
       setSwipeTransitionStyle('none');
       applySwipeOffset(0);
       return;
@@ -438,7 +428,6 @@ const App = () => {
       const finalOffset = diffX > 0 ? width : -width;
       setSwipeTransitionStyle('transform 0.15s cubic-bezier(0.22, 0.61, 0.36, 1)');
       applySwipeOffset(finalOffset);
-      setIsDraggingWeekSwipe(false);
       if (e.cancelable) e.preventDefault();
       setTimeout(() => {
         goToWeek(targetWeekString, direction);
@@ -448,8 +437,6 @@ const App = () => {
     } else {
       setSwipeTransitionStyle('transform 0.15s cubic-bezier(0.22, 0.61, 0.36, 1)');
       applySwipeOffset(0);
-      setIsDraggingWeekSwipe(false);
-      setSwipeDirection(null);
       setTimeout(() => {
         setSwipeTransitionStyle('none');
       }, 170);
