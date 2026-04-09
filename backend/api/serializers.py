@@ -71,10 +71,12 @@ class AchievementSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     """Сериализатор для отображения и редактирования данных пользователя"""
     age = serializers.CharField(source='user_profile.age', allow_blank=True, required=False)
+    date_of_birth = serializers.DateField(source='user_profile.date_of_birth', allow_null=True, required=False)
+    profile_photo = serializers.ImageField(source='user_profile.profile_photo', allow_null=True, required=False)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'age')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'age', 'date_of_birth', 'profile_photo')
         read_only_fields = ('id',)
 
     def validate_age(self, value):
@@ -90,6 +92,8 @@ class UserSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('user_profile', {})
         age = profile_data.get('age')
+        date_of_birth = profile_data.get('date_of_birth')
+        profile_photo = profile_data.get('profile_photo')
 
         # Update User model
         for attr, value in validated_data.items():
@@ -100,6 +104,10 @@ class UserSerializer(serializers.ModelSerializer):
         profile = instance.user_profile
         if age is not None:
             profile.age = age
+        if date_of_birth is not None:
+            profile.date_of_birth = date_of_birth
+        if profile_photo is not None:
+            profile.profile_photo = profile_photo
         profile.name = instance.username # Keep sync if needed
         profile.save()
 

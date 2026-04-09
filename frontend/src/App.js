@@ -7,6 +7,16 @@ import DrumPicker from './components/DrumPicker';
 import translations from './translations';
 
 
+const getMondayString = (dateInput = new Date()) => {
+  const d = new Date(dateInput);
+  const day = d.getDay();
+  // Adjust logic to find Monday: Sunday(0) -> -6, Monday(1) -> 0, Tuesday(2) -> -1, etc.
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+  return monday.toLocaleDateString('en-CA');
+};
+
+
 const App = () => {
   // Helper to get CSRF token
   function getCookie(name) {
@@ -67,11 +77,11 @@ const App = () => {
   const [editingHabit, setEditingHabit] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
-  const [editProfileData, setEditProfileData] = useState({ username: '', email: '', age: '' });
+  const [editProfileData, setEditProfileData] = useState({ username: '', email: '', age: '', date_of_birth: '', profile_photo: null });
   const [reportData, setReportData] = useState(null);
   const [reportPeriod, setReportPeriod] = useState('day');
   const [isReportLoading, setIsReportLoading] = useState(false);
-  const [currentWeekDate, setCurrentWeekDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [currentWeekDate, setCurrentWeekDate] = useState(getMondayString());
   const weekDataCacheRef = React.useRef({});
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const lightboxTouchStartY = React.useRef(null);
@@ -131,6 +141,18 @@ const App = () => {
   };
 
   const WEEK_DAYS = [t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat'), t('sun')];
+
+  const calculateAge = (birthDate) => {
+    if (!birthDate) return '';
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age.toString();
+  };
 
   const bottomTabs = [
     { id: 'Habits', label: t('journals'), icon: '✔️', disabled: false },
@@ -333,11 +355,7 @@ const App = () => {
   };
 
   const handleToday = () => {
-    const today = new Date();
-    const day = today.getDay();
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Monday
-    const monday = new Date(today.setDate(diff));
-    const targetWeek = monday.toLocaleDateString('en-CA');
+    const targetWeek = getMondayString();
 
     if (currentWeekDate === targetWeek) {
       // Already on the current week, just highlight today
@@ -777,28 +795,21 @@ const App = () => {
                   <div className="habit-count-container">
                     <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''} ${weeklyCount === 3 ? 'has-single-lightning' : ''} ${weeklyCount === 4 ? 'has-double-lightning' : ''} ${weeklyCount === 5 ? 'has-single-star' : ''} ${weeklyCount === 6 ? 'has-double-star' : ''}`}>
                       {weeklyAward === '👑' && (
-                        <span className="crown-top">👑</span>
+                        <span className="crown-top">👑{habit.crown_streak > 1 ? <span className="crown-streak">x{habit.crown_streak}</span> : ''}</span>
                       )}
-                      <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>{weeklyCount}</span>
-                      {weeklyAward && weeklyAward.includes('⚡') && (
-                        weeklyCount >= 4 ? (
-                          <div className="lightning-double">
-                            <span className="lightning-item lightning-left">⚡</span>
-                            <span className="lightning-item lightning-right">⚡</span>
-                          </div>
-                        ) : (
-                          <span className="lightning-item lightning-single">⚡</span>
-                        )
+                      
+                      {/* Left side emoji for double awards */}
+                      {((weeklyCount === 4 && weeklyAward.includes('⚡')) || (weeklyCount === 6 && weeklyAward.includes('⭐'))) && (
+                        <span className="award-side award-left">{weeklyCount === 4 ? '⚡' : '⭐'}</span>
                       )}
-                      {weeklyAward && weeklyAward.includes('⭐') && (
-                        weeklyCount >= 6 ? (
-                          <div className="star-double">
-                            <span className="star-item star-left">⭐</span>
-                            <span className="star-item star-right">⭐</span>
-                          </div>
-                        ) : (
-                          <span className="star-item star-single">⭐</span>
-                        )
+
+                      <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>
+                        {weeklyCount}
+                      </span>
+                      
+                      {/* Right side emoji for all awards 3-6 */}
+                      {weeklyAward && !weeklyAward.includes('👑') && (
+                        <span className="award-side award-right">{weeklyAward.includes('⚡') ? '⚡' : '⭐'}</span>
                       )}
                     </div>
                     <div className="habit-count monthly">
@@ -1773,7 +1784,11 @@ const App = () => {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
 
-    if (editProfileData.age) {
+    // Calculate age from date_of_birth if provided
+    const dataToSend = { ...editProfileData };
+    if (editProfileData.date_of_birth) {
+      dataToSend.age = calculateAge(editProfileData.date_of_birth);
+    } else if (editProfileData.age) {
       const ageNum = parseInt(editProfileData.age, 10);
       if (isNaN(ageNum) || ageNum < 0 || ageNum > 150) {
         alert('Возраст должен быть числом от 0 до 150 лет');
@@ -1783,16 +1798,23 @@ const App = () => {
 
     try {
       const csrf = getCookie('csrftoken');
-      console.log('UpdateProfile: data:', editProfileData, 'csrf:', csrf);
+      console.log('UpdateProfile: data:', dataToSend, 'csrf:', csrf);
+
+      // Use FormData for file upload
+      const formData = new FormData();
+      for (const [key, value] of Object.entries(dataToSend)) {
+        if (value !== null && value !== undefined && value !== '') {
+          formData.append(key, value);
+        }
+      }
 
       const response = await fetch('/api/auth/me/', {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
           'X-CSRFToken': csrf
         },
         credentials: 'include',
-        body: JSON.stringify(editProfileData)
+        body: formData
       });
 
       if (response.ok) {
@@ -1928,18 +1950,24 @@ const App = () => {
             onClick={() => setShowProfileMenu(!showProfileMenu)}
           >
             <div className="profile-avatar">
-              {user?.username?.charAt(0).toUpperCase() || 'U'}
+              {user?.profile_photo ? (
+                <img src={user.profile_photo} alt="Profile" style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%'}} />
+              ) : (
+                user?.username?.charAt(0).toUpperCase() || 'U'
+              )}
             </div>
             <span className="profile-name">{user?.username || t('user')}</span>
           </button>
 
-          <button
-            className="today-btn"
-            title={t('today')}
-            onClick={handleToday}
-          >
-            📅 {t('today')}
-          </button>
+          {activeTab !== 'Settings' && (
+            <button
+              className="today-btn"
+              title={t('today')}
+              onClick={handleToday}
+            >
+              📅 {t('today')}
+            </button>
+          )}
 
           {showProfileMenu && (
             <div className="profile-menu">
@@ -1971,13 +1999,15 @@ const App = () => {
         </div>
 
 
-        <div className="date-section">
-          <div className="week-navigation">
-            <button className="week-nav-btn" onClick={handlePrevWeek}>&lt;</button>
-            <div className="week-range-text">{currentWeekRange()}</div>
-            <button className="week-nav-btn" onClick={handleNextWeek}>&gt;</button>
+        {activeTab !== 'Settings' && (
+          <div className="date-section">
+            <div className="week-navigation">
+              <button className="week-nav-btn" onClick={handlePrevWeek}>&lt;</button>
+              <div className="week-range-text">{currentWeekRange()}</div>
+              <button className="week-nav-btn" onClick={handleNextWeek}>&gt;</button>
+            </div>
           </div>
-        </div>
+        )}
 
         <button
           className="add-btn"
@@ -2094,9 +2124,31 @@ const App = () => {
                 <span className="info-value">{user?.email}</span>
               </div>
               <div className="profile-info-row">
+                <span className="info-label">{t('dateOfBirth')}:</span>
+                <span className="info-value">{user?.date_of_birth ? new Date(user.date_of_birth).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US') : t('notSpecified')}</span>
+              </div>
+              <div className="profile-info-row">
                 <span className="info-label">{t('age')}:</span>
                 <span className="info-value">{user?.age || t('notSpecified')}</span>
-
+              </div>
+              <div className="profile-info-row">
+                <span className="info-label">{t('profilePhoto')}:</span>
+                <span className="info-value">
+                  {user?.profile_photo ? (
+                    <img
+                      src={user.profile_photo}
+                      alt="Profile"
+                      style={{width: '50px', height: '50px', objectFit: 'cover', borderRadius: '50%', cursor: 'pointer', WebkitTapHighlightColor: 'transparent'}}
+                      onClick={() => setLightboxUrl(user.profile_photo)}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        setLightboxUrl(user.profile_photo);
+                      }}
+                    />
+                  ) : (
+                    t('notSpecified')
+                  )}
+                </span>
               </div>
               <button
                 className="btn-secondary btn-small edit-profile-btn"
@@ -2104,7 +2156,9 @@ const App = () => {
                   setEditProfileData({
                     username: user?.username || '',
                     email: user?.email || '',
-                    age: user?.age || ''
+                    age: user?.age || '',
+                    date_of_birth: user?.date_of_birth || '',
+                    profile_photo: null
                   });
                   setShowEditProfileModal(true);
                 }}
@@ -2721,6 +2775,41 @@ const App = () => {
               </div>
 
               <div className="form-group">
+                <label htmlFor="profile-photo">{t('profilePhoto')}</label>
+                <input
+                  id="profile-photo"
+                  type="file"
+                  className="form-input"
+                  accept="image/*"
+                  onChange={(e) => setEditProfileData({ ...editProfileData, profile_photo: e.target.files[0] })}
+                />
+                {user?.profile_photo && (
+                  <div className="current-photo">
+                    <p>{t('currentPhoto')}:</p>
+                    <img src={user.profile_photo} alt="Current profile" style={{width: '100px', height: '100px', objectFit: 'cover', borderRadius: '50%'}} />
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="profile-birthdate">{t('dateOfBirth')}</label>
+                <input
+                  id="profile-birthdate"
+                  type="date"
+                  className="form-input"
+                  value={editProfileData.date_of_birth}
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    setEditProfileData({ 
+                      ...editProfileData, 
+                      date_of_birth: newDate,
+                      age: calculateAge(newDate) // Auto-calculate age
+                    });
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
                 <label htmlFor="profile-age">{t('age')}</label>
                 <input
                   id="profile-age"
@@ -2728,7 +2817,7 @@ const App = () => {
                   className="form-input"
                   placeholder={t('agePlaceholder')}
                   value={editProfileData.age}
-                  onChange={(e) => setEditProfileData({ ...editProfileData, age: e.target.value })}
+                  readOnly // Make age read-only since it's calculated
                 />
               </div>
 

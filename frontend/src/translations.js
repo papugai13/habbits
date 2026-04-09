@@ -1,7 +1,7 @@
 const translations = {
   ru: {
     // Tabs
-    journals: 'Журналы',
+    journals: 'Треки',
     charts: 'Графики',
     settings: 'Настройки',
 
@@ -59,6 +59,9 @@ const translations = {
     archive: 'Архив',
     username: 'Имя пользователя',
     email: 'E-mail',
+    dateOfBirth: 'Дата рождения',
+    profilePhoto: 'Фото профиля',
+    currentPhoto: 'Текущее фото',
     age: 'Возраст',
     agePlaceholder: 'Например: 25',
     save: 'Сохранить',
@@ -203,7 +206,7 @@ const translations = {
   },
   en: {
     // Tabs
-    journals: 'Journals',
+    journals: 'Tracks',
     charts: 'Charts',
     settings: 'Settings',
 
@@ -261,6 +264,9 @@ const translations = {
     archive: 'Archive',
     username: 'Username',
     email: 'E-mail',
+    dateOfBirth: 'Date of Birth',
+    profilePhoto: 'Profile Photo',
+    currentPhoto: 'Current Photo',
     age: 'Age',
     agePlaceholder: 'e.g. 25',
     save: 'Save',

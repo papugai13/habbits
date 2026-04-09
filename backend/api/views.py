@@ -10,6 +10,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -363,12 +364,12 @@ class HabitViewSet(viewsets.ModelViewSet):
             start_date = reference_date - timedelta(days=days_since_monday)
             end_date = start_date + timedelta(days=6)
             
-            # Monthly range
-            start_of_month = date(reference_date.year, reference_date.month, 1)
-            if reference_date.month == 12:
-                next_month = date(reference_date.year + 1, 1, 1)
+            # Monthly range anchored to the start of the week
+            start_of_month = date(start_date.year, start_date.month, 1)
+            if start_date.month == 12:
+                next_month = date(start_date.year + 1, 1, 1)
             else:
-                next_month = date(reference_date.year, reference_date.month + 1, 1)
+                next_month = date(start_date.year, start_date.month + 1, 1)
             end_of_month = next_month - timedelta(days=1)
             
             result = []
@@ -500,6 +501,27 @@ class HabitViewSet(viewsets.ModelViewSet):
                     
                     habit_data['monthly_overflow'] = monthly_overflow
                     habit_data['monthly_total'] = monthly_total
+
+                    # Calculate crown streak (consecutive weeks of 7/7 on-time completions)
+                    crown_streak = 0
+                    temp_week_start = start_date
+                    # Limit lookback to prevent excessive queries
+                    for _ in range(100):
+                        week_completions = Date.objects.filter(
+                            user=user_profile,
+                            habit=habit,
+                            habit_date__range=[temp_week_start, temp_week_start + timedelta(days=6)],
+                            is_done=True,
+                            is_restored=False
+                        ).count()
+                        
+                        if week_completions >= 7:
+                            crown_streak += 1
+                            temp_week_start -= timedelta(days=7)
+                        else:
+                            break
+                    habit_data['crown_streak'] = crown_streak
+                    
                     result.append(habit_data)
                 except Exception as habit_e:
                     import traceback
@@ -1099,6 +1121,7 @@ class LogoutView(APIView):
 class CurrentUserView(APIView):
     """Получение и обновление данных текущего пользователя"""
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]  # Add support for file uploads
     
     @method_decorator(ensure_csrf_cookie)
     def dispatch(self, *args, **kwargs):

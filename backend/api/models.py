@@ -35,6 +35,19 @@ class UserAll(models.Model):
         blank=True
     )
 
+    date_of_birth = models.DateField(
+        verbose_name="Дата рождения",
+        null=True,
+        blank=True
+    )
+
+    profile_photo = models.ImageField(
+        upload_to='profile_photos/',
+        verbose_name="Фото профиля",
+        null=True,
+        blank=True
+    )
+
     slug = models.SlugField(
         unique=True,
         verbose_name="Слаг",
