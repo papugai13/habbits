@@ -283,7 +283,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                 {/* Scrollable chart area (no Y-axis) */}
                 <div className="comparison-scroll-wrapper" onScroll={handleScroll} ref={scrollRef}>
                     <div className="comparison-chart-inner" style={{ minWidth: chartMinWidth }}>
-                        <ResponsiveContainer width="100%" height={CHART_HEIGHT} style={{ overflow: 'visible' }}>
+                        <ResponsiveContainer width="100%" height={CHART_HEIGHT} style={{ overflow: 'hidden' }}>
                             <BarChart data={filteredData} margin={{ top: 40, right: 30, left: 15, bottom: 40 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={document.body.classList.contains('dark-theme') ? "#404040" : "#f0f0f0"} />
                                 <XAxis
@@ -563,7 +563,7 @@ const Charts = ({
                             minWidth: period === 'year' ? '700px' : (chartData.length > 7 ? `${chartData.length * (isMobile ? 50 : 70)}px` : '100%'),
                             transition: 'min-width 0.3s ease'
                         }}>
-                            <ResponsiveContainer width="100%" height={CHART_HEIGHT} style={{ overflow: 'visible' }}>
+                            <ResponsiveContainer width="100%" height={CHART_HEIGHT} style={{ overflow: 'hidden' }}>
                                 <BarChart
                                     data={chartData}
                                     margin={{ top: 15, right: 30, left: 0, bottom: 10 }}
