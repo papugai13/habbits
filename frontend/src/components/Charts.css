@@ -632,6 +632,16 @@
     stroke: #666 !important;
 }
 
+/* ─── Mobile charts additional improvements ─── */
+@media (max-width: 380px) {
+    .charts-container {
+        padding: 8px;
+    }
+
+    .charts-header h2 {
+        font-size: 16px;
+    }
+
     .view-btn,
     .period-btn {
         padding: 6px 4px;
