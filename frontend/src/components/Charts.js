@@ -365,9 +365,7 @@ const Charts = ({
     const [viewType, setViewType] = useState('habits'); // 'habits' or 'quantity'
     const [chartData, setChartData] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [chartDate, setChartDate] = useState(() => {
-        return new Date().toISOString().split('T')[0];
-    });
+    const [chartDate, setChartDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
     useEffect(() => {
@@ -400,6 +398,15 @@ const Charts = ({
         const { scrollLeft, scrollWidth } = e.target;
         const left = (scrollLeft / scrollWidth) * 100;
         mainIndicatorRef.current.style.left = `${left}%`;
+    };
+
+    const handlePeriodChange = (newPeriod) => {
+        setPeriod(newPeriod);
+        if (newPeriod === 'day') {
+            setChartDate(new Date().toISOString().split('T')[0]);
+        } else {
+            setChartDate(currentWeekDate);
+        }
     };
 
     useEffect(() => {
@@ -469,7 +476,9 @@ const Charts = ({
     }, [fetchStatistics]);
 
     useEffect(() => {
-        if (period !== 'day') {
+        if (period === 'day') {
+            setChartDate(new Date().toISOString().split('T')[0]);
+        } else {
             setChartDate(currentWeekDate);
         }
     }, [currentWeekDate, period]);
@@ -531,25 +540,25 @@ const Charts = ({
                     <div className="period-selector">
                         <button
                             className={`period-btn ${period === 'day' ? 'active' : ''}`}
-                            onClick={() => setPeriod('day')}
+                            onClick={() => handlePeriodChange('day')}
                         >
                             {t('days')}
                         </button>
                         <button
                             className={`period-btn ${period === 'week' ? 'active' : ''}`}
-                            onClick={() => setPeriod('week')}
+                            onClick={() => handlePeriodChange('week')}
                         >
                             {t('weeks')}
                         </button>
                         <button
                             className={`period-btn ${period === 'month' ? 'active' : ''}`}
-                            onClick={() => setPeriod('month')}
+                            onClick={() => handlePeriodChange('month')}
                         >
                             {t('months')}
                         </button>
                         <button
                             className={`period-btn ${period === 'year' ? 'active' : ''}`}
-                            onClick={() => setPeriod('year')}
+                            onClick={() => handlePeriodChange('year')}
                         >
                             {t('years')}
                         </button>
