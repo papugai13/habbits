@@ -33,15 +33,19 @@ const getNumericDate = (dateStr) => {
     return `${day}.${month}`;
 };
 
-const CustomXAxisTick = ({ x, y, payload, period }) => {
-    if (!payload || !payload.value) return null;
+const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark }) => {
+    if (!payload || payload.value === undefined || payload.value === null) return null;
 
-    const displayValue = payload.value;
-    const fontSize = period === 'year' ? 9 : 10;
+    let displayValue = String(payload.value);
+    if (isMobile && displayValue.length > 6) {
+        displayValue = `${displayValue.slice(0, 6)}..`;
+    }
+
+    const fontSize = period === 'year' ? (isMobile ? 8 : 9) : (isMobile ? 8 : 10);
 
     return (
         <g transform={`translate(${x},${y})`}>
-            <text x={0} y={0} dy={16} textAnchor="middle" fill={document.body.classList.contains('dark-theme') ? "#E0E0E0" : "#666"} fontSize={fontSize} fontWeight={period === 'week' ? 600 : 500}>
+            <text x={0} y={0} dy={16} textAnchor="middle" fill={isDark ? "#E0E0E0" : "#666"} fontSize={fontSize} fontWeight={period === 'week' ? 600 : 500}>
                 {displayValue}
             </text>
         </g>
@@ -112,7 +116,7 @@ const PercentageBadge = ({ x, y, width, height, value, badgeW, badgeH, fSize }) 
     );
 };
 
-const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCategory, t, language }) => {
+const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCategory, theme, t, language }) => {
     const [data, setData] = useState([]);
     const [periodLabel, setPeriodLabel] = useState('');
     const [loading, setLoading] = useState(true);
@@ -126,6 +130,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
 
     const isMobile = windowWidth < 480;
     const isTablet = windowWidth < 768;
+    const isDark = theme === 'dark' || (theme === 'auto' && document.body.classList.contains('dark-theme'));
     const CHART_HEIGHT = isMobile ? 280 : isTablet ? 320 : 350;
 
     const shortenName = (name) => {
@@ -234,7 +239,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
 
     if (filteredData.length === 0) return null;
 
-    const chartMinWidth = filteredData.length > 5 ? `${filteredData.length * 80}px` : '100%';
+    const chartMinWidth = filteredData.length > 5 ? `${Math.max(filteredData.length * (isMobile ? 55 : 75), 100)}px` : '100%';
     const showScroll = filteredData.length > 5;
 
     const activeKey = viewType === 'habits' ? 'countCapped' : 'countExtra';
@@ -265,7 +270,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
             <div className="comparison-chart-layout">
                 {/* Fixed Y-axis */}
                 <div className="comparison-yaxis-fixed" style={{ width: Y_AXIS_WIDTH, minWidth: Y_AXIS_WIDTH }}>
-                    <ResponsiveContainer width={Y_AXIS_WIDTH} height={CHART_HEIGHT}>
+                    <ResponsiveContainer width={Y_AXIS_WIDTH} height="100%">
                         <BarChart data={yAxisData} margin={{ top: 20, right: 0, left: 0, bottom: 40 }}>
                             <YAxis
                                 stroke="#eee"
@@ -283,13 +288,13 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                 {/* Scrollable chart area (no Y-axis) */}
                 <div className="comparison-scroll-wrapper" onScroll={handleScroll} ref={scrollRef}>
                     <div className="comparison-chart-inner" style={{ minWidth: chartMinWidth }}>
-                        <ResponsiveContainer width="100%" height={CHART_HEIGHT} style={{ overflow: 'visible' }}>
-                            <BarChart data={filteredData} margin={{ top: 40, right: 30, left: 15, bottom: 40 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={document.body.classList.contains('dark-theme') ? "#404040" : "#f0f0f0"} />
+                        <ResponsiveContainer width="100%" height="100%" style={{ overflow: 'visible' }}>
+                            <BarChart data={filteredData} margin={{ top: 40, right: 30, left: 15, bottom: 40 }} barSize={isMobile ? 18 : isTablet ? 22 : 26}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "#404040" : "#f0f0f0"} />
                                 <XAxis
                                     dataKey="shortName"
-                                    stroke={document.body.classList.contains('dark-theme') ? "#666" : "#999"}
-                                    tick={{ fill: document.body.classList.contains('dark-theme') ? "#E0E0E0" : "#666", fontSize: 10 }}
+                                    stroke={isDark ? "#666" : "#999"}
+                                    tick={<CustomXAxisTick period={period} isMobile={isMobile} isDark={isDark} />}
                                     interval={0}
                                     angle={0}
                                     textAnchor="middle"
@@ -352,6 +357,7 @@ const Charts = ({
     sortedCategories,
     selectedCategory,
     onSelectCategory,
+    theme,
     t,
     language
 }) => {
@@ -359,7 +365,9 @@ const Charts = ({
     const [viewType, setViewType] = useState('habits'); // 'habits' or 'quantity'
     const [chartData, setChartData] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [chartDate, setChartDate] = useState(currentWeekDate);
+    const [chartDate, setChartDate] = useState(() => {
+        return new Date().toISOString().split('T')[0];
+    });
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
     useEffect(() => {
@@ -370,7 +378,13 @@ const Charts = ({
 
     const isMobile = windowWidth < 480;
     const isTablet = windowWidth < 768;
+    const isDark = theme === 'dark' || (theme === 'auto' && document.body.classList.contains('dark-theme'));
     const CHART_HEIGHT = isMobile ? 300 : isTablet ? 400 : 500;
+    const xAxisDataKey = period === 'day' ? 'dayMonth' : 'label';
+    const xAxisHeight = isMobile ? (period === 'week' ? 60 : 50) : (period === 'week' ? 60 : 40);
+    const barLabelSize = isMobile ? 10 : isTablet ? 12 : 18;
+    const barCategoryGap = isMobile ? '30%' : '12%';
+    const barGap = isMobile ? 6 : 8;
     const [periodLabel, setPeriodLabel] = useState('');
 
     const mainScrollRef = useRef(null);
@@ -426,10 +440,14 @@ const Charts = ({
                         percentageStr = '0%';
                     }
 
+                    const parsedDate = new Date(item.date);
+                    const dayLabel = String(parsedDate.getDate());
+                    
                     return {
-                        date: item.label,
+                        label: item.label || item.date,
+                        date: item.date,
                         fullDate: item.date,
-                        dayMonth: getNumericDate(item.date),
+                        dayMonth: period === 'day' ? dayLabel : getNumericDate(item.date),
                         countTotal: item.completed_count,
                         countCapped: item.completed_days,
                         countRestored: item.restored_days || 0,
@@ -449,6 +467,12 @@ const Charts = ({
     useEffect(() => {
         fetchStatistics();
     }, [fetchStatistics]);
+
+    useEffect(() => {
+        if (period !== 'day') {
+            setChartDate(currentWeekDate);
+        }
+    }, [currentWeekDate, period]);
 
     const handlePrevPeriod = () => {
         const date = new Date(chartDate);
@@ -560,25 +584,30 @@ const Charts = ({
                 <div className="chart-wrapper">
                     <div className="main-chart-scroll-wrapper" onScroll={handleMainScroll} ref={mainScrollRef}>
                         <div className="main-chart-inner" style={{ 
-                            minWidth: period === 'year' ? '700px' : (chartData.length > 7 ? `${chartData.length * (isMobile ? 50 : 70)}px` : '100%'),
+                            minWidth: period === 'year' ? `${Math.max(700, chartData.length * (isMobile ? 50 : 70))}px` : (chartData.length > 7 ? `${chartData.length * (isMobile ? 50 : 70)}px` : '100%'),
                             transition: 'min-width 0.3s ease'
                         }}>
-                            <ResponsiveContainer width="100%" height={CHART_HEIGHT} style={{ overflow: 'visible' }}>
+                            <ResponsiveContainer width="100%" height="100%" style={{ overflow: 'visible' }}>
                                 <BarChart
                                     data={chartData}
                                     margin={{ top: 15, right: 30, left: 0, bottom: 10 }}
+                                    barCategoryGap={barCategoryGap}
+                                    barGap={barGap}
+                                    barSize={isMobile ? 18 : isTablet ? 22 : 28}
                                 >
-                                    <CartesianGrid strokeDasharray="3 3" stroke={document.body.classList.contains('dark-theme') ? "#404040" : "#e0e0e0"} />
+                                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#404040" : "#e0e0e0"} />
                                     <XAxis
-                                        dataKey="date"
-                                        stroke={document.body.classList.contains('dark-theme') ? "#666" : "#666"}
-                                        tick={<CustomXAxisTick period={period} />}
-                                        height={period === 'week' ? 50 : 30}
+                                        dataKey={xAxisDataKey}
+                                        stroke={isDark ? "#666" : "#666"}
+                                        tick={<CustomXAxisTick period={period} isMobile={isMobile} isDark={isDark} />}
+                                        height={xAxisHeight}
                                         interval={0}
+                                        tickLine={false}
+                                        axisLine={false}
                                     />
                                     <YAxis
-                                        stroke={document.body.classList.contains('dark-theme') ? "#666" : "#666"}
-                                        tick={{ fill: document.body.classList.contains('dark-theme') ? "#E0E0E0" : "#666", fontSize: 12 }}
+                                        stroke={isDark ? "#666" : "#666"}
+                                        tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 12 }}
                                         allowDecimals={false}
                                     />
                                     {viewType === 'habits' ? (
@@ -594,7 +623,7 @@ const Charts = ({
                                             >
                                                 <LabelList
                                                     dataKey="countCapped"
-                                                    content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
+                                                    content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={barLabelSize} />}
                                                 />
                                             </Bar>
                                             <Bar
@@ -608,12 +637,12 @@ const Charts = ({
                                             >
                                                 <LabelList
                                                     dataKey="countRestored"
-                                                    content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
+                                                    content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={barLabelSize} />}
                                                 />
                                                 <LabelList
                                                     dataKey="percentage"
                                                     position="top"
-                                                    content={(props) => <PercentageBadge {...props} />}
+                                                    content={(props) => <PercentageBadge {...props} fSize={isMobile ? 10 : 12} />}
                                                 />
                                             </Bar>
                                         </>
@@ -630,7 +659,7 @@ const Charts = ({
                                         >
                                             <LabelList
                                                 dataKey="countExtra"
-                                                content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={18} />}
+                                                content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={barLabelSize} />}
                                             />
                                         </Bar>
                                     )}
@@ -659,6 +688,7 @@ const Charts = ({
                 viewType={viewType}
                 currentWeekDate={chartDate}
                 selectedCategory={selectedCategory}
+                theme={theme}
                 t={t}
                 language={language}
             />

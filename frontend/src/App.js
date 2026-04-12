@@ -2035,6 +2035,7 @@ const App = () => {
           sortedCategories={sortedCategories}
           selectedCategory={chartsSelectedCategory}
           onSelectCategory={setChartsSelectedCategory}
+          theme={theme}
           t={t}
           language={language}
         />

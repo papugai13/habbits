@@ -1,16 +1,40 @@
 .charts-container {
     padding: 20px;
     width: 100%;
+    min-width: 0;
     flex: 1;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE/Edge */
 }
 
 .charts-container::-webkit-scrollbar {
     display: none; /* Chrome/Safari */
+}
+
+.chart-wrapper,
+.main-chart-scroll-wrapper,
+.comparison-chart-layout,
+.comparison-scroll-wrapper,
+.main-chart-inner,
+.comparison-chart-inner {
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.comparison-chart-layout {
+    display: flex;
+    align-items: stretch;
+    overflow: hidden;
+    flex-wrap: wrap;
+}
+
+.comparison-chart-inner,
+.main-chart-inner {
+    width: 100%;
 }
 
 .charts-header {
@@ -146,6 +170,13 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     position: relative;
     margin-bottom: 20px;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-width: 100%;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
 }
 
 .main-chart-scroll-wrapper {
@@ -153,10 +184,18 @@
     overflow-y: hidden;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    height: 100%;
 }
 
 .main-chart-scroll-wrapper::-webkit-scrollbar {
     display: none;
+}
+
+.main-chart-inner {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .main-scroll-indicator-container {
@@ -250,6 +289,21 @@
     .charts-category-filter {
         padding: 0 5px;
         gap: 6px;
+    }
+
+    .comparison-chart-layout {
+        flex-direction: column;
+    }
+
+    .comparison-yaxis-fixed,
+    .comparison-scroll-wrapper {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .scroll-indicator-container {
+        width: 100%;
+        max-width: 100%;
     }
 }
 
@@ -394,6 +448,8 @@
     display: flex;
     align-items: stretch;
     overflow: hidden;
+    aspect-ratio: 1 / 1;
+    min-height: 320px;
 }
 
 .comparison-yaxis-fixed {
@@ -404,6 +460,7 @@
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.02);
     /* Clip the invisible bar rendered inside so it doesn't show */
     overflow: hidden;
+    height: 100%;
 }
 
 .comparison-scroll-wrapper {
@@ -413,11 +470,19 @@
     padding-bottom: 10px;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    height: 100%;
+    min-height: 0;
 }
 
 .comparison-scroll-wrapper::-webkit-scrollbar {
     display: none;
     /* Chrome, Safari and Opera */
+}
+
+.comparison-chart-inner {
+    transition: min-width 0.3s ease;
+    width: 100%;
+    height: 100%;
 }
 
 .scroll-indicator-container {
