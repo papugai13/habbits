@@ -1150,7 +1150,8 @@ class RegisterView(APIView):
 class LoginView(APIView):
     """Вход в систему"""
     permission_classes = [AllowAny]
-    
+    authentication_classes = []  # Disable CSRF for login
+
     @method_decorator(ensure_csrf_cookie)
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
@@ -1189,17 +1190,21 @@ class LogoutView(APIView):
 
 class CurrentUserView(APIView):
     """Получение и обновление данных текущего пользователя"""
-    permission_classes = [IsAuthenticated]
-    
+    permission_classes = [AllowAny]
+
     @method_decorator(ensure_csrf_cookie)
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
 
     def get(self, request):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
     def patch(self, request):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
         serializer = UserSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()

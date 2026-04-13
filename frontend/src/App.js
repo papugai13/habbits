@@ -1273,7 +1273,7 @@ const App = () => {
 
   const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
     const timer = setTimeout(() => {
-      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored);
+      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored);
     }, 200); // 200ms for long press
     setLongPressTimer(timer);
   };
@@ -2913,14 +2913,33 @@ const App = () => {
 
                     </div>
 
-                    <DrumPicker
-                      value={quantityValue}
-                      min={1}
-                      max={999}
-                      allowNoQuantity={true}
-                      noQuantityLabel="≤1"
-                      onChange={(val) => setQuantityValue(val)}
-                    />
+                    {(() => {
+                      const todayStr = new Date().toLocaleDateString('en-CA');
+                      const isLightGreen = quantityModalData.currentIsRestored || (!quantityModalData.currentStatus && quantityModalData.dayDate < todayStr);
+                      console.log('DEBUG:', { currentIsRestored: quantityModalData.currentIsRestored, currentStatus: quantityModalData.currentStatus, dayDate: quantityModalData.dayDate, todayStr, isLightGreen });
+                      return (
+                        <div>
+                          {isLightGreen ? (
+                            <DrumPicker
+                              value={1}
+                              min={1}
+                              max={1}
+                              allowNoQuantity={false}
+                              onChange={(val) => setQuantityValue(1)}
+                            />
+                          ) : (
+                            <DrumPicker
+                              value={quantityValue}
+                              min={1}
+                              max={999}
+                              allowNoQuantity={true}
+                              noQuantityLabel="≤1"
+                              onChange={(val) => setQuantityValue(val)}
+                            />
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {getDefaultModalQuantity(quantityModalData.currentStatus, quantityModalData.currentIsRestored, quantityModalData.dayDate) !== null && (
                       <div className="preset-column presets-right">
