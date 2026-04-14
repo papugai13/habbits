@@ -134,7 +134,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://self-tracker.ru",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -142,7 +141,7 @@ CORS_ALLOW_CREDENTIALS = True
 # Session settings
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SECURE = not LOCAL  # True in production with HTTPS
+SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
 SESSION_COOKIE_AGE = 1209600  # 2 weeks in seconds
 SESSION_SAVE_EVERY_REQUEST = True  # Extend session on every request
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Keep session after browser close
@@ -150,7 +149,7 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Keep session after browser close
 # CSRF settings
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SECURE = not LOCAL  # True in production with HTTPS
+CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -160,7 +159,6 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000/",
     "http://localhost:8000/",
     "http://127.0.0.1:8000/",
-    "https://self-tracker.ru",
 ]
 
 # Proxy settings for correct absolute URLs on server
