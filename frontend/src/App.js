@@ -1264,7 +1264,9 @@ const App = () => {
   const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
     setQuantityModalData({ habitId, habitName, dayDate, currentStatus, currentQuantity, currentComment, currentPhoto, dateId, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, currentIsRestored: isRestored });
 
-    const initialQuantity = getDefaultModalQuantity(currentStatus, isRestored, dayDate);
+    const initialQuantity = currentQuantity !== null && currentQuantity !== undefined
+      ? currentQuantity
+      : getDefaultModalQuantity(currentStatus, isRestored, dayDate);
 
     setQuantityValue(initialQuantity);
     setCommentValue(currentComment || '');
