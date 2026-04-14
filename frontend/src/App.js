@@ -35,9 +35,18 @@ const App = () => {
   }
 
   const [selectedCategory, setSelectedCategory] = useState('Все');
-  const [activeTab, setActiveTab] = useState('Habits');
-  const [language, setLanguage] = useState(localStorage.getItem('language') || 'ru');
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'auto');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === 'undefined') return 'Habits';
+    return localStorage.getItem('habbits_activeTab') || 'Habits';
+  });
+  const [language, setLanguage] = useState(() => {
+    if (typeof window === 'undefined') return 'ru';
+    return localStorage.getItem('language') || 'ru';
+  });
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === 'undefined') return 'auto';
+    return localStorage.getItem('theme') || 'auto';
+  });
 
   const [habitsData, setHabitsData] = useState([]);
 
@@ -118,7 +127,14 @@ const App = () => {
   // Archive state
   const [archivedHabits, setArchivedHabits] = useState([]);
   const [showArchive, setShowArchive] = useState(false);
-  const [collapsedCategories, setCollapsedCategories] = useState({});
+  const [collapsedCategories, setCollapsedCategories] = useState(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      return JSON.parse(localStorage.getItem('habbits_collapsedCategories') || '{}');
+    } catch {
+      return {};
+    }
+  });
 
   // Drag-and-drop state
   const [draggedHabitId, setDraggedHabitId] = useState(null);
@@ -320,6 +336,16 @@ const App = () => {
       return () => clearInterval(interval);
     }
   }, [theme]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('habbits_activeTab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('habbits_collapsedCategories', JSON.stringify(collapsedCategories));
+  }, [collapsedCategories]);
 
   const goToWeek = (weekDate, direction) => {
     const date = new Date(weekDate);
