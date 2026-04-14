@@ -2913,33 +2913,14 @@ const App = () => {
 
                     </div>
 
-                    {(() => {
-                      const todayStr = new Date().toLocaleDateString('en-CA');
-                      const isLightGreen = quantityModalData.currentIsRestored || (!quantityModalData.currentStatus && quantityModalData.dayDate < todayStr);
-                      console.log('DEBUG:', { currentIsRestored: quantityModalData.currentIsRestored, currentStatus: quantityModalData.currentStatus, dayDate: quantityModalData.dayDate, todayStr, isLightGreen });
-                      return (
-                        <div>
-                          {isLightGreen ? (
-                            <DrumPicker
-                              value={1}
-                              min={1}
-                              max={1}
-                              allowNoQuantity={false}
-                              onChange={(val) => setQuantityValue(1)}
-                            />
-                          ) : (
-                            <DrumPicker
-                              value={quantityValue}
-                              min={1}
-                              max={999}
-                              allowNoQuantity={true}
-                              noQuantityLabel="≤1"
-                              onChange={(val) => setQuantityValue(val)}
-                            />
-                          )}
-                        </div>
-                      );
-                    })()}
+                    <DrumPicker
+                      value={quantityValue}
+                      min={1}
+                      max={999}
+                      allowNoQuantity={true}
+                      noQuantityLabel="≤1"
+                      onChange={(val) => setQuantityValue(val)}
+                    />
 
                     {getDefaultModalQuantity(quantityModalData.currentStatus, quantityModalData.currentIsRestored, quantityModalData.dayDate) !== null && (
                       <div className="preset-column presets-right">
