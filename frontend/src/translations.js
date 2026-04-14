@@ -201,7 +201,9 @@ const translations = {
     savePdf: 'Сохранить PDF',
     noQuantity: 'Без количества',
     progress: 'Прогресс',
-    viewPhoto: 'Просмотр фото'
+    viewPhoto: 'Просмотр фото',
+    collapse: 'Свернуть',
+    expand: 'Развернуть'
   },
   en: {
     // Tabs
@@ -405,7 +407,9 @@ const translations = {
     savePdf: 'Save PDF',
     noQuantity: 'No quantity',
     progress: 'Progress',
-    viewPhoto: 'View photo'
+    viewPhoto: 'View photo',
+    collapse: 'Collapse',
+    expand: 'Expand'
   }
 };
 
