@@ -3675,6 +3675,76 @@ body {
   color: #FFFFFF;
   border-color: #059669;
 }
+
+.dark-theme .category-group {
+  background: #1f2937;
+}
+
+.dark-theme .category-group.collapsed {
+  background: #111827;
+}
+
+.dark-theme .category-group-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark-theme .category-collapse-btn {
+  color: #d1d5db;
+}
+
+.dark-theme .category-collapse-btn:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark-theme .category-group-title,
+.dark-theme .category-habit-count {
+  color: #E5E7EB;
+}
+
+.dark-theme .habit-row {
+  background-color: transparent;
+}
+
+.dark-theme .habit-row-content {
+  background: transparent;
+}
+
+.dark-theme .habit-checks {
+  background: transparent;
+}
+
+.dark-theme .habit-counts-wrapper {
+  color: #E5E7EB;
+}
+
+.dark-theme .habit-note-container {
+  background: transparent;
+}
+
+.dark-theme .bottom-nav {
+  background-color: #1f2937;
+}
+
+.dark-theme .nav-item {
+  color: #E5E7EB;
+}
+
+.dark-theme .nav-item.disabled {
+  opacity: 0.6;
+}
+
+.dark-theme .nav-item.active .nav-icon {
+  background-color: #059669;
+}
+
+.dark-theme .nav-icon {
+  color: #d1d5db;
+}
+
+.dark-theme .nav-label {
+  color: #9ca3af;
+}
+
 .dark-theme .habit-note-box {
   background-color: #1f2937;
   border-left-color: #22c55e;
