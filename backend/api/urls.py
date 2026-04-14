@@ -22,14 +22,3 @@ urlpatterns = [
     path('auth/me/', views.CurrentUserView.as_view(), name='current-user'),
     path('', include(router_v1.urls)),
 ]
-
-
-from django.urls import path
-
-def trigger_error(request):
-    division_by_zero = 1 / 0
-
-urlpatterns = [
-    path('sentry-debug/', trigger_error),
-    # ...
-]
