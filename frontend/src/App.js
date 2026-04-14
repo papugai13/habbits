@@ -1064,7 +1064,9 @@ const App = () => {
       const newList = [...prevList];
       const [removed] = newList.splice(draggedIndex, 1);
       newList.splice(targetIndex, 0, removed);
-      return newList;
+      
+      // Update order field to match new positions
+      return newList.map((c, index) => ({ ...c, order: index }));
     });
   };
 
@@ -1398,29 +1400,21 @@ const App = () => {
     );
   };
 
-  // Sort and filter categories
+  // Sort and filter categories by order from database
   const sortedCategories = React.useMemo(() => {
-    const counts = habitsData.reduce((acc, habit) => {
-      acc[habit.category_name] = (acc[habit.category_name] || 0) + 1;
-      return acc;
-    }, {});
-
-    const sorted = [...categories].filter(c => c.id !== 'all' && c.name !== 'Все').sort((a, b) => {
-      const countA = counts[a.name] || 0;
-      const countB = counts[b.name] || 0;
-      return countB - countA;
-    });
+    // Sort by order field (from backend), default to 0 if not set
+    const sorted = [...categories]
+      .filter(c => c.id !== 'all' && c.id !== 'none')
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     const hasUncategorized = habitsData.some(h => !h.category_name);
-    const result = [{ id: 'all', name: 'Все' }];
+    const result = [{ id: 'all', name: 'Все', order: -2 }];
     if (hasUncategorized) {
-      result.push({ id: 'none', name: 'Без категории' });
+      result.push({ id: 'none', name: 'Без категории', order: -1 });
     }
 
     return [...result, ...sorted];
   }, [categories, habitsData]);
-
-
 
   // Authentication handlers
   const handleLogin = (userData) => {
