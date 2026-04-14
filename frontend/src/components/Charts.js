@@ -55,8 +55,8 @@ const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark }) => {
 const CustomBarLabel = ({ x, y, width, height, value, color, baseSize = 14 }) => {
     if (!value || value <= 0) return null;
 
-    // Adjust font size if bar is too small
-    const fontSize = height < 20 ? Math.max(8, baseSize - 4) : baseSize;
+    // For horizontal bars, width is the bar length, height is the bar thickness
+    const fontSize = width < 25 ? Math.max(8, baseSize - 4) : baseSize;
 
     return (
         <text
@@ -97,8 +97,30 @@ const CustomBarShape = (props) => {
 const PercentageBadge = ({ x, y, width, height, value, badgeW, badgeH, fSize }) => {
     if (!value || value === '0%') return null;
     const fs = fSize || 16;
+    // For horizontal bars, place to the right of the bar
+    const cx = x + width + 15;
+    const cy = y + height / 2;
+    return (
+        <text
+            x={cx}
+            y={cy}
+            fill="#22c55e"
+            textAnchor="start"
+            dominantBaseline="middle"
+            fontSize={fs}
+            fontWeight={800}
+            style={{ pointerEvents: 'none' }}
+        >
+            {value}
+        </text>
+    );
+};
+
+const PercentageBadgeVertical = ({ x, y, width, height, value, badgeW, badgeH, fSize }) => {
+    if (!value || value === '0%') return null;
+    const fs = fSize || 16;
     const cx = x + width / 2;
-    // place percentage label slightly above bar top without background
+    // place percentage label slightly above bar top
     const cy = y - 12;
     return (
         <text
@@ -131,7 +153,6 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     const isMobile = windowWidth < 480;
     const isTablet = windowWidth < 768;
     const isDark = theme === 'dark' || (theme === 'auto' && document.body.classList.contains('dark-theme'));
-    const CHART_HEIGHT = isMobile ? 280 : isTablet ? 320 : 350;
 
     const shortenName = (name) => {
         if (name.length > 5) {
@@ -143,30 +164,117 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     useEffect(() => {
         const fetchComparisonData = async () => {
             setLoading(true);
+            
+            // For week period, fetch 7 days of data and aggregate on frontend
+            if (period === 'week') {
+                const habitMap = new Map();
+                const endDate = new Date(currentWeekDate);
+                const startDate = new Date(endDate);
+                startDate.setDate(startDate.getDate() - 6);
+                
+                // Fetch each day's data
+                const promises = [];
+                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                    const dayStr = d.toISOString().split('T')[0];
+                    promises.push(
+                        fetch(`/api/v1/habits/habit_comparison/?period=day&date=${dayStr}&category=${selectedCategory || 'Все'}`, {
+                            credentials: 'include'
+                        }).then(res => res.json())
+                    );
+                }
+                
+                try {
+                    const results = await Promise.all(promises);
+                    
+                    // Aggregate all 7 days
+                    results.forEach(result => {
+                        if (result.habits) {
+                            result.habits.forEach(item => {
+                                if (!habitMap.has(item.id)) {
+                                    habitMap.set(item.id, {
+                                        id: item.id,
+                                        name: item.name,
+                                        shortName: shortenName(item.name),
+                                        countCapped: 0,
+                                        countRestored: 0,
+                                        countExtra: 0
+                                    });
+                                }
+                                const habit = habitMap.get(item.id);
+                                habit.countCapped += (item.completed_days || 0);
+                                habit.countRestored += (item.restored_days || 0);
+                                habit.countExtra += (item.extra_quantity || 0);
+                            });
+                        }
+                    });
+                    
+                    const totalDaysInPeriod = 7;
+                    const formatted = Array.from(habitMap.values()).map(item => {
+                        const rawPercent = totalDaysInPeriod > 0 
+                            ? (item.countCapped / totalDaysInPeriod) * 100 
+                            : 0;
+                        const roundedPercent = Math.round(rawPercent);
+                        const finalPercent = (item.countCapped > 0 && roundedPercent === 0) ? 1 : roundedPercent;
+                        const percentageStr = `${finalPercent}%`;
+
+                        return {
+                            id: item.id,
+                            name: item.name,
+                            shortName: item.shortName,
+                            countCapped: item.countCapped,
+                            countRestored: item.countRestored,
+                            countExtra: item.countExtra,
+                            percentage: percentageStr
+                        };
+                    });
+                    
+                    setPeriodLabel(generatePeriodLabel(period, currentWeekDate, t));
+                    setData(formatted);
+                } catch (error) {
+                    console.error(`Error fetching comparison data:`, error);
+                } finally {
+                    setLoading(false);
+                }
+                return;
+            }
+            
+            // For other periods (day, month, year), use normal API call
+            const apiDate = new Date(currentWeekDate);
+            if (period === 'month') {
+                apiDate.setDate(1);
+                apiDate.setHours(0, 0, 0, 0);
+            } else if (period === 'year') {
+                apiDate.setMonth(0, 1);
+                apiDate.setHours(0, 0, 0, 0);
+            } else {
+                apiDate.setHours(0, 0, 0, 0);
+            }
+            const dateStr = apiDate.toISOString().split('T')[0];
+            
             try {
-                const response = await fetch(`/api/v1/habits/habit_comparison/?period=${period}&date=${currentWeekDate}&category=${selectedCategory || 'Все'}`, {
+                const response = await fetch(`/api/v1/habits/habit_comparison/?period=${period}&date=${dateStr}&category=${selectedCategory || 'Все'}`, {
                     credentials: 'include'
                 });
                 if (response.ok) {
                     const json = await response.json();
                     setPeriodLabel(generatePeriodLabel(period, currentWeekDate, t));
+                    
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
 
-                    const periodStartDate = new Date(currentWeekDate);
-                    if (period === 'week') {
-                        const day = periodStartDate.getDay();
-                        const diff = periodStartDate.getDate() - (day === 0 ? 6 : day - 1);
-                        periodStartDate.setDate(diff);
-                    } else if (period === 'month') {
+                    const periodStartDate = new Date(dateStr);
+                    if (period === 'month') {
                         periodStartDate.setDate(1);
+                        periodStartDate.setHours(0, 0, 0, 0);
                     } else if (period === 'year') {
                         periodStartDate.setMonth(0, 1);
+                        periodStartDate.setHours(0, 0, 0, 0);
+                    } else if (period === 'day') {
+                        periodStartDate.setHours(0, 0, 0, 0);
                     }
-                    periodStartDate.setHours(0, 0, 0, 0);
 
-                    const totalDaysInPeriod = period === 'week' 
-                        ? 7 
+                    const totalDaysInPeriod = period === 'day'
+                        ? 1
                         : period === 'month' 
                             ? new Date(periodStartDate.getFullYear(), periodStartDate.getMonth() + 1, 0).getDate() 
                             : (periodStartDate.getFullYear() % 4 === 0 ? 366 : 365);
@@ -203,7 +311,6 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
 
     const scrollRef = useRef(null);
     const indicatorRef = useRef(null);
-    const Y_AXIS_WIDTH = isMobile ? 30 : 35;
 
     const handleScroll = (e) => {
         if (!indicatorRef.current) return;
@@ -220,6 +327,9 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
             return ((item.countCapped || 0) + (item.countRestored || 0)) > 0;
         });
     }, [data, viewType]);
+
+    // Dynamic height based on data count for horizontal bars
+    const chartHeight = useMemo(() => Math.max(200, filteredData.length * 40), [filteredData.length]);
 
     // Initialize indicator width
     useEffect(() => {
@@ -243,22 +353,17 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     const showScroll = filteredData.length > 5;
 
     const activeKey = viewType === 'habits' ? 'countCapped' : 'countExtra';
-    
-    // Calculate the maximum height of the bars
-    const maxHeight = filteredData.reduce((m, d) => {
-        const height = viewType === 'habits' 
-            ? (d.countCapped || 0) + (d.countRestored || 0) + 1 // + 1 to account for the percentage label space roughly
+
+    // Calculate the maximum value for the X-axis domain (horizontal bars)
+    const maxValue = filteredData.reduce((m, d) => {
+        const value = viewType === 'habits'
+            ? (d.countCapped || 0) + (d.countRestored || 0)
             : (d.countExtra || 0);
-        return Math.max(m, height);
+        return Math.max(m, value);
     }, 0);
 
-    // Ensure we have some space above for the label
-    const effectiveMax = viewType === 'habits' 
-        ? Math.max(7, Math.ceil(maxHeight / 7) * 7 + (maxHeight > 5 ? 7 : 0))
-        : Math.max(7, Math.ceil(maxHeight / 7) * 7);
-
-    // Build a minimal dummy dataset with the same max value for the Y-axis ghost chart
-    const yAxisData = [{ [activeKey]: effectiveMax }];
+    // Ensure we have some space for the label
+    const effectiveMax = Math.max(7, Math.ceil(maxValue / 7) * 7 + (maxValue > 5 ? 7 : 0));
 
     return (
         <div className="habits-comparison-section">
@@ -267,62 +372,52 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                 <span className="comparison-period">{periodLabel}</span>
             </div>
 
-            <div className="comparison-chart-layout">
-                {/* Fixed Y-axis */}
-                <div className="comparison-yaxis-fixed" style={{ width: Y_AXIS_WIDTH, minWidth: Y_AXIS_WIDTH }}>
-                    <ResponsiveContainer width={Y_AXIS_WIDTH} height="100%">
-                        <BarChart data={yAxisData} margin={{ top: 20, right: 0, left: 0, bottom: 40 }}>
-                            <YAxis
-                                stroke="#eee"
-                                tick={{ fill: '#999', fontSize: 10 }}
-                                allowDecimals={false}
-                                width={Y_AXIS_WIDTH}
-                                domain={[0, effectiveMax]}
-                                tickCount={8}
-                            />
-                            <Bar dataKey={activeKey} fill="transparent" isAnimationActive={false} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-
-                {/* Scrollable chart area (no Y-axis) */}
+            <div className="comparison-chart-layout horizontal">
+                {/* Scrollable chart area for horizontal bars */}
                 <div className="comparison-scroll-wrapper" onScroll={handleScroll} ref={scrollRef}>
                     <div className="comparison-chart-inner" style={{ minWidth: chartMinWidth }}>
-                        <ResponsiveContainer width="100%" height="100%" style={{ overflow: 'visible' }}>
-                            <BarChart data={filteredData} margin={{ top: 40, right: 30, left: 15, bottom: 40 }} barSize={isMobile ? 18 : isTablet ? 22 : 26}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "#404040" : "#f0f0f0"} />
+                        <ResponsiveContainer width="100%" height={chartHeight} style={{ overflow: 'visible' }}>
+                            <BarChart data={filteredData} layout="vertical" margin={{ top: 10, right: 30, left: 10, bottom: 10 }} barSize={isMobile ? 18 : isTablet ? 22 : 26}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={isDark ? "#404040" : "#f0f0f0"} />
                                 <XAxis
+                                    type="number"
+                                    domain={[0, effectiveMax]}
+                                    tickCount={8}
+                                    stroke={isDark ? "#666" : "#999"}
+                                    tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 10 }}
+                                    allowDecimals={false}
+                                />
+                                <YAxis
+                                    type="category"
                                     dataKey="shortName"
                                     stroke={isDark ? "#666" : "#999"}
-                                    tick={<CustomXAxisTick period={period} isMobile={isMobile} isDark={isDark} />}
+                                    tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 10 }}
                                     interval={0}
-                                    angle={0}
-                                    textAnchor="middle"
+                                    width={60}
                                 />
-                                <YAxis hide domain={[0, effectiveMax]} tickCount={8} />
 
                                 {viewType === 'habits' ? (
                                     <>
-                                        <Bar dataKey="countCapped" stackId="a" fill="#059669" radius={[4, 4, 0, 0]} name={t('completed')} isAnimationActive={false} shape={<CustomBarShape />}>
+                                        <Bar dataKey="countCapped" stackId="a" fill="#059669" radius={[0, 4, 4, 0]} name={t('completed')} isAnimationActive={false}>
                                             <LabelList
                                                 dataKey="countCapped"
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
                                             />
                                         </Bar>
-                                        <Bar dataKey="countRestored" stackId="a" fill="#6EE7B7" radius={[4, 4, 0, 0]} name={t('restored')} isAnimationActive={false} shape={<CustomBarShape />}>
+                                        <Bar dataKey="countRestored" stackId="a" fill="#6EE7B7" radius={[0, 4, 4, 0]} name={t('restored')} isAnimationActive={false}>
                                             <LabelList
                                                 dataKey="countRestored"
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
                                             />
                                             <LabelList
                                                 dataKey="percentage"
-                                                position="top"
+                                                position="right"
                                                 content={(props) => <PercentageBadge {...props} badgeW={40} badgeH={20} fSize={11} />}
                                             />
                                         </Bar>
                                     </>
                                 ) : (
-                                    <Bar dataKey="countExtra" fill="#8B5CF6" radius={[4, 4, 0, 0]} name={t('quantity')} isAnimationActive={false} shape={<CustomBarShape />}>
+                                    <Bar dataKey="countExtra" fill="#8B5CF6" radius={[0, 4, 4, 0]} name={t('quantity')} isAnimationActive={false}>
                                         <LabelList
                                             dataKey="countExtra"
                                             content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
@@ -377,7 +472,7 @@ const Charts = ({
     const isMobile = windowWidth < 480;
     const isTablet = windowWidth < 768;
     const isDark = theme === 'dark' || (theme === 'auto' && document.body.classList.contains('dark-theme'));
-    const CHART_HEIGHT = isMobile ? 300 : isTablet ? 400 : 500;
+    const CHART_HEIGHT = isMobile ? 400 : isTablet ? 500 : 650;
     const xAxisDataKey = period === 'day' ? 'dayMonth' : 'label';
     const xAxisHeight = isMobile ? (period === 'week' ? 60 : 50) : (period === 'week' ? 60 : 40);
     const barLabelSize = isMobile ? 10 : isTablet ? 12 : 18;
@@ -476,16 +571,17 @@ const Charts = ({
     }, [fetchStatistics]);
 
     useEffect(() => {
-        if (period === 'day') {
-            setChartDate(new Date().toISOString().split('T')[0]);
-        } else {
+        // Only sync date from parent when NOT in day mode (day mode manages its own date)
+        if (period !== 'day') {
             setChartDate(currentWeekDate);
         }
     }, [currentWeekDate, period]);
 
     const handlePrevPeriod = () => {
         const date = new Date(chartDate);
-        if (period === 'week') {
+        if (period === 'day') {
+            date.setDate(date.getDate() - 1);
+        } else if (period === 'week') {
             date.setDate(date.getDate() - 7);
         } else if (period === 'month') {
             date.setMonth(date.getMonth() - 1);
@@ -497,7 +593,9 @@ const Charts = ({
 
     const handleNextPeriod = () => {
         const date = new Date(chartDate);
-        if (period === 'week') {
+        if (period === 'day') {
+            date.setDate(date.getDate() + 1);
+        } else if (period === 'week') {
             date.setDate(date.getDate() + 7);
         } else if (period === 'month') {
             date.setMonth(date.getMonth() + 1);
@@ -651,14 +749,13 @@ const Charts = ({
                                                 <LabelList
                                                     dataKey="percentage"
                                                     position="top"
-                                                    content={(props) => <PercentageBadge {...props} fSize={isMobile ? 10 : 12} />}
+                                                    content={(props) => <PercentageBadgeVertical {...props} fSize={isMobile ? 10 : 12} />}
                                                 />
                                             </Bar>
                                         </>
                                     ) : (
                                         <Bar
                                             dataKey="countExtra"
-                                            stackId="a"
                                             fill="#8B5CF6"
                                             radius={[8, 8, 0, 0]}
                                             animationDuration={500}

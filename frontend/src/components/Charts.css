@@ -171,12 +171,21 @@
     position: relative;
     margin-bottom: 20px;
     width: 100%;
-    aspect-ratio: 1 / 1;
     max-width: 100%;
-    min-height: 300px;
+    min-height: 400px;
+    height: auto;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
+}
+
+/* Top chart specific - reduce bar gaps */
+.chart-wrapper .recharts-bar-category-gap {
+    gap: 8%;
+}
+
+.chart-wrapper .recharts-bar-gap {
+    gap: 4px;
 }
 
 .main-chart-scroll-wrapper {
@@ -444,6 +453,7 @@
     border-radius: 20px;
 }
 
+/* ===== Vertical Chart (Default) ===== */
 .comparison-chart-layout {
     display: flex;
     align-items: stretch;
@@ -452,18 +462,17 @@
     min-height: 320px;
 }
 
-.comparison-yaxis-fixed {
+.comparison-chart-layout .comparison-yaxis-fixed {
     flex-shrink: 0;
     position: relative;
     z-index: 10;
     background: white;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.02);
-    /* Clip the invisible bar rendered inside so it doesn't show */
     overflow: hidden;
     height: 100%;
 }
 
-.comparison-scroll-wrapper {
+.comparison-chart-layout .comparison-scroll-wrapper {
     flex: 1;
     overflow-x: auto;
     overflow-y: hidden;
@@ -472,6 +481,30 @@
     -ms-overflow-style: none;
     height: 100%;
     min-height: 0;
+}
+
+/* ===== Horizontal Chart ===== */
+.comparison-chart-layout.horizontal {
+    flex-direction: column;
+    aspect-ratio: auto;
+    min-height: auto;
+}
+
+.comparison-chart-layout.horizontal .comparison-yaxis-fixed {
+    display: none;
+}
+
+.comparison-chart-layout.horizontal .comparison-scroll-wrapper {
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-bottom: 0;
+    padding-right: 10px;
+    height: auto;
+    min-height: 0;
+}
+
+.comparison-chart-layout.horizontal .comparison-chart-inner {
+    min-width: 100%;
 }
 
 .comparison-scroll-wrapper::-webkit-scrollbar {
@@ -668,6 +701,10 @@
 }
 
 .dark-theme .scroll-indicator-container {
+    background: #404040;
+}
+
+.dark-theme .comparison-chart-layout.horizontal .scroll-indicator-container {
     background: #404040;
 }
 
