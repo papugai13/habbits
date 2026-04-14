@@ -640,7 +640,7 @@ const App = () => {
             })}
           </div>
           <div className="days-placeholder-end header-counts-container">
-            <div className="header-count-badge weekly">{t('week').substring(0, 3).toUpperCase()}</div>
+            <div className="header-count-badge weekly">{t('week').substring(0, 3).toUpperCase()} {getWeekNumber(currentWeekDate)}</div>
             <div className="header-count-badge monthly">{t('month').substring(0, 3).toUpperCase()}</div>
           </div>
         </div>
@@ -1398,6 +1398,18 @@ const App = () => {
     return categoryName || t('noCategory');
   };
 
+  // Get week number of the year (ISO week date)
+  const getWeekNumber = (dateInput) => {
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    if (!(date instanceof Date) || isNaN(date)) return 1;
+    
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  };
+
   const toggleCategoryCollapse = (categoryName) => {
     setCollapsedCategories((prev) => ({
       ...prev,
@@ -1977,7 +1989,7 @@ const App = () => {
           <div className="date-section">
             <div className="week-navigation">
               <button className="week-nav-btn" onClick={handlePrevWeek}>&lt;</button>
-              <div className="week-range-text">{currentWeekRange()}</div>
+              <div className="week-range-text">{t('week')} №{getWeekNumber(currentWeekDate)}</div>
               <button className="week-nav-btn" onClick={handleNextWeek}>&gt;</button>
             </div>
           </div>
