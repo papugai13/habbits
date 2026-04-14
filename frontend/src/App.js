@@ -118,6 +118,7 @@ const App = () => {
   // Archive state
   const [archivedHabits, setArchivedHabits] = useState([]);
   const [showArchive, setShowArchive] = useState(false);
+  const [collapsedCategories, setCollapsedCategories] = useState({});
 
   // Drag-and-drop state
   const [draggedHabitId, setDraggedHabitId] = useState(null);
@@ -587,6 +588,30 @@ const App = () => {
     const todayStr = new Date().toLocaleDateString('en-CA');
     const pageHabitsData = getWeekData(weekDate);
 
+    const filteredHabits = pageHabitsData.filter(habit => {
+      if (selectedCategory === 'Все') return true;
+      if (selectedCategory === 'Без категории') return !habit.category_name;
+      return habit.category_name === selectedCategory;
+    });
+
+    const groupedHabits = filteredHabits.reduce((acc, habit) => {
+      const categoryKey = habit.category_name || 'Без категории';
+      if (!acc[categoryKey]) acc[categoryKey] = [];
+      acc[categoryKey].push(habit);
+      return acc;
+    }, {});
+
+    const categoryOrder = selectedCategory === 'Все'
+      ? sortedCategories.map((cat) => cat.name).filter((name) => name !== 'Все')
+      : [selectedCategory];
+
+    const orderedCategories = [
+      ...new Set([
+        ...categoryOrder,
+        ...Object.keys(groupedHabits)
+      ])
+    ].filter((name) => name !== 'Все');
+
     return (
       <div className="habits-container">
         <div className="days-header">
@@ -620,179 +645,168 @@ const App = () => {
           </div>
         </div>
 
-        {pageHabitsData.filter(habit => {
-          if (selectedCategory === 'Все') return true;
-          if (selectedCategory === 'Без категории') return !habit.category_name;
-          return habit.category_name === selectedCategory;
-        }).map((habit) => {
-          const weeklyCount = getHabitCount(habit);
-          const weeklyAward = getWeeklyAward(weeklyCount);
-          const statuses = habit.statuses || [];
+        {orderedCategories.length === 0 && (
+          <div className="no-habits-msg">{t('noHabitsInCategory')}</div>
+        )}
 
-          const getStreakInfo = (stats, habit) => {
-            let lastMark = -1;
-            if (!stats || !Array.isArray(stats)) return { lastMark: -1, isLastMarkInStreak: false };
-
-            for (let i = stats.length - 1; i >= 0; i--) {
-              if (stats[i] && stats[i].is_done) {
-                lastMark = i;
-                break;
-              }
-            }
-
-            let isLastMarkInStreak = false;
-            if (lastMark >= 1) {
-              isLastMarkInStreak = (stats[lastMark].is_done && !stats[lastMark].is_restored) &&
-                (stats[lastMark - 1].is_done && !stats[lastMark - 1].is_restored);
-            } else if (lastMark === 0) {
-              isLastMarkInStreak = (stats[0].is_done && !stats[0].is_restored) && habit.prev_week_sun_done;
-            } else if (lastMark === -1) {
-              isLastMarkInStreak = habit.prev_week_sun_done && habit.prev_week_sat_done;
-            }
-
-            const today = new Date();
-            const baseDate = new Date(currentWeekDate);
-            const displayedWeekStarts = baseDate;
-            const nextWeekStarts = new Date(baseDate);
-            nextWeekStarts.setDate(baseDate.getDate() + 7);
-
-            let comparisonIndex = -1;
-            if (today >= displayedWeekStarts && today < nextWeekStarts) {
-              const day = today.getDay();
-              comparisonIndex = day === 0 ? 6 : day - 1;
-            } else if (today >= nextWeekStarts) {
-              comparisonIndex = 6;
-            }
-
-            if (comparisonIndex !== -1 && (comparisonIndex - lastMark) > 2) {
-              isLastMarkInStreak = false;
-            }
-
-            return { lastMark, isLastMarkInStreak };
-          };
-
-          const { lastMark, isLastMarkInStreak } = getStreakInfo(statuses, habit);
+        {orderedCategories.map((categoryKey) => {
+          const habits = groupedHabits[categoryKey] || [];
+          if (!habits.length) return null;
+          const isCollapsed = !!collapsedCategories[categoryKey];
 
           return (
-            <div key={habit.id} className="habit-row">
-              <div className="habit-name">
-                <span className="habit-text">{habit.name}</span>
-                {/* Notes and photos moved to a dedicated container below */}
+            <div key={categoryKey} className={`category-group ${isCollapsed ? 'collapsed' : ''}`}>
+              <div className="category-group-header">
+                <button
+                  type="button"
+                  className="category-collapse-btn"
+                  onClick={() => toggleCategoryCollapse(categoryKey)}
+                  aria-label={isCollapsed ? t('expand') : t('collapse')}
+                >
+                  {isCollapsed ? '▶' : '▼'}
+                </button>
+                <div className="category-group-title">
+                  {getCategoryDisplayName(categoryKey)}
+                </div>
+                <div className="category-habit-count">{habits.length}</div>
               </div>
-              <div className="habit-row-content">
-                <div className="habit-checks">
-                  {WEEK_DAYS.map((_, index) => {
-                    const baseDate = new Date(currentWeekDate);
-                    const dayOfWeek = baseDate.getDay();
-                    const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                    const diff = index - currentDayIndex;
 
-                    const slotDate = new Date(baseDate);
-                    slotDate.setDate(baseDate.getDate() + diff);
-                    const slotDateStr = slotDate.toLocaleDateString('en-CA');
+              {!isCollapsed && habits.map((habit) => {
+                const weeklyCount = getHabitCount(habit);
+                const weeklyAward = getWeeklyAward(weeklyCount);
+                const statuses = habit.statuses || [];
 
-                    const status = statuses.find(s => s && s.date === slotDateStr);
-                    const isDone = status ? status.is_done : false;
-                    const isRestored = status ? status.is_restored : false;
-                    const statusId = status ? status.id : null;
-                    const quantity = status ? status.quantity : null;
+                const lastMark = WEEK_DAYS.reduce((acc, _, index) => {
+                  const baseDate = new Date(currentWeekDate);
+                  const dayOfWeek = baseDate.getDay();
+                  const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                  const diff = index - currentDayIndex;
+                  const slotDate = new Date(baseDate);
+                  slotDate.setDate(baseDate.getDate() + diff);
+                  const slotDateStr = slotDate.toLocaleDateString('en-CA');
+                  const status = statuses.find(s => s && s.date === slotDateStr);
+                  return status?.is_done ? Math.max(acc, index) : acc;
+                }, -1);
+                const isLastMarkInStreak = lastMark !== -1;
 
-                    const isToday = slotDateStr === todayStr;
-                    const isPast = slotDateStr < todayStr;
-                    const isFuture = slotDateStr > todayStr;
-                    const isMissed = isPast && !isDone;
-                    const hasComment = status && status.comment;
-                    const hasPhoto = status && status.photo;
-                    const isDisabled = isFuture;
-                    const showDotClass = (!isDone && isLastMarkInStreak && index > lastMark) ? 'has-dot-1' : '';
-                    const isMonthStart = index > 0 && slotDate.getDate() === 1;
+                return (
+                  <div key={habit.id} className="habit-row">
+                    <div className="habit-name">
+                      <span className="habit-text">{habit.name}</span>
+                    </div>
+                    <div className="habit-row-content">
+                      <div className="habit-checks">
+                        {WEEK_DAYS.map((_, index) => {
+                          const baseDate = new Date(currentWeekDate);
+                          const dayOfWeek = baseDate.getDay();
+                          const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                          const diff = index - currentDayIndex;
 
-                    const checkBoxBtn = (
-                      <button
-                        className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${showDotClass}`}
+                          const slotDate = new Date(baseDate);
+                          slotDate.setDate(baseDate.getDate() + diff);
+                          const slotDateStr = slotDate.toLocaleDateString('en-CA');
+
+                          const status = statuses.find(s => s && s.date === slotDateStr);
+                          const isDone = status ? status.is_done : false;
+                          const isRestored = status ? status.is_restored : false;
+                          const statusId = status ? status.id : null;
+                          const quantity = status ? status.quantity : null;
+
+                          const isToday = slotDateStr === todayStr;
+                          const isPast = slotDateStr < todayStr;
+                          const isFuture = slotDateStr > todayStr;
+                          const isMissed = isPast && !isDone;
+                          const hasComment = status && status.comment;
+                          const hasPhoto = status && status.photo;
+                          const isDisabled = isFuture;
+                          const showDotClass = (!isDone && isLastMarkInStreak && index > lastMark) ? 'has-dot-1' : '';
+                          const isMonthStart = index > 0 && slotDate.getDate() === 1;
+
+                          const checkBoxBtn = (
+                            <button
+                              className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${showDotClass}`}
+                              onClick={() => {
+                                if (!isDisabled && !longPressTimer) {
+                                  toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
+                                }
+                              }}
+                              onMouseDown={() => {
+                                const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
+                              }}
+                              onMouseUp={handleLongPressEnd}
+                              onMouseLeave={handleLongPressEnd}
+                              onTouchStart={() => {
+                                const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
+                              }}
+                              onTouchMove={handleLongPressEnd}
+                              onTouchEnd={handleLongPressEnd}
+                              disabled={isDisabled}
+                            >
+                              {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
+                              {hasComment && <span className="attachment-indicator"></span>}
+                            </button>
+                          );
+
+                          return (
+                            <div key={slotDateStr} className={`grid-col ${isMonthStart ? 'month-start' : ''}`}>
+                              {checkBoxBtn}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="habit-counts-wrapper">
+                        <div className="habit-count-container">
+                          <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''} ${weeklyCount === 3 ? 'has-single-lightning' : ''} ${weeklyCount === 4 ? 'has-double-lightning' : ''} ${weeklyCount === 5 ? 'has-single-star' : ''} ${weeklyCount === 6 ? 'has-double-star' : ''}`}>
+                            {weeklyAward === '👑' && (
+                              <span className="crown-top">👑{habit.crown_streak > 1 ? <span className="crown-streak">x{habit.crown_streak}</span> : ''}</span>
+                            )}
+                            {((weeklyCount === 4 && weeklyAward.includes('⚡')) || (weeklyCount === 6 && weeklyAward.includes('⭐'))) && (
+                              <span className="award-side award-left">{weeklyCount === 4 ? '⚡' : '⭐'}</span>
+                            )}
+
+                            <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>
+                              {weeklyCount}
+                            </span>
+                            {weeklyAward && !weeklyAward.includes('👑') && (
+                              <span className="award-side award-right">{weeklyAward.includes('⚡') ? '⚡' : '⭐'}</span>
+                            )}
+                          </div>
+                          <div className="habit-count monthly">
+                            <span className="habit-count-number">{habit.monthly_total || 0}</span>
+                          </div>
+                        </div>
+                        <div className="habit-overflow-container">
+                          {(habit.weekly_overflow > 0) && (
+                            <div className="habit-count-overflow weekly">{habit.weekly_overflow}</div>
+                          )}
+                          {(habit.monthly_overflow > 0) && (
+                            <div className="habit-count-overflow monthly">{habit.monthly_overflow}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {habit.latest_comment && (
+                      <div 
+                        className="habit-note-container"
                         onClick={() => {
-                          if (!isDisabled && !longPressTimer) {
-                            toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
+                          const d = habit.latest_comment_details;
+                          if (d) {
+                            const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                            openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, d.is_restored);
                           }
                         }}
-                        onMouseDown={() => {
-                          const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                          !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
-                        }}
-                        onMouseUp={handleLongPressEnd}
-                        onMouseLeave={handleLongPressEnd}
-                        onTouchStart={() => {
-                          const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                          !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
-                        }}
-                        onTouchMove={handleLongPressEnd}
-                        onTouchEnd={handleLongPressEnd}
-                        disabled={isDisabled}
                       >
-                        {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
-                        {hasComment && <span className="attachment-indicator"></span>}
-                      </button>
-                    );
-
-                    return (
-                      <div key={slotDateStr} className={`grid-col ${isMonthStart ? 'month-start' : ''}`}>
-                        {checkBoxBtn}
+                        <div className="habit-note-box">
+                          <span className="habit-note-label">{t('comment')}:</span>
+                          <span className="habit-note-text">{habit.latest_comment}</span>
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-                <div className="habit-counts-wrapper">
-                  <div className="habit-count-container">
-                    <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''} ${weeklyCount === 3 ? 'has-single-lightning' : ''} ${weeklyCount === 4 ? 'has-double-lightning' : ''} ${weeklyCount === 5 ? 'has-single-star' : ''} ${weeklyCount === 6 ? 'has-double-star' : ''}`}>
-                      {weeklyAward === '👑' && (
-                        <span className="crown-top">👑{habit.crown_streak > 1 ? <span className="crown-streak">x{habit.crown_streak}</span> : ''}</span>
-                      )}
-                      
-                      {/* Left side emoji for double awards */}
-                      {((weeklyCount === 4 && weeklyAward.includes('⚡')) || (weeklyCount === 6 && weeklyAward.includes('⭐'))) && (
-                        <span className="award-side award-left">{weeklyCount === 4 ? '⚡' : '⭐'}</span>
-                      )}
-
-                      <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>
-                        {weeklyCount}
-                      </span>
-                      
-                      {/* Right side emoji for all awards 3-6 */}
-                      {weeklyAward && !weeklyAward.includes('👑') && (
-                        <span className="award-side award-right">{weeklyAward.includes('⚡') ? '⚡' : '⭐'}</span>
-                      )}
-                    </div>
-                    <div className="habit-count monthly">
-                      <span className="habit-count-number">{habit.monthly_total || 0}</span>
-                    </div>
-                  </div>
-                  <div className="habit-overflow-container">
-                    {(habit.weekly_overflow > 0) && (
-                      <div className="habit-count-overflow weekly">{habit.weekly_overflow}</div>
-                    )}
-                    {(habit.monthly_overflow > 0) && (
-                      <div className="habit-count-overflow monthly">{habit.monthly_overflow}</div>
                     )}
                   </div>
-                </div>
-              </div>
-              {habit.latest_comment && (
-                <div 
-                  className="habit-note-container"
-                  onClick={() => {
-                    const d = habit.latest_comment_details;
-                    if (d) {
-                      const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                      openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, d.is_restored);
-                    }
-                  }}
-                >
-                  <div className="habit-note-box">
-                    <span className="habit-note-label">{t('comment')}:</span>
-                    <span className="habit-note-text">{habit.latest_comment}</span>
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
           );
         })}
@@ -1376,6 +1390,19 @@ const App = () => {
     if (count === 4) return '⚡⚡';
     if (count === 3) return '⚡';
     return null;
+  };
+
+  const getCategoryDisplayName = (categoryName) => {
+    if (categoryName === 'Все') return t('allCategories');
+    if (categoryName === 'Без категории') return t('noCategory');
+    return categoryName || t('noCategory');
+  };
+
+  const toggleCategoryCollapse = (categoryName) => {
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [categoryName]: !prev[categoryName]
+    }));
   };
 
   // Эмоджи в зависимости от дня недели для кнопки "Сегодня"

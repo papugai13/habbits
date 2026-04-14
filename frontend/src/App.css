@@ -513,6 +513,66 @@ body {
   overflow: visible !important; /* Allow the separator line piece to extend vertically */
 }
 
+.category-group {
+  border-radius: 16px;
+  background: #f6f7fb;
+  margin-bottom: 18px;
+  padding: 10px 12px 12px;
+}
+
+.category-group.collapsed {
+  background: #eef0f8;
+}
+
+.category-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(76, 86, 110, 0.08);
+  margin-bottom: 12px;
+}
+
+.category-collapse-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #4c566e;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.category-collapse-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.category-group-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #222;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.category-habit-count {
+  font-size: 13px;
+  color: #5a5f7a;
+  min-width: 24px;
+  text-align: right;
+}
+
+.category-group.collapsed .habit-row {
+  display: none;
+}
+
 .habit-name {
   font-size: 14px;
   color: #333;
