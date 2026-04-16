@@ -717,9 +717,10 @@ class HabitViewSet(viewsets.ModelViewSet):
             }
 
             if period == 'day' or (not period and not request.query_params.get('start_date')):
-                # Последние 7 дней до указанной даты (или сегодня)
-                start_date = today - timedelta(days=6)
-                end_date = today
+                # Calendar week (Monday to Sunday) containing the specified date
+                days_since_monday = today.weekday()
+                start_date = today - timedelta(days=days_since_monday)
+                end_date = start_date + timedelta(days=6)
                 label = f"{start_date.strftime('%d.%m')} - {end_date.strftime('%d.%m')}"
             elif period == 'week':
                 # Weeks of the month: start from Monday of the week containing the 1st
@@ -816,7 +817,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                     current_date += timedelta(days=1)
             
             elif period == 'week':
-                # Weekly aggregation (Bars = Week groups)
+                # Weekly aggregation (Bars = Week groups of the month)
                 while current_date <= end_date:
                     period_end = current_date + timedelta(days=6)
                     day_dates = Date.objects.filter(
