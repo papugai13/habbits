@@ -801,8 +801,17 @@ body {
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
 }
 
+.award-multiplier {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 6px;
+  color: #8B5CF6;
+  vertical-align: middle;
+}
+
 .crown-inside {
-  position: absolute;
   top: 2px;
   left: 50%;
   transform: translateX(-50%);

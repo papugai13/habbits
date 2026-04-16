@@ -795,6 +795,9 @@ const App = () => {
                             <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>
                               {weeklyCount}
                             </span>
+                            {weeklyAward && weeklyAward !== '👑' && habit.weekly_award_streak > 1 && (
+                              <span className="award-multiplier">x{habit.weekly_award_streak}</span>
+                            )}
                             {weeklyAward && !weeklyAward.includes('👑') && (
                               <span className="award-side award-right">{weeklyAward.includes('⚡') ? '⚡' : '⭐'}</span>
                             )}
