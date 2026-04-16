@@ -19,11 +19,11 @@ const generatePeriodLabel = (period, referenceDate, t, language) => {
         // Show only today's date in dd.mm format
         const d = String(today.getDate()).padStart(2, '0');
         const m = String(today.getMonth() + 1).padStart(2, '0');
-        return `${d}.${m}`;
+        return { title: `${d}.${m}`, subtitle: '' };
     } else if (period === 'week') {
         // Aggregated weeks of month
         const monthName = t(months[today.getMonth()]);
-        return `${t('weeks')}: ${monthName} ${today.getFullYear()}`;
+        return { title: `${t('weeks')}: ${monthName} ${today.getFullYear()}`, subtitle: '' };
     } else if (period === 'month') {
         return { title: `${t(months[today.getMonth()])} ${today.getFullYear()}`, subtitle: '' };
     } else if (period === 'year') {

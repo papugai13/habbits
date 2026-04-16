@@ -3892,31 +3892,6 @@ body {
 }
 
 /* ─── Dark theme ─── */
-@media (prefers-color-scheme: dark) {
-  .categories-section.unified {
-    background-color: #f8f9fa;
-  }
-
-  .categories-section.unified .category-btn {
-    background-color: #f5f6f7;
-    border-color: #e8e9ea;
-  }
-
-  .categories-section.unified .category-btn:hover {
-    background-color: #f0f0f0;
-    border-color: #dcddde;
-  }
-
-  .categories-section.unified .category-btn.active {
-    background-color: #e8e9ea;
-    border-color: #d0d1d2;
-  }
-
-  .categories-section.unified .category-name {
-    color: #1f2937;
-  }
-
-  .add-btn {
-    color: #f8f9fa !important;
-  }
+.add-btn {
+  color: #f8f9fa !important;
 }
