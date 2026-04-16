@@ -2,13 +2,22 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList, Rectangle } from 'recharts';
 import './Charts.css';
 
-const generatePeriodLabel = (period, referenceDate, t) => {
+const getWeekNumber = (dateInput) => {
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : new Date(dateInput);
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+};
+
+const generatePeriodLabel = (period, referenceDate, t, language) => {
     const today = new Date(referenceDate);
     const months = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
 
     if (period === 'day') {
         const monthName = t(months[today.getMonth()]);
-        return `${today.getDate()} ${monthName}`;
+        return { title: `${today.getDate()} ${monthName}`, subtitle: '' };
     } else if (period === 'week') {
         const day = today.getDay();
         const diff = today.getDate() - (day === 0 ? 6 : day - 1);
@@ -16,14 +25,16 @@ const generatePeriodLabel = (period, referenceDate, t) => {
         const end_date = new Date(start_date);
         end_date.setDate(start_date.getDate() + 6);
 
-        const monthName = t(months[start_date.getMonth()]);
-        return `${t('week')} ${start_date.getDate()} - ${end_date.getDate()} ${monthName}`;
+        const weekNumber = getWeekNumber(start_date);
+        const title = language === 'ru' ? `Неделя №${weekNumber}` : `Week №${weekNumber}`;
+        const subtitle = `${start_date.getDate()}-${end_date.getDate()}`;
+        return { title, subtitle };
     } else if (period === 'month') {
-        return `${t(months[today.getMonth()])} ${today.getFullYear()}`;
+        return { title: `${t(months[today.getMonth()])} ${today.getFullYear()}`, subtitle: '' };
     } else if (period === 'year') {
-        return `${today.getFullYear()}`;
+        return { title: `${today.getFullYear()}`, subtitle: '' };
     }
-    return '';
+    return { title: '', subtitle: '' };
 };
 
 const getNumericDate = (dateStr) => {
@@ -228,7 +239,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                         };
                     });
                     
-                    setPeriodLabel(generatePeriodLabel(period, currentWeekDate, t));
+                    setPeriodLabel(generatePeriodLabel(period, currentWeekDate, t, language));
                     setData(formatted);
                 } catch (error) {
                     console.error(`Error fetching comparison data:`, error);
@@ -257,7 +268,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                 });
                 if (response.ok) {
                     const json = await response.json();
-                    setPeriodLabel(generatePeriodLabel(period, currentWeekDate, t));
+                    setPeriodLabel(generatePeriodLabel(period, currentWeekDate, t, language));
                     
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
@@ -369,7 +380,10 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
         <div className="habits-comparison-section">
             <div className="comparison-header">
                 <h3>{t('habitProgress')}</h3>
-                <span className="comparison-period">{periodLabel}</span>
+                <span className="comparison-period">
+                    <span>{periodLabel.title}</span>
+                    {periodLabel.subtitle && <span className="comparison-period-subtitle">{periodLabel.subtitle}</span>}
+                </span>
             </div>
 
             <div className="comparison-chart-layout horizontal">
@@ -478,14 +492,14 @@ const Charts = ({
     const barLabelSize = isMobile ? 10 : isTablet ? 12 : 18;
     const barCategoryGap = isMobile ? '30%' : '12%';
     const barGap = isMobile ? 6 : 8;
-    const [periodLabel, setPeriodLabel] = useState('');
+    const [periodLabel, setPeriodLabel] = useState({ title: '', subtitle: '' });
 
     const mainScrollRef = useRef(null);
     const mainIndicatorRef = useRef(null);
 
     // Set initial period label
     useEffect(() => {
-        setPeriodLabel(generatePeriodLabel(period, currentWeekDate, t));
+        setPeriodLabel(generatePeriodLabel(period, currentWeekDate, t, language));
     }, []);
 
     const handleMainScroll = (e) => {
@@ -524,7 +538,7 @@ const Charts = ({
 
             if (response.ok) {
                 const json = await response.json();
-                setPeriodLabel(generatePeriodLabel(period, chartDate, t));
+                setPeriodLabel(generatePeriodLabel(period, chartDate, t, language));
                 const todayStr = new Date().toISOString().split('T')[0];
                 const formattedData = json.data.map(item => {
                     const isFuture = item.date > todayStr;
@@ -614,7 +628,8 @@ const Charts = ({
                     <button className="nav-arrow-btn" onClick={handlePrevPeriod}>←</button>
                     <div className="navigation-labels">
                         <span className="current-period-label">
-                            {periodLabel}
+                            <span>{periodLabel.title}</span>
+                            {periodLabel.subtitle && <span className="current-period-subtitle">{periodLabel.subtitle}</span>}
                         </span>
                     </div>
                     <button className="nav-arrow-btn" onClick={handleNextPeriod}>→</button>

@@ -578,17 +578,28 @@ const App = () => {
     return () => el.removeEventListener('touchmove', handleModalSwipeMove);
   }, [showQuantityModal]);
 
-  const currentWeekRange = () => {
-    const curr = new Date(currentWeekDate);
+  const getRussianMonthName = (monthIndex) => {
+    const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    return months[monthIndex] || '';
+  };
+
+  const formatWeekRange = (dateObj) => {
+    const curr = new Date(dateObj);
     const day = curr.getDay();
     const diff = curr.getDate() - (day === 0 ? 6 : day - 1);
     const firstDay = new Date(curr.setDate(diff));
     const lastDay = new Date(firstDay);
     lastDay.setDate(firstDay.getDate() + 6);
 
-    const langSub = language === 'ru' ? 'ru-RU' : 'en-US';
+    if (language === 'ru') {
+      return `${firstDay.getDate()} ${getRussianMonthName(firstDay.getMonth())} - ${lastDay.getDate()} ${getRussianMonthName(lastDay.getMonth())}`;
+    }
+
+    const langSub = 'en-US';
     return `${firstDay.toLocaleDateString(langSub, { day: 'numeric', month: 'short' })} - ${lastDay.toLocaleDateString(langSub, { day: 'numeric', month: 'short' })}`;
   };
+
+  const currentWeekRange = () => formatWeekRange(currentWeekDate);
 
   const prevWeekDate = (() => {
     const date = new Date(currentWeekDate);
@@ -2016,7 +2027,7 @@ const App = () => {
             <div className="week-navigation">
               <button className="week-nav-btn" onClick={handlePrevWeek}>&lt;</button>
               <div className="week-range-text" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.2'}}>
-                <span style={{fontSize: '0.85em', fontWeight: 'bold'}}>{t('week')} №{getWeekNumber(currentWeekDate)}</span>
+                <span style={{fontSize: '0.85em', fontWeight: 'bold'}}>{language === 'ru' ? 'Неделя' : t('week')} №{getWeekNumber(currentWeekDate)}</span>
                 <span style={{fontSize: '0.9em', opacity: 0.8}}>{currentWeekRange()}</span>
               </div>
               <button className="week-nav-btn" onClick={handleNextWeek}>&gt;</button>
