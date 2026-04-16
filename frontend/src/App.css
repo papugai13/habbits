@@ -1736,7 +1736,6 @@ body {
   user-select: none;
   -webkit-user-select: none;
   position: relative;
-  margin-bottom: 8px; /* Extra spacing for separation if needed */
 }
 
 .manage-category-item:hover {
@@ -1751,6 +1750,12 @@ body {
   z-index: 1000;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
   border-color: #059669;
+}
+
+.manage-category-item.drag-over {
+  border-color: #059669;
+  background-color: #6EE7B7;
+  /* Add a subtle visual hint for the drop target */
 }
 
 .manage-habit-item {
@@ -2537,7 +2542,6 @@ body {
 .manage-categories-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
 
 .manage-category-item {
