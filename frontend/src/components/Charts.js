@@ -775,7 +775,7 @@ const Charts = ({
                                                             const { x, y, value, index, width } = props;
                                                             if (!value || x == null || y == null) return null;
                                                             // Position at fixed top of chart instead of above each bar
-                                                            const chartTop = 15;
+                                                            const chartTop = 8;
                                                             const cx = x + width / 2;
                                                             return (
                                                                 <text x={cx} y={chartTop} textAnchor="middle" fill={isDark ? "#E0E0E0" : "#666"} fontSize={isMobile ? 10 : 11} fontWeight={500}>
@@ -814,7 +814,7 @@ const Charts = ({
                                                         const { x, y, value, index, width } = props;
                                                         if (!value || x == null || y == null) return null;
                                                         // Position at fixed top of chart instead of above each bar
-                                                        const chartTop = 15;
+                                                        const chartTop = 8;
                                                         const cx = x + width / 2;
                                                         return (
                                                             <text x={cx} y={chartTop} textAnchor="middle" fill={isDark ? "#E0E0E0" : "#666"} fontSize={isMobile ? 10 : 11} fontWeight={500}>
