@@ -1853,57 +1853,26 @@ body {
 .drag-handle {
   font-size: 20px;
   color: #888;
-  /* Slightly darker */
   cursor: grab;
   padding: 8px;
-  /* Bigger touch area */
   line-height: 1;
   user-select: none;
+  -webkit-user-select: none;
   flex-shrink: 0;
   opacity: 0.8;
-}
-
-/* On small mobile, make the handle even more compact */
-@media (max-width: 400px) {
-  .manage-habit-item {
-    padding: 10px;
-    gap: 6px;
-  }
-
-  .manage-btn {
-    font-size: 16px;
-    padding: 6px;
-  }
-
-  .drag-handle {
-    font-size: 18px;
-    padding: 6px;
-  }
-
-  .manage-habit-actions {
-    gap: 4px;
-  }
-}
-
-@media (max-width: 360px) {
-  .manage-habit-item {
-    padding: 8px 10px;
-    gap: 4px;
-  }
-
-  .manage-btn {
-    font-size: 14px;
-    padding: 4px;
-  }
-
-  .drag-handle {
-    padding: 4px;
-    font-size: 16px;
-  }
+  /* Critical: disable browser touch handling so we get raw touch events */
+  touch-action: none;
+  /* Bigger tap target on mobile */
+  min-width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .drag-handle:active {
   cursor: grabbing;
+  opacity: 1;
+  color: #059669;
 }
 
 
