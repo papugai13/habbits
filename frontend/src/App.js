@@ -1153,21 +1153,20 @@ const App = () => {
   };
 
   const handleCategoryTouchStart = (e, catId) => {
+    // Only handle single touch
     if (e.touches.length > 1) return;
 
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
-    isTouchDraggingInProgress.current = false;
-
-    reorderLongPressTimer.current = setTimeout(() => {
-      setDraggedCategoryId(catId);
-      isTouchDraggingInProgress.current = true;
-      if (navigator.vibrate) navigator.vibrate(50);
-    }, 200);
+    
+    // Start dragging immediately without waiting
+    setDraggedCategoryId(catId);
+    isTouchDraggingInProgress.current = true;
+    if (navigator.vibrate) navigator.vibrate(50);
   };
 
   const handleCategoryTouchMove = (e) => {
-    if (!reorderLongPressTimer.current && !isTouchDraggingInProgress.current) return;
+    if (!isTouchDraggingInProgress.current) return;
 
     const touch = e.touches[0];
     const distX = Math.abs(touch.clientX - touchStartPos.current.x);
