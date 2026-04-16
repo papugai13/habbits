@@ -456,6 +456,13 @@ class HabitViewSet(viewsets.ModelViewSet):
                         }
                         habit_data['latest_photo'] = photo_url
                     
+                    # Detect if habit has quantity tracking at all
+                    has_quantity_tracking = Date.objects.filter(
+                        user=user_profile,
+                        habit=habit,
+                        quantity__gt=0
+                    ).exists()
+
                     # Get statuses for the range (Monday to Sunday)
                     statuses = []
                     weekly_overflow = 0
@@ -470,8 +477,8 @@ class HabitViewSet(viewsets.ModelViewSet):
                         is_done = date_entry.is_done if date_entry else False
                         qty = date_entry.quantity if date_entry else None
                         
-                        if is_done and date_entry:
-                            weekly_overflow += (qty or 1)
+                        if is_done and date_entry and has_quantity_tracking and qty and qty > 0:
+                            weekly_overflow += qty
                         
                         photo_url = None
                         if date_entry and date_entry.photo:
@@ -492,21 +499,18 @@ class HabitViewSet(viewsets.ModelViewSet):
                     habit_data['statuses'] = statuses
                     habit_data['weekly_overflow'] = weekly_overflow
                     
-                    # Calculate monthly overflow (sum of ALL quantities, including restored)
-                    monthly_overflow = Date.objects.filter(
-                        user=user_profile,
-                        habit=habit,
-                        habit_date__range=[start_of_month, end_of_month],
-                        is_done=True
-                    ).aggregate(
-                        total=Sum(
-                            Case(
-                                When(quantity__isnull=True, then=Value(1)),
-                                default=F('quantity'),
-                                output_field=IntegerField()
-                            )
-                        )
-                    )['total'] or 0
+                    # Calculate monthly overflow (sum of positive quantities only)
+                    monthly_overflow = 0
+                    if has_quantity_tracking:
+                        monthly_overflow = Date.objects.filter(
+                            user=user_profile,
+                            habit=habit,
+                            habit_date__range=[start_of_month, end_of_month],
+                            is_done=True,
+                            quantity__gte=1
+                        ).aggregate(
+                            total=Sum('quantity')
+                        )['total'] or 0
                     
                     # Calculate monthly total (ONLY on-time completions, daily count)
                     monthly_total = Date.objects.filter(
