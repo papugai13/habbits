@@ -801,8 +801,17 @@ body {
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
 }
 
+.award-multiplier {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 6px;
+  color: #8B5CF6;
+  vertical-align: middle;
+}
+
 .crown-inside {
-  position: absolute;
   top: 2px;
   left: 50%;
   transform: translateX(-50%);
@@ -1736,7 +1745,6 @@ body {
   user-select: none;
   -webkit-user-select: none;
   position: relative;
-  margin-bottom: 8px; /* Extra spacing for separation if needed */
 }
 
 .manage-category-item:hover {
@@ -1751,6 +1759,12 @@ body {
   z-index: 1000;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
   border-color: #059669;
+}
+
+.manage-category-item.drag-over {
+  border-color: #059669;
+  background-color: #6EE7B7;
+  /* Add a subtle visual hint for the drop target */
 }
 
 .manage-habit-item {
@@ -2537,7 +2551,6 @@ body {
 .manage-categories-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
 
 .manage-category-item {
@@ -3875,5 +3888,35 @@ body {
   .bottom-nav {
     max-width: 600px;
     border-radius: 0 0 16px 16px;
+  }
+}
+
+/* ─── Dark theme ─── */
+@media (prefers-color-scheme: dark) {
+  .categories-section.unified {
+    background-color: #f8f9fa;
+  }
+
+  .categories-section.unified .category-btn {
+    background-color: #f5f6f7;
+    border-color: #e8e9ea;
+  }
+
+  .categories-section.unified .category-btn:hover {
+    background-color: #f0f0f0;
+    border-color: #dcddde;
+  }
+
+  .categories-section.unified .category-btn.active {
+    background-color: #e8e9ea;
+    border-color: #d0d1d2;
+  }
+
+  .categories-section.unified .category-name {
+    color: #1f2937;
+  }
+
+  .add-btn {
+    color: #f8f9fa !important;
   }
 }

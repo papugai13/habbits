@@ -578,17 +578,28 @@ const App = () => {
     return () => el.removeEventListener('touchmove', handleModalSwipeMove);
   }, [showQuantityModal]);
 
-  const currentWeekRange = () => {
-    const curr = new Date(currentWeekDate);
+  const getRussianMonthName = (monthIndex) => {
+    const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    return months[monthIndex] || '';
+  };
+
+  const formatWeekRange = (dateObj) => {
+    const curr = new Date(dateObj);
     const day = curr.getDay();
     const diff = curr.getDate() - (day === 0 ? 6 : day - 1);
     const firstDay = new Date(curr.setDate(diff));
     const lastDay = new Date(firstDay);
     lastDay.setDate(firstDay.getDate() + 6);
 
-    const langSub = language === 'ru' ? 'ru-RU' : 'en-US';
+    if (language === 'ru') {
+      return `${firstDay.getDate()} ${getRussianMonthName(firstDay.getMonth())} - ${lastDay.getDate()} ${getRussianMonthName(lastDay.getMonth())}`;
+    }
+
+    const langSub = 'en-US';
     return `${firstDay.toLocaleDateString(langSub, { day: 'numeric', month: 'short' })} - ${lastDay.toLocaleDateString(langSub, { day: 'numeric', month: 'short' })}`;
   };
+
+  const currentWeekRange = () => formatWeekRange(currentWeekDate);
 
   const prevWeekDate = (() => {
     const date = new Date(currentWeekDate);
@@ -795,6 +806,9 @@ const App = () => {
                             <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>
                               {weeklyCount}
                             </span>
+                            {weeklyAward && weeklyAward !== '👑' && habit.weekly_award_streak > 1 && (
+                              <span className="award-multiplier">x{habit.weekly_award_streak}</span>
+                            )}
                             {weeklyAward && !weeklyAward.includes('👑') && (
                               <span className="award-side award-right">{weeklyAward.includes('⚡') ? '⚡' : '⭐'}</span>
                             )}
@@ -1153,21 +1167,20 @@ const App = () => {
   };
 
   const handleCategoryTouchStart = (e, catId) => {
+    // Only handle single touch
     if (e.touches.length > 1) return;
 
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
-    isTouchDraggingInProgress.current = false;
-
-    reorderLongPressTimer.current = setTimeout(() => {
-      setDraggedCategoryId(catId);
-      isTouchDraggingInProgress.current = true;
-      if (navigator.vibrate) navigator.vibrate(50);
-    }, 200);
+    
+    // Start dragging immediately without waiting
+    setDraggedCategoryId(catId);
+    isTouchDraggingInProgress.current = true;
+    if (navigator.vibrate) navigator.vibrate(50);
   };
 
   const handleCategoryTouchMove = (e) => {
-    if (!reorderLongPressTimer.current && !isTouchDraggingInProgress.current) return;
+    if (!isTouchDraggingInProgress.current) return;
 
     const touch = e.touches[0];
     const distX = Math.abs(touch.clientX - touchStartPos.current.x);
@@ -1696,13 +1709,11 @@ const App = () => {
 
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
-    isTouchDraggingInProgress.current = false;
-
-    reorderLongPressTimer.current = setTimeout(() => {
-      setDraggedHabitId(habitId);
-      isTouchDraggingInProgress.current = true;
-      if (navigator.vibrate) navigator.vibrate(50);
-    }, 200);
+    
+    // Start dragging immediately without waiting
+    setDraggedHabitId(habitId);
+    isTouchDraggingInProgress.current = true;
+    if (navigator.vibrate) navigator.vibrate(50);
   };
 
   const handleTouchMove = (e) => {
@@ -2015,7 +2026,10 @@ const App = () => {
           <div className="date-section">
             <div className="week-navigation">
               <button className="week-nav-btn" onClick={handlePrevWeek}>&lt;</button>
-              <div className="week-range-text">{t('week')} №{getWeekNumber(currentWeekDate)}</div>
+              <div className="week-range-text" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.2'}}>
+                <span style={{fontSize: '0.85em', fontWeight: 'bold'}}>{language === 'ru' ? 'Неделя' : t('week')} №{getWeekNumber(currentWeekDate)}</span>
+                <span style={{fontSize: '0.9em', opacity: 0.8}}>{currentWeekRange()}</span>
+              </div>
               <button className="week-nav-btn" onClick={handleNextWeek}>&gt;</button>
             </div>
           </div>
