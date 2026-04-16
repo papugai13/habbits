@@ -1696,13 +1696,11 @@ const App = () => {
 
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
-    isTouchDraggingInProgress.current = false;
-
-    reorderLongPressTimer.current = setTimeout(() => {
-      setDraggedHabitId(habitId);
-      isTouchDraggingInProgress.current = true;
-      if (navigator.vibrate) navigator.vibrate(50);
-    }, 200);
+    
+    // Start dragging immediately without waiting
+    setDraggedHabitId(habitId);
+    isTouchDraggingInProgress.current = true;
+    if (navigator.vibrate) navigator.vibrate(50);
   };
 
   const handleTouchMove = (e) => {
@@ -2015,7 +2013,10 @@ const App = () => {
           <div className="date-section">
             <div className="week-navigation">
               <button className="week-nav-btn" onClick={handlePrevWeek}>&lt;</button>
-              <div className="week-range-text">{t('week')} №{getWeekNumber(currentWeekDate)}</div>
+              <div className="week-range-text" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.2'}}>
+                <span style={{fontSize: '0.85em', fontWeight: 'bold'}}>{t('week')} №{getWeekNumber(currentWeekDate)}</span>
+                <span style={{fontSize: '0.9em', opacity: 0.8}}>{currentWeekRange()}</span>
+              </div>
               <button className="week-nav-btn" onClick={handleNextWeek}>&gt;</button>
             </div>
           </div>
