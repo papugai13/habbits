@@ -524,6 +524,14 @@ class HabitViewSet(viewsets.ModelViewSet):
                     habit_data['monthly_overflow'] = monthly_overflow
                     habit_data['monthly_total'] = monthly_total
 
+                    weekly_completions = Date.objects.filter(
+                        user=user_profile,
+                        habit=habit,
+                        habit_date__range=[start_date, end_date],
+                        is_done=True,
+                        is_restored=False
+                    ).count()
+
                     # Calculate crown streak (consecutive weeks of 7/7 on-time completions)
                     crown_streak = 0
                     temp_week_start = start_date
@@ -543,6 +551,24 @@ class HabitViewSet(viewsets.ModelViewSet):
                         else:
                             break
                     habit_data['crown_streak'] = crown_streak
+
+                    weekly_award_streak = crown_streak if weekly_completions >= 7 else 1
+                    if weekly_completions in [3, 4, 5, 6]:
+                        temp_week_start = start_date - timedelta(days=7)
+                        while True:
+                            prev_week_completions = Date.objects.filter(
+                                user=user_profile,
+                                habit=habit,
+                                habit_date__range=[temp_week_start, temp_week_start + timedelta(days=6)],
+                                is_done=True,
+                                is_restored=False
+                            ).count()
+                            if prev_week_completions >= 7:
+                                weekly_award_streak += 1
+                                temp_week_start -= timedelta(days=7)
+                            else:
+                                break
+                    habit_data['weekly_award_streak'] = weekly_award_streak
                     
                     result.append(habit_data)
                 except Exception as habit_e:
