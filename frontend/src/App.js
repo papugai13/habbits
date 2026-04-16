@@ -1180,7 +1180,7 @@ const App = () => {
   };
 
   const handleCategoryTouchMove = (e) => {
-    if (!isTouchDraggingInProgress.current) return;
+    if (!reorderLongPressTimer.current && !isTouchDraggingInProgress.current) return;
 
     const touch = e.touches[0];
     const distX = Math.abs(touch.clientX - touchStartPos.current.x);
@@ -1195,17 +1195,11 @@ const App = () => {
     }
 
     if (isTouchDraggingInProgress.current) {
-      const draggedEl = document.querySelector(`.manage-category-item[data-category-id="${draggedCategoryId}"]`);
-      if (draggedEl) draggedEl.style.pointerEvents = 'none';
-
       const element = document.elementFromPoint(touch.clientX, touch.clientY);
+      const categoryItem = element?.closest('.manage-category-item');
 
-      if (draggedEl) draggedEl.style.pointerEvents = '';
-
-      const habitItem = element?.closest('.manage-category-item');
-
-      if (habitItem) {
-        const targetId = parseInt(habitItem.getAttribute('data-category-id'));
+      if (categoryItem) {
+        const targetId = parseInt(categoryItem.getAttribute('data-category-id'));
         if (targetId && targetId !== draggedCategoryId) {
           liveSwapCategories(draggedCategoryId, targetId);
           if (navigator.vibrate) navigator.vibrate(20);
