@@ -95,7 +95,8 @@ const App = () => {
   const [lightboxTranslateY, setLightboxTranslateY] = useState(0);
   const reorderLongPressTimer = React.useRef(null);
   const touchStartPos = React.useRef({ x: 0, y: 0 });
-  const isTouchDraggingInProgress = React.useRef(false);
+  const isHabitTouchDragging = React.useRef(false);
+  const isCategoryTouchDragging = React.useRef(false);
 
   // Swipe navigation refs
   const swipeStartPos = React.useRef({ x: 0, y: 0 });
@@ -901,7 +902,7 @@ const App = () => {
     }
 
     const preventDefault = (e) => {
-      if (isTouchDraggingInProgress.current && e.cancelable) {
+      if (isHabitTouchDragging.current && e.cancelable) {
         e.preventDefault();
       }
     };
@@ -1167,55 +1168,44 @@ const App = () => {
   };
 
   const handleCategoryTouchStart = (e, catId) => {
-    // Only handle single touch
     if (e.touches.length > 1) return;
-
+    // e.preventDefault() not needed here since touch-action: none is on drag-handle
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
-    
-    // Start dragging immediately without waiting
     setDraggedCategoryId(catId);
-    isTouchDraggingInProgress.current = true;
+    isCategoryTouchDragging.current = true;
     if (navigator.vibrate) navigator.vibrate(50);
   };
 
   const handleCategoryTouchMove = (e) => {
-    if (!reorderLongPressTimer.current && !isTouchDraggingInProgress.current) return;
+    if (!isCategoryTouchDragging.current) return;
+    if (e.cancelable) e.preventDefault();
 
     const touch = e.touches[0];
-    const distX = Math.abs(touch.clientX - touchStartPos.current.x);
-    const distY = Math.abs(touch.clientY - touchStartPos.current.y);
 
-    if (!isTouchDraggingInProgress.current && (distX > 10 || distY > 10)) {
-      if (reorderLongPressTimer.current) {
-        clearTimeout(reorderLongPressTimer.current);
-        reorderLongPressTimer.current = null;
-      }
-      return;
-    }
+    // Hide dragged element so elementFromPoint can see through it
+    const draggedEl = document.querySelector(`.manage-category-item[data-category-id="${draggedCategoryId}"]`);
+    if (draggedEl) draggedEl.style.pointerEvents = 'none';
 
-    if (isTouchDraggingInProgress.current) {
-      const element = document.elementFromPoint(touch.clientX, touch.clientY);
-      const categoryItem = element?.closest('.manage-category-item');
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
 
-      if (categoryItem) {
-        const targetId = parseInt(categoryItem.getAttribute('data-category-id'));
-        if (targetId && targetId !== draggedCategoryId) {
-          liveSwapCategories(draggedCategoryId, targetId);
-          if (navigator.vibrate) navigator.vibrate(20);
-        }
+    if (draggedEl) draggedEl.style.pointerEvents = '';
+
+    const categoryItem = element?.closest('.manage-category-item');
+    if (categoryItem) {
+      const targetId = parseInt(categoryItem.getAttribute('data-category-id'));
+      if (targetId && targetId !== draggedCategoryId) {
+        liveSwapCategories(draggedCategoryId, targetId);
+        if (navigator.vibrate) navigator.vibrate(20);
       }
     }
   };
 
   const handleCategoryTouchEnd = (e) => {
-    clearTimeout(reorderLongPressTimer.current);
-    reorderLongPressTimer.current = null;
-
-    if (isTouchDraggingInProgress.current) {
-      handleCategoryDrop(null, null); 
+    if (isCategoryTouchDragging.current) {
+      handleCategoryDrop(null, null);
       setDraggedCategoryId(null);
-      isTouchDraggingInProgress.current = false;
+      isCategoryTouchDragging.current = false;
     }
   };
 
@@ -1698,64 +1688,43 @@ const App = () => {
   };
 
   const handleTouchStart = (e, habitId) => {
-    // Only handle single touch
     if (e.touches.length > 1) return;
-
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
-    
-    // Start dragging immediately without waiting
     setDraggedHabitId(habitId);
-    isTouchDraggingInProgress.current = true;
+    isHabitTouchDragging.current = true;
     if (navigator.vibrate) navigator.vibrate(50);
   };
 
   const handleTouchMove = (e) => {
-    if (!reorderLongPressTimer.current && !isTouchDraggingInProgress.current) return;
+    if (!isHabitTouchDragging.current) return;
+    if (e.cancelable) e.preventDefault();
 
     const touch = e.touches[0];
-    const distX = Math.abs(touch.clientX - touchStartPos.current.x);
-    const distY = Math.abs(touch.clientY - touchStartPos.current.y);
 
-    // If moved more than 10px before long press, cancel it
-    if (!isTouchDraggingInProgress.current && (distX > 10 || distY > 10)) {
-      if (reorderLongPressTimer.current) {
-        clearTimeout(reorderLongPressTimer.current);
-        reorderLongPressTimer.current = null;
-      }
-      return;
-    }
+    // Hide dragged element so elementFromPoint can see through it
+    const draggedEl = document.querySelector(`.manage-habit-item[data-habit-id="${draggedHabitId}"]`);
+    if (draggedEl) draggedEl.style.pointerEvents = 'none';
 
-    if (isTouchDraggingInProgress.current) {
-      // Find element under touch
-      // We manually toggle pointer-events on the dragged element to "see through" it
-      const draggedEl = document.querySelector(`.manage-habit-item[data-habit-id="${draggedHabitId}"]`);
-      if (draggedEl) draggedEl.style.pointerEvents = 'none';
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
 
-      const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (draggedEl) draggedEl.style.pointerEvents = '';
 
-      if (draggedEl) draggedEl.style.pointerEvents = '';
-
-      const habitItem = element?.closest('.manage-habit-item');
-
-      if (habitItem) {
-        const targetId = parseInt(habitItem.getAttribute('data-habit-id'));
-        if (targetId && targetId !== draggedHabitId) {
-          liveSwapHabits(draggedHabitId, targetId);
-          if (navigator.vibrate) navigator.vibrate(20);
-        }
+    const habitItem = element?.closest('.manage-habit-item');
+    if (habitItem) {
+      const targetId = parseInt(habitItem.getAttribute('data-habit-id'));
+      if (targetId && targetId !== draggedHabitId) {
+        liveSwapHabits(draggedHabitId, targetId);
+        if (navigator.vibrate) navigator.vibrate(20);
       }
     }
   };
 
   const handleTouchEnd = (e) => {
-    clearTimeout(reorderLongPressTimer.current);
-    reorderLongPressTimer.current = null;
-
-    if (isTouchDraggingInProgress.current) {
-      handleDrop(null, null); // Just sync with backend
+    if (isHabitTouchDragging.current) {
+      handleDrop(null, null);
       setDraggedHabitId(null);
-      isTouchDraggingInProgress.current = false;
+      isHabitTouchDragging.current = false;
     }
   };
 
@@ -2214,12 +2183,15 @@ const App = () => {
                     onDragOver={(e) => handleCategoryDragOver(e, cat.id)}
                     onDrop={(e) => handleCategoryDrop(e, cat.id)}
                     onDragEnd={handleCategoryDragEnd}
-                    onTouchStart={(e) => handleCategoryTouchStart(e, cat.id)}
-                    onTouchMove={handleCategoryTouchMove}
-                    onTouchEnd={handleCategoryTouchEnd}
                     data-category-id={cat.id}
                   >
-                    <div className="drag-handle" title={t('dragToReorder')}>⠿</div>
+                    <div
+                      className="drag-handle"
+                      title={t('dragToReorder')}
+                      onTouchStart={(e) => handleCategoryTouchStart(e, cat.id)}
+                      onTouchMove={handleCategoryTouchMove}
+                      onTouchEnd={handleCategoryTouchEnd}
+                    >⠿</div>
                     {editingCategoryId === cat.id ? (
                       <div className="category-edit-row">
                         <input
@@ -2383,12 +2355,15 @@ const App = () => {
                       onDragOver={(e) => handleDragOver(e, habit.id)}
                       onDrop={(e) => handleDrop(e, habit.id)}
                       onDragEnd={handleDragEnd}
-                      onTouchStart={(e) => handleTouchStart(e, habit.id)}
-                      onTouchMove={handleTouchMove}
-                      onTouchEnd={handleTouchEnd}
                       data-habit-id={habit.id}
                     >
-                      <div className="drag-handle" title={t('dragToReorder')}>⠿</div>
+                      <div
+                        className="drag-handle"
+                        title={t('dragToReorder')}
+                        onTouchStart={(e) => handleTouchStart(e, habit.id)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                      >⠿</div>
 
 
                       <div className="manage-habit-info">
