@@ -16,19 +16,14 @@ const generatePeriodLabel = (period, referenceDate, t, language) => {
     const months = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
 
     if (period === 'day') {
-        const monthName = t(months[today.getMonth()]);
-        return { title: `${today.getDate()} ${monthName}`, subtitle: '' };
+        // Show only today's date in dd.mm format
+        const d = String(today.getDate()).padStart(2, '0');
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        return `${d}.${m}`;
     } else if (period === 'week') {
-        const day = today.getDay();
-        const diff = today.getDate() - (day === 0 ? 6 : day - 1);
-        const start_date = new Date(today.getFullYear(), today.getMonth(), diff);
-        const end_date = new Date(start_date);
-        end_date.setDate(start_date.getDate() + 6);
-
-        const weekNumber = getWeekNumber(start_date);
-        const title = language === 'ru' ? `Неделя №${weekNumber}` : `Week №${weekNumber}`;
-        const subtitle = `${start_date.getDate()}-${end_date.getDate()}`;
-        return { title, subtitle };
+        // Aggregated weeks of month
+        const monthName = t(months[today.getMonth()]);
+        return `${t('weeks')}: ${monthName} ${today.getFullYear()}`;
     } else if (period === 'month') {
         return { title: `${t(months[today.getMonth()])} ${today.getFullYear()}`, subtitle: '' };
     } else if (period === 'year') {
@@ -44,7 +39,7 @@ const getNumericDate = (dateStr) => {
     return `${day}.${month}`;
 };
 
-const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark }) => {
+const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData }) => {
     if (!payload || payload.value === undefined || payload.value === null) return null;
 
     let displayValue = String(payload.value);
@@ -54,9 +49,15 @@ const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark }) => {
 
     const fontSize = period === 'year' ? (isMobile ? 8 : 9) : (isMobile ? 8 : 10);
 
+    // Check if this is today's day
+    const dataIndex = chartData.findIndex(item => item.dayNumber === payload.value);
+    const isToday = dataIndex >= 0 && chartData[dataIndex]?.isToday;
+    const fontWeight = isToday ? 700 : (period === 'week' ? 600 : 500);
+    const fill = isToday ? '#22c55e' : (isDark ? "#E0E0E0" : "#666");
+
     return (
         <g transform={`translate(${x},${y})`}>
-            <text x={0} y={0} dy={16} textAnchor="middle" fill={isDark ? "#E0E0E0" : "#666"} fontSize={fontSize} fontWeight={period === 'week' ? 600 : 500}>
+            <text x={0} y={0} dy={16} textAnchor="middle" fill={fill} fontSize={fontSize} fontWeight={fontWeight}>
                 {displayValue}
             </text>
         </g>
@@ -127,7 +128,7 @@ const PercentageBadge = ({ x, y, width, height, value, badgeW, badgeH, fSize }) 
     );
 };
 
-const PercentageBadgeVertical = ({ x, y, width, height, value, badgeW, badgeH, fSize }) => {
+const PercentageBadgeVertical = ({ x, y, width, height, value, badgeW, badgeH, fSize, period }) => {
     if (!value || value === '0%') return null;
     const fs = fSize || 16;
     const cx = x + width / 2;
@@ -487,7 +488,7 @@ const Charts = ({
     const isTablet = windowWidth < 768;
     const isDark = theme === 'dark' || (theme === 'auto' && document.body.classList.contains('dark-theme'));
     const CHART_HEIGHT = isMobile ? 400 : isTablet ? 500 : 650;
-    const xAxisDataKey = period === 'day' ? 'dayMonth' : 'label';
+    const xAxisDataKey = period === 'day' ? 'dayNumber' : 'label';
     const xAxisHeight = isMobile ? (period === 'week' ? 60 : 50) : (period === 'week' ? 60 : 40);
     const barLabelSize = isMobile ? 10 : isTablet ? 12 : 18;
     const barCategoryGap = isMobile ? '30%' : '12%';
@@ -540,12 +541,14 @@ const Charts = ({
                 const json = await response.json();
                 setPeriodLabel(generatePeriodLabel(period, chartDate, t, language));
                 const todayStr = new Date().toISOString().split('T')[0];
+                const weekDayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
                 const formattedData = json.data.map(item => {
                     const isFuture = item.date > todayStr;
+                    const isToday = item.date === todayStr;
                     const habitCount = item.habit_count || 0;
                     const maxPossible = habitCount * item.days_in_period;
                     const completed = item.completed_days || 0;
-                    
+
                     let percentageStr = '';
                     if (!isFuture && maxPossible > 0) {
                         const rawPercent = (completed / maxPossible) * 100;
@@ -557,18 +560,21 @@ const Charts = ({
                     }
 
                     const parsedDate = new Date(item.date);
-                    const dayLabel = String(parsedDate.getDate());
-                    
+                    const weekDay = t(weekDayKeys[parsedDate.getDay()]);
+                    const dayNumber = String(parsedDate.getDate());
+
                     return {
                         label: item.label || item.date,
                         date: item.date,
                         fullDate: item.date,
-                        dayMonth: period === 'day' ? dayLabel : getNumericDate(item.date),
+                        dayMonth: weekDay,
+                        dayNumber: dayNumber,
                         countTotal: item.completed_count,
                         countCapped: item.completed_days,
                         countRestored: item.restored_days || 0,
                         countExtra: item.extra_quantity,
-                        percentage: percentageStr
+                        percentage: percentageStr,
+                        isToday: isToday
                     };
                 });
                 setChartData(formattedData);
@@ -721,7 +727,7 @@ const Charts = ({
                                     <XAxis
                                         dataKey={xAxisDataKey}
                                         stroke={isDark ? "#666" : "#666"}
-                                        tick={<CustomXAxisTick period={period} isMobile={isMobile} isDark={isDark} />}
+                                        tick={<CustomXAxisTick period={period} isMobile={isMobile} isDark={isDark} chartData={chartData} />}
                                         height={xAxisHeight}
                                         interval={0}
                                         tickLine={false}
@@ -761,10 +767,28 @@ const Charts = ({
                                                     dataKey="countRestored"
                                                     content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={barLabelSize} />}
                                                 />
+                                                {period === 'day' && (
+                                                    <LabelList
+                                                        dataKey="dayMonth"
+                                                        position="top"
+                                                        content={(props) => {
+                                                            const { x, y, value, index, width } = props;
+                                                            if (!value || x == null || y == null) return null;
+                                                            // Position at fixed top of chart instead of above each bar
+                                                            const chartTop = 15;
+                                                            const cx = x + width / 2;
+                                                            return (
+                                                                <text x={cx} y={chartTop} textAnchor="middle" fill={isDark ? "#E0E0E0" : "#666"} fontSize={isMobile ? 10 : 11} fontWeight={500}>
+                                                                    {value}
+                                                                </text>
+                                                            );
+                                                        }}
+                                                    />
+                                                )}
                                                 <LabelList
                                                     dataKey="percentage"
                                                     position="top"
-                                                    content={(props) => <PercentageBadgeVertical {...props} fSize={isMobile ? 10 : 12} />}
+                                                    content={(props) => <PercentageBadgeVertical {...props} fSize={isMobile ? 10 : 12} period={period} />}
                                                 />
                                             </Bar>
                                         </>
@@ -782,6 +806,24 @@ const Charts = ({
                                                 dataKey="countExtra"
                                                 content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={barLabelSize} />}
                                             />
+                                            {period === 'day' && (
+                                                <LabelList
+                                                    dataKey="dayMonth"
+                                                    position="top"
+                                                    content={(props) => {
+                                                        const { x, y, value, index, width } = props;
+                                                        if (!value || x == null || y == null) return null;
+                                                        // Position at fixed top of chart instead of above each bar
+                                                        const chartTop = 15;
+                                                        const cx = x + width / 2;
+                                                        return (
+                                                            <text x={cx} y={chartTop} textAnchor="middle" fill={isDark ? "#E0E0E0" : "#666"} fontSize={isMobile ? 10 : 11} fontWeight={500}>
+                                                                {value}
+                                                            </text>
+                                                        );
+                                                    }}
+                                                />
+                                            )}
                                         </Bar>
                                     )}
                                 </BarChart>
@@ -804,15 +846,17 @@ const Charts = ({
                 </div>
             )}
 
-            <HabitsComparisonChart
-                period={period}
-                viewType={viewType}
-                currentWeekDate={chartDate}
-                selectedCategory={selectedCategory}
-                theme={theme}
-                t={t}
-                language={language}
-            />
+            {viewType === 'quantity' && (
+                <HabitsComparisonChart
+                    period={period}
+                    viewType={viewType}
+                    currentWeekDate={chartDate}
+                    selectedCategory={selectedCategory}
+                    theme={theme}
+                    t={t}
+                    language={language}
+                />
+            )}
         </div>
     );
 };
