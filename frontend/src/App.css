@@ -1849,6 +1849,27 @@ body {
   background-color: #fee;
 }
 
+.expand-btn {
+  color: #666;
+  border-radius: 12px;
+  font-size: 14px;
+  padding: 6px 10px;
+}
+
+.expand-btn:hover {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.dark-theme .expand-btn {
+  color: #ccc;
+}
+
+.dark-theme .expand-btn:hover {
+  background-color: #404040;
+  color: #fff;
+}
+
 /* Ensure drag handle is clearly visible */
 .drag-handle {
   font-size: 20px;
@@ -2576,6 +2597,30 @@ body {
   outline: none;
   background-color: #fff;
   box-shadow: 0 0 0 3px rgba(31, 102, 59, 0.1);
+}
+
+/* Category habits inline under name */
+.category-habits-inline {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.category-habit-tag {
+  padding: 4px 10px;
+  background-color: #e9ecef;
+  border-radius: 12px;
+  font-size: 0.85em;
+  color: #495057;
+  white-space: nowrap;
+}
+
+.no-habits-inline {
+  font-size: 0.85em;
+  color: #6c757d;
+  font-style: italic;
 }
 
 .category-edit-actions {

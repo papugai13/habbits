@@ -70,6 +70,7 @@ const App = () => {
   const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
+  const [expandedCategoryId, setExpandedCategoryId] = useState(null);
   const [archivedCategories, setArchivedCategories] = useState([]);
   const [showCategoryArchive, setShowCategoryArchive] = useState(false);
   const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('Все');
@@ -2207,6 +2208,20 @@ const App = () => {
                         />
                         <div className="category-edit-actions">
                           <button
+                            className="manage-btn add-habit-btn"
+                            onClick={() => {
+                              setNewHabitCategory(String(cat.id));
+                              setNewHabitName('');
+                              setCreateError('');
+                              setShowAddCategory(false);
+                              setNewCategoryName('');
+                              setShowCreateModal(true);
+                            }}
+                            title={t('addHabit')}
+                          >
+                            ➕
+                          </button>
+                          <button
                             className="manage-btn save-btn"
                             onClick={() => handleUpdateCategory(cat.id, editingCategoryValue)}
                             title={t('save')}
@@ -2228,8 +2243,30 @@ const App = () => {
                       <>
                         <div className="manage-category-info">
                           <div className="manage-category-name">{cat.name}</div>
+                          {expandedCategoryId === cat.id && (
+                            <div className="category-habits-inline">
+                              {habitsData.filter(h => h.category_name === cat.name).length === 0 ? (
+                                <span className="no-habits-inline">{t('noHabitsInCategory')}</span>
+                              ) : (
+                                habitsData
+                                  .filter(h => h.category_name === cat.name)
+                                  .map(habit => (
+                                    <span key={habit.id} className="category-habit-tag">
+                                      {habit.name}
+                                    </span>
+                                  ))
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="manage-category-actions">
+                          <button
+                            className="manage-btn expand-btn"
+                            onClick={() => setExpandedCategoryId(expandedCategoryId === cat.id ? null : cat.id)}
+                            title={t('showHabits')}
+                          >
+                            {expandedCategoryId === cat.id ? '▲' : '▼'}
+                          </button>
                           <button
                             className="manage-btn edit-btn"
                             onClick={() => {
@@ -2255,7 +2292,7 @@ const App = () => {
                             title={t('delete')}
 
                           >
-                            🗑️
+                            
                           </button>
                         </div>
                       </>
