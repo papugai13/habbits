@@ -16,10 +16,21 @@ const generatePeriodLabel = (period, referenceDate, t, language) => {
     const months = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
 
     if (period === 'day') {
-        // Show only today's date in dd.mm format
-        const d = String(today.getDate()).padStart(2, '0');
-        const m = String(today.getMonth() + 1).padStart(2, '0');
-        return { title: `${d}.${m}`, subtitle: '' };
+        // Calendar week (Mon-Sun): title = week number, subtitle = date range
+        const day = today.getDay();
+        const diff = today.getDate() - (day === 0 ? 6 : day - 1);
+        const start_date = new Date(today.getFullYear(), today.getMonth(), diff);
+        const end_date = new Date(start_date);
+        end_date.setDate(start_date.getDate() + 6);
+
+        const weekNum = getWeekNumber(today);
+        const startMonth = t(months[start_date.getMonth()]);
+        const endMonth = t(months[end_date.getMonth()]);
+        const rangeStr = start_date.getMonth() === end_date.getMonth()
+            ? `${start_date.getDate()} - ${end_date.getDate()} ${startMonth}`
+            : `${start_date.getDate()} ${startMonth} - ${end_date.getDate()} ${endMonth}`;
+
+        return { title: `${t('week')} №${weekNum}`, subtitle: rangeStr };
     } else if (period === 'week') {
         // Aggregated weeks of month
         const monthName = t(months[today.getMonth()]);
@@ -598,31 +609,31 @@ const Charts = ({
     }, [currentWeekDate, period]);
 
     const handlePrevPeriod = () => {
-        const date = new Date(chartDate);
-        if (period === 'day') {
-            date.setDate(date.getDate() - 1);
-        } else if (period === 'week') {
-            date.setDate(date.getDate() - 7);
-        } else if (period === 'month') {
-            date.setMonth(date.getMonth() - 1);
-        } else if (period === 'year') {
-            date.setFullYear(date.getFullYear() - 1);
-        }
-        setChartDate(date.toISOString().split('T')[0]);
+        setChartDate(prevDate => {
+            const date = new Date(prevDate);
+            if (period === 'day' || period === 'week') {
+                date.setDate(date.getDate() - 7);
+            } else if (period === 'month') {
+                date.setMonth(date.getMonth() - 1);
+            } else if (period === 'year') {
+                date.setFullYear(date.getFullYear() - 1);
+            }
+            return date.toISOString().split('T')[0];
+        });
     };
 
     const handleNextPeriod = () => {
-        const date = new Date(chartDate);
-        if (period === 'day') {
-            date.setDate(date.getDate() + 1);
-        } else if (period === 'week') {
-            date.setDate(date.getDate() + 7);
-        } else if (period === 'month') {
-            date.setMonth(date.getMonth() + 1);
-        } else if (period === 'year') {
-            date.setFullYear(date.getFullYear() + 1);
-        }
-        setChartDate(date.toISOString().split('T')[0]);
+        setChartDate(prevDate => {
+            const date = new Date(prevDate);
+            if (period === 'day' || period === 'week') {
+                date.setDate(date.getDate() + 7);
+            } else if (period === 'month') {
+                date.setMonth(date.getMonth() + 1);
+            } else if (period === 'year') {
+                date.setFullYear(date.getFullYear() + 1);
+            }
+            return date.toISOString().split('T')[0];
+        });
     };
 
     return (
