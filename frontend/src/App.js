@@ -667,9 +667,17 @@ const App = () => {
               const isTodayCol = columnDateStr === todayStr;
               const isMonthStart = index > 0 && columnDate.getDate() === 1;
 
+              // Count completed (non-restored) habits for this day
+              const completedCount = filteredHabits.reduce((count, habit) => {
+                const status = habit.statuses?.find(s => s && s.date === columnDateStr);
+                return (status && status.is_done && !status.is_restored) ? count + 1 : count;
+              }, 0);
+              const totalHabits = filteredHabits.length;
+
               return (
                 <React.Fragment key={day}>
                   <div className={`grid-col day-col ${isTodayCol ? (highlightWeekToday ? 'today highlight' : 'today') : ''} ${isMonthStart ? 'month-start' : ''}`}>
+                    <div className="day-completion-count">{completedCount}/{totalHabits}</div>
                     <div className="day-name">{day}</div>
                     <div className="day-number">{columnDate.getDate()}</div>
                   </div>

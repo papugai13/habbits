@@ -1197,6 +1197,12 @@ body {
   .day-number {
     font-size: 12px;
   }
+
+  .day-completion-count {
+    font-size: 8px;
+    padding: 0px 2px;
+    min-width: 22px;
+  }
 }
 
 .days-header {
@@ -1258,6 +1264,33 @@ body {
   font-size: 14px;
   font-weight: 700;
   color: #333;
+}
+
+.day-completion-count {
+  font-size: 9px;
+  font-weight: 600;
+  color: #059669;
+  background-color: rgba(5, 150, 105, 0.1);
+  border-radius: 8px;
+  padding: 1px 4px;
+  line-height: 1.2;
+  margin-bottom: 2px;
+  min-width: 28px;
+  text-align: center;
+}
+
+.day-col.today .day-completion-count {
+  background-color: rgba(5, 150, 105, 0.15);
+  color: #047857;
+}
+
+.dark-theme .day-completion-count {
+  color: #34D399;
+  background-color: rgba(52, 211, 153, 0.15);
+}
+
+.dark-theme .day-col.today .day-completion-count {
+  background-color: rgba(52, 211, 153, 0.25);
 }
 
 .day-col.today {
