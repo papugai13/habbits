@@ -1496,6 +1496,13 @@ body {
   color: #333;
 }
 
+.form-hint {
+  font-size: 12px;
+  color: #666;
+  margin-top: -4px;
+  margin-bottom: 4px;
+}
+
 .form-input,
 .form-select {
   padding: 12px 16px;

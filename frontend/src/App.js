@@ -2531,13 +2531,13 @@ const App = () => {
                   id="habit-name"
                   type="text"
                   className="form-input"
-                  placeholder={t('habitNamePlaceholder')}
 
                   value={newHabitName}
 
                   onChange={(e) => setNewHabitName(e.target.value)}
                   autoFocus
                 />
+                <small className="form-hint">{t('habitNamePlaceholder')}</small>
               </div>
 
               <div className="form-group">
@@ -2648,6 +2648,7 @@ const App = () => {
                   onChange={(e) => setEditingHabit({ ...editingHabit, name: e.target.value })}
                   autoFocus
                 />
+                <small className="form-hint">{t('habitNamePlaceholder')}</small>
               </div>
 
               <div className="form-group">
