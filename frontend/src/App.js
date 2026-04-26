@@ -728,6 +728,7 @@ const App = () => {
                   const dayOfWeek = baseDate.getDay();
                   const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
                   const diff = index - currentDayIndex;
+
                   const slotDate = new Date(baseDate);
                   slotDate.setDate(baseDate.getDate() + diff);
                   const slotDateStr = slotDate.toLocaleDateString('en-CA');
@@ -741,6 +742,23 @@ const App = () => {
                     <div className="habit-name">
                       <span className="habit-text">{habit.name}</span>
                     </div>
+                    {habit.latest_comment && (
+                      <div 
+                        className="habit-note-container"
+                        onClick={() => {
+                          const d = habit.latest_comment_details;
+                          if (d) {
+                            const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                            openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, d.is_restored);
+                          }
+                        }}
+                      >
+                        <div className="habit-note-box">
+                          <span className="habit-note-label">{t('comment')}:</span>
+                          <span className="habit-note-text">{habit.latest_comment}</span>
+                        </div>
+                      </div>
+                    )}
                     <div className="habit-row-content">
                       <div className="habit-checks">
                         {WEEK_DAYS.map((_, index) => {
@@ -817,43 +835,25 @@ const App = () => {
                               {weeklyCount}
                             </span>
                             {weeklyAward && weeklyAward !== '👑' && habit.weekly_award_streak > 1 && (
-                              <span className="award-multiplier">x{habit.weekly_award_streak}</span>
+                              <span className="award-side award-right">{weeklyAward}{habit.weekly_award_streak > 1 ? <span className="award-streak">x{habit.weekly_award_streak}</span> : ''}</span>
                             )}
-                            {weeklyAward && !weeklyAward.includes('👑') && (
-                              <span className="award-side award-right">{weeklyAward.includes('⚡') ? '⚡' : '⭐'}</span>
+                            {weeklyAward && weeklyAward !== '👑' && habit.weekly_award_streak <= 1 && (
+                              <span className="award-side award-right">{weeklyAward}</span>
+                            )}
+                            {weeklyAward === '👑' && habit.crown_streak <= 1 && (
+                              <span className="award-side award-right">👑</span>
                             )}
                           </div>
-                          <div className="habit-count monthly">
-                            <span className="habit-count-number">{habit.monthly_total || 0}</span>
-                          </div>
-                        </div>
-                        <div className="habit-overflow-container">
-                          {(habit.weekly_overflow > 0) && (
+                          <div className="habit-count monthly">{habit.monthly_total || 0}</div>
+                          {habit.weekly_overflow && (
                             <div className="habit-count-overflow weekly">{habit.weekly_overflow}</div>
                           )}
-                          {(habit.monthly_overflow > 0) && (
+                          {habit.monthly_overflow && (
                             <div className="habit-count-overflow monthly">{habit.monthly_overflow}</div>
                           )}
                         </div>
                       </div>
                     </div>
-                    {habit.latest_comment && (
-                      <div 
-                        className="habit-note-container"
-                        onClick={() => {
-                          const d = habit.latest_comment_details;
-                          if (d) {
-                            const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, d.is_restored);
-                          }
-                        }}
-                      >
-                        <div className="habit-note-box">
-                          <span className="habit-note-label">{t('comment')}:</span>
-                          <span className="habit-note-text">{habit.latest_comment}</span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })}
