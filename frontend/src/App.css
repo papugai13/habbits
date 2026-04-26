@@ -399,7 +399,7 @@ body {
   height: 100%;
   padding: 0 16px 15px;
   overflow-y: auto;
-  overflow-x: visible !important; /* Changed from hidden to avoid clipping the separator line */
+  overflow-x: hidden; /* Changed to hidden to prevent button overflow */
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   position: relative;
@@ -606,18 +606,24 @@ body {
   display: flex;
   align-items: center;
   width: 100%;
-  gap: 10px;
+  max-width: 100%;
+  gap: 8px;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .habit-checks {
   display: flex;
   flex: 1;
   justify-content: space-between;
-  gap: 4px;
+  gap: 2px;
+  overflow: hidden; /* Prevent buttons from overflowing */
+  min-width: 0; /* Allow flex shrinking */
+  flex-shrink: 1; /* Allow shrinking when space is limited */
 }
 
 .check-box {
-  width: 100%; /* Take full width of .grid-col */
+  width: 100%;
   height: 32px;
   background-color: #D0D0D0;
   border: 1px solid #C0C0C0;
@@ -625,10 +631,12 @@ body {
   cursor: pointer;
   transition: all 0.2s;
   padding: 0;
-  min-width: 0;
+  min-width: 32px; /* Ensure minimum touch target size */
+  max-width: 100%; /* Don't exceed container width */
   position: relative;
   overflow: hidden;
   /* Ensure corner indicators are clipped */
+  box-sizing: border-box; /* Include border in width calculation */
 }
 
 .check-box.checked {
@@ -687,14 +695,15 @@ body {
 .habit-count {
   background-color: #059669;
   color: #FFFFFF;
-  height: 34px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  font-size: 15px;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 800;
-  min-width: 46px;
+  min-width: 34px;
+  max-width: 34px;
   text-align: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   position: relative;
@@ -721,12 +730,13 @@ body {
 
 .habit-count.monthly {
   z-index: 1;
-  margin-left: -14px;
-  padding-left: 14px;
+  margin-left: -10px;
+  padding-left: 10px;
   background-color: #059669;
   color: #FFFFFF;
   opacity: 1;
-  min-width: 46px;
+  min-width: 34px;
+  max-width: 34px;
   border: none;
 }
 
@@ -735,8 +745,10 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 78px;
+  width: 56px;
+  max-width: 56px;
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .habit-count-number {
@@ -902,15 +914,16 @@ body {
 .habit-count-overflow {
   background-color: #8B5CF6;
   color: #FFFFFF;
-  height: 24px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 800;
-  min-width: 38px;
-  padding: 0 6px;
+  min-width: 32px;
+  max-width: 32px;
+  padding: 0 4px;
   text-align: center;
   box-shadow: 0 1px 3px rgba(139, 92, 246, 0.3);
   pointer-events: none;
@@ -919,9 +932,9 @@ body {
 
 .habit-count-overflow.weekly {
   z-index: 1;
-  margin-right: -12px;
+  margin-right: -8px;
   /* Нахлест */
-  padding-right: 14px;
+  padding-right: 10px;
   /* Чтобы цифра не перекрывалась */
   background-color: #FFFFFF;
   color: #8B5CF6;
@@ -1150,6 +1163,14 @@ body {
 
   .habit-checks {
     gap: 3px;
+    overflow: hidden !important; /* Force overflow hidden on mobile */
+    min-width: 0 !important; /* Allow shrinking */
+  }
+
+  .grid-col {
+    min-width: 28px !important; /* Smaller minimum for mobile */
+    max-width: 45px !important; /* Stricter maximum for mobile */
+    overflow: hidden !important;
   }
 
   .check-box {
@@ -1158,9 +1179,10 @@ body {
   }
 
   .habit-count {
-    height: 26px;
+    height: 24px;
     font-size: 11px;
-    min-width: 28px;
+    min-width: 26px;
+    max-width: 26px;
   }
 
   .habit-count.weekly {
@@ -1168,23 +1190,27 @@ body {
   }
 
   .habit-count.monthly {
-    margin-left: -8px;
-    padding-left: 10px;
+    margin-left: -6px;
+    padding-left: 6px;
+    max-width: 26px;
     box-shadow: none;
   }
 
   .habit-count-container {
-    min-height: 26px;
+    min-height: 24px;
   }
 
   .habit-counts-wrapper {
-    min-height: 26px;
+    min-height: 24px;
+    width: 44px;
+    max-width: 44px;
   }
 
   .habit-count-overflow {
-    height: 20px;
+    height: 18px;
     font-size: 10px;
-    min-width: 28px;
+    min-width: 24px;
+    max-width: 24px;
   }
 
   .day-btn {
@@ -1194,6 +1220,50 @@ body {
 
   .day-number {
     font-size: 12px;
+  }
+}
+
+@media (max-width: 320px) {
+  .habit-row-content {
+    gap: 4px;
+  }
+
+  .habit-checks {
+    gap: 1px;
+  }
+
+  .habit-counts-wrapper {
+    width: 40px;
+    max-width: 40px;
+  }
+
+  .habit-count {
+    height: 22px;
+    min-width: 24px;
+    max-width: 24px;
+    font-size: 10px;
+  }
+
+  .habit-count.monthly {
+    margin-left: -5px;
+    padding-left: 5px;
+    max-width: 24px;
+  }
+
+  .habit-count-overflow {
+    height: 16px;
+    min-width: 20px;
+    max-width: 20px;
+    font-size: 9px;
+  }
+
+  .grid-col {
+    min-width: 24px !important;
+    max-width: 40px !important;
+  }
+
+  .check-box {
+    height: 24px;
   }
 
   .day-completion-count {
@@ -1235,12 +1305,14 @@ body {
 /* Unified grid column class for identical header/row layout */
 .grid-col {
   flex: 1;
-  min-width: 0;
+  min-width: 32px; /* Minimum width to fit check-box */
+  max-width: 60px; /* Maximum width to prevent overflow */
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch; /* Make children (like .check-box button) take full width */
   justify-content: center;
+  overflow: hidden; /* Prevent content from overflowing */
 }
 
 .day-col {
@@ -2841,7 +2913,7 @@ body {
 }
 
 /* Ensure row containers allow пространство между месяцами */
-.habit-checks, .days-cols {
+.days-cols {
   overflow: visible !important;
 }
 
@@ -2856,8 +2928,6 @@ body {
 
 /* Убеждаемся, что строки не обрезают выходящую за пределы линию */
 .habit-row,
-.habit-row-content,
-.habit-checks,
 .days-header,
 .days-cols {
   overflow: visible !important;
