@@ -905,6 +905,15 @@ body {
   align-items: center;
 }
 
+.crown-right {
+  font-size: 12px;
+  line-height: 1;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .crown-streak {
   font-size: 9px;
   font-weight: 900;
