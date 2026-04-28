@@ -412,6 +412,34 @@ const App = () => {
     };
 
     registerServiceWorker();
+
+    // Listen for messages from Service Worker (e.g., REQUEST_SETTINGS)
+    const handleServiceWorkerMessage = (event) => {
+      if (event.data && event.data.type === 'REQUEST_SETTINGS') {
+        console.log('[App] Received REQUEST_SETTINGS from Service Worker');
+        const settings = {
+          enabled: reminderEnabled,
+          reminderTimes: reminderTimes,
+          timesPerDay: reminderTimesPerDay === 'custom' ? customTimesPerDay : reminderTimesPerDay,
+          customTimesPerDay: customTimesPerDay,
+          notificationsSentToday: 0,
+          sentReminders: []
+        };
+        
+        navigator.serviceWorker.ready.then(registration => {
+          if (registration.active) {
+            registration.active.postMessage({ type: 'SETTINGS_RESPONSE', settings });
+            console.log('[App] Sent SETTINGS_RESPONSE to Service Worker');
+          }
+        });
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+    };
   }, [reminderEnabled, reminderTimes, reminderTimesPerDay, customTimesPerDay]);
 
   // Update reminder settings in localStorage
