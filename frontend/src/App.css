@@ -695,15 +695,15 @@ body {
 .habit-count {
   background-color: #059669;
   color: #FFFFFF;
-  height: 32px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
-  min-width: 34px;
-  max-width: 34px;
+  min-width: 38px;
+  max-width: 38px;
   text-align: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   position: relative;
@@ -723,9 +723,10 @@ body {
   z-index: 2;
   position: relative;
   background-color: #FFFFFF;
-  color: #059669;
+  color: #064E3B;
   border: 2px solid #059669;
   box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 900;
 }
 
 .habit-count.monthly {
@@ -735,8 +736,8 @@ body {
   background-color: #059669;
   color: #FFFFFF;
   opacity: 1;
-  min-width: 34px;
-  max-width: 34px;
+  min-width: 38px;
+  max-width: 38px;
   border: none;
 }
 
@@ -745,10 +746,11 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 56px;
-  max-width: 56px;
+  width: 60px;
+  max-width: 60px;
   flex-shrink: 0;
   min-width: 0;
+  padding-bottom: 30px;
 }
 
 .habit-count-number {
@@ -773,7 +775,7 @@ body {
 
 /* === ОБЩИЕ СТИЛИ НАГРАД (звезды и молнии) === */
 .award-side {
-  font-size: 11px; /* Emojis smaller than digit */
+  font-size: 8px; /* Emojis smaller than digit */
   line-height: 1;
   z-index: 3;
   display: flex;
@@ -782,21 +784,21 @@ body {
 }
 
 .award-left {
-  margin-right: 2px;
+  margin-right: 0px;
 }
 
 .award-right {
-  margin-left: 2px;
+  margin-left: 0px;
 }
 
 /* === КОРОНА === */
 
 .crown-top {
   position: absolute;
-  top: -4px;
+  top: -6px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 10px;
+  font-size: 8px;
   z-index: 1;
   white-space: nowrap;
   display: flex;
@@ -914,15 +916,15 @@ body {
 .habit-count-overflow {
   background-color: #8B5CF6;
   color: #FFFFFF;
-  height: 22px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
-  min-width: 32px;
-  max-width: 32px;
+  min-width: 36px;
+  max-width: 36px;
   padding: 0 4px;
   text-align: center;
   box-shadow: 0 1px 3px rgba(139, 92, 246, 0.3);
@@ -931,23 +933,33 @@ body {
 }
 
 .habit-count-overflow.weekly {
-  z-index: 1;
-  margin-right: -8px;
-  /* Нахлест */
-  padding-right: 10px;
-  /* Чтобы цифра не перекрывалась */
+  position: absolute;
+  top: 100%;
+  right: 100%;
+  transform: translateX(100%);
+  margin-top: 2px;
+  margin-right: -2px;
   background-color: #FFFFFF;
-  color: #8B5CF6;
+  color: #5B21B6;
   border: 1.5px solid #8B5CF6;
   opacity: 1;
+  z-index: 1;
+  font-weight: 900;
 }
 
 .habit-count-overflow.monthly {
-  z-index: 2;
+  position: absolute;
+  top: 100%;
+  left: 100%;
+  transform: translateX(-100%);
+  margin-top: 2px;
+  margin-left: -2px;
   background-color: #8B5CF6;
   color: #FFFFFF;
   border: none;
   box-shadow: -2px 0 4px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(139, 92, 246, 0.3);
+  z-index: 2;
+  font-weight: 900;
 }
 
 /* Нижняя навигация */
@@ -3603,8 +3615,9 @@ body {
 
 .dark-theme .habit-count-overflow.weekly {
   background-color: #2D2D2D;
-  color: #8B5CF6;
+  color: #C4B5FD;
   border: 1.5px solid #8B5CF6;
+  font-weight: 900;
 }
 
 .dark-theme .habit-count-overflow.monthly {
@@ -3748,8 +3761,9 @@ body {
 
 .dark-theme .habit-count-overflow.weekly {
   background-color: #2D2D2D;
-  color: #8B5CF6;
+  color: #C4B5FD;
   border: 1.5px solid #8B5CF6;
+  font-weight: 900;
 }
 
 .dark-theme .habit-count-overflow.monthly {
