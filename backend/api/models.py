@@ -156,14 +156,19 @@ class Habit(models.Model):
         verbose_name="В архиве",
     )
 
-    created_at = models.DateField(
-        auto_now_add=True,
-        verbose_name="Дата создания",
+    start_date = models.DateField(
+        verbose_name="Дата начала",
+        help_text="Дата создания привычки (можно изменить)",
+        null=True,
+        blank=True
     )
 
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = unique_slugify(self, slugify(self.name))
+        if not self.start_date:
+            from django.utils import timezone
+            self.start_date = timezone.now().date()
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:

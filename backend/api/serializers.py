@@ -26,10 +26,11 @@ class HabitSerializer(serializers.ModelSerializer):
     )
     category_name = serializers.SerializerMethodField()
     category_slug = serializers.SerializerMethodField()
+    start_date = serializers.DateField(required=False, allow_null=True)
 
     class Meta:
         model = Habit
-        fields = ('id', 'user', 'name', 'category', 'category_name', 'category_slug', 'slug', 'order', 'is_archived')
+        fields = ('id', 'user', 'name', 'category', 'category_name', 'category_slug', 'slug', 'order', 'is_archived', 'start_date')
         read_only_fields = ('id', 'user', 'slug')
 
     def __init__(self, *args, **kwargs):
