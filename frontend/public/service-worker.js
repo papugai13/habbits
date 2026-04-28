@@ -4,16 +4,9 @@ const REMINDER_CHECK_INTERVAL = 60000; // Check every minute
 let reminderSettings = null;
 let lastNotificationDate = null;
 
-// Load reminder settings from localStorage
-function loadReminderSettings() {
-  try {
-    const settings = localStorage.getItem('reminderSettings');
-    if (settings) {
-      reminderSettings = JSON.parse(settings);
-    }
-  } catch (e) {
-    console.error('Failed to load reminder settings:', e);
-  }
+// Settings are stored in memory only - localStorage not available in Service Worker
+function logSettings() {
+  console.log('[Service Worker] Current settings:', reminderSettings);
 }
 
 // Check if it's time to send a reminder
@@ -75,7 +68,6 @@ function checkReminders() {
         }
         reminderSettings.sentReminders.push(reminderKey);
         reminderSettings.notificationsSentToday++;
-        saveReminderSettings();
         break; // Only send one notification per check
       }
     }
@@ -122,10 +114,19 @@ function sendNotification(time) {
   });
 }
 
-// Save reminder settings to localStorage (via client message)
-function saveReminderSettings() {
-  // This will be called from the main app via postMessage
-  // The actual saving happens in the main app
+// Request settings from clients when SW wakes up
+async function requestSettingsFromClients() {
+  try {
+    const clients = await self.clients.matchAll({ type: 'window' });
+    if (clients.length > 0) {
+      console.log('[Service Worker] Requesting settings from clients');
+      clients.forEach(client => {
+        client.postMessage({ type: 'REQUEST_SETTINGS' });
+      });
+    }
+  } catch (e) {
+    console.error('[Service Worker] Failed to request settings:', e);
+  }
 }
 
 // Listen for messages from the main app
@@ -134,7 +135,11 @@ self.addEventListener('message', (event) => {
     reminderSettings = event.data.settings;
     lastNotificationDate = new Date().toDateString();
   } else if (event.data && event.data.type === 'TEST_NOTIFICATION') {
-    sendNotification();
+    sendNotification('test');
+  } else if (event.data && event.data.type === 'SETTINGS_RESPONSE') {
+    reminderSettings = event.data.settings;
+    lastNotificationDate = new Date().toDateString();
+    console.log('[Service Worker] Received settings from client:', reminderSettings);
   }
 });
 
@@ -152,8 +157,8 @@ self.addEventListener('activate', (event) => {
   console.log('Service Worker activated');
   event.waitUntil(self.clients.claim());
   
-  // Load settings on activation
-  loadReminderSettings();
+  // Request settings from clients when activated
+  requestSettingsFromClients();
 });
 
 // Handle notification click
