@@ -18,6 +18,8 @@ function loadReminderSettings() {
 
 // Check if it's time to send a reminder
 function checkReminders() {
+  console.log('[Service Worker] checkReminders called', reminderSettings);
+  
   if (!reminderSettings || !reminderSettings.enabled) {
     return;
   }
@@ -27,18 +29,27 @@ function checkReminders() {
   
   // Reset last notification date if it's a new day
   if (lastNotificationDate !== today) {
+    console.log('[Service Worker] New day, resetting counters');
     lastNotificationDate = today;
     reminderSettings.notificationsSentToday = 0;
+    reminderSettings.sentReminders = [];
     saveReminderSettings();
   }
 
-  // Check if we've already sent all scheduled notifications for today
-  if (reminderSettings.notificationsSentToday >= reminderSettings.timesPerDay) {
+  // Get reminder times from settings (new format with array)
+  const reminderTimes = reminderSettings.reminderTimes || [];
+  console.log('[Service Worker] Reminder times:', reminderTimes);
+  
+  if (reminderTimes.length === 0) {
+    console.log('[Service Worker] No reminder times configured');
     return;
   }
 
-  // Calculate reminder times
-  const reminderTimes = calculateReminderTimes(reminderSettings.startTime, reminderSettings.timesPerDay);
+  // Check if we've already sent all scheduled notifications for today
+  if (reminderSettings.notificationsSentToday >= reminderTimes.length) {
+    console.log('[Service Worker] All notifications sent for today');
+    return;
+  }
   
   for (const time of reminderTimes) {
     const [hours, minutes] = time.split(':').map(Number);
@@ -47,11 +58,16 @@ function checkReminders() {
     
     // Check if current time matches reminder time (within 1 minute window)
     const timeDiff = Math.abs(now - reminderDate);
-    if (timeDiff < REMINDER_CHECK_INTERVAL && reminderSettings.notificationsSentToday < reminderSettings.timesPerDay) {
+    console.log('[Service Worker] Checking time:', time, 'diff:', timeDiff, 'ms');
+    
+    if (timeDiff < REMINDER_CHECK_INTERVAL && reminderSettings.notificationsSentToday < reminderTimes.length) {
       // Check if we already sent this reminder today
       const reminderKey = `${today}-${time}`;
+      console.log('[Service Worker] Reminder key:', reminderKey, 'already sent:', reminderSettings.sentReminders?.includes(reminderKey));
+      
       if (!reminderSettings.sentReminders?.includes(reminderKey)) {
-        sendNotification();
+        console.log('[Service Worker] Sending notification for:', time);
+        sendNotification(time);
         
         // Mark this reminder as sent
         if (!reminderSettings.sentReminders) {
@@ -92,12 +108,15 @@ function calculateReminderTimes(startTime, timesPerDay) {
 }
 
 // Send notification
-function sendNotification() {
+function sendNotification(time) {
+  const uniqueTag = `habit-reminder-${time}-${Date.now()}`;
+  console.log('[Service Worker] Sending notification with tag:', uniqueTag);
+  
   self.registration.showNotification('Habbits', {
     body: 'Не забудьте отметить привычки!',
     icon: '/favicon.ico',
     badge: '/favicon-96x96.png',
-    tag: 'habit-reminder',
+    tag: uniqueTag,
     requireInteraction: false,
     silent: false
   });
