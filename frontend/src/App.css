@@ -1355,12 +1355,13 @@ body {
 }
 
 .dark-theme .day-completion-count {
-  color: #34D399;
-  background-color: rgba(52, 211, 153, 0.15);
+  color: #86EFAC;
+  background-color: rgba(52, 211, 153, 0.25);
 }
 
 .dark-theme .day-col.today .day-completion-count {
-  background-color: rgba(52, 211, 153, 0.25);
+  background-color: rgba(52, 211, 153, 0.35);
+  color: #86EFAC;
 }
 
 .day-col.today {
@@ -1381,19 +1382,12 @@ body {
 
 .day-col.today .day-number {
   position: relative;
-}
-
-.day-col.today .day-number::after {
-  content: '';
-  position: absolute;
-  bottom: -8px;
-  /* Moved 2px even lower as requested */
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
   background-color: #059669;
-  border-radius: 50%;
+  color: white;
+  border-radius: 4px;
+  padding: 2px 4px;
+  min-width: 20px;
+  text-align: center;
 }
 
 .day-col.highlight {
@@ -3154,9 +3148,17 @@ body {
   background-color: rgba(5, 150, 105, 0.1);
 }
 
-.dark-theme .day-col.today .day-name,
-.dark-theme .day-col.today .day-number {
+.dark-theme .day-col.today .day-name {
   color: #059669;
+}
+
+.dark-theme .day-col.today .day-number {
+  background-color: #059669;
+  color: white;
+  border-radius: 4px;
+  padding: 2px 4px;
+  min-width: 20px;
+  text-align: center;
 }
 
 .dark-theme .header-count-badge {

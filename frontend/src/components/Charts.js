@@ -16,21 +16,12 @@ const generatePeriodLabel = (period, referenceDate, t, language) => {
     const months = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
 
     if (period === 'day') {
-        // Calendar week (Mon-Sun): title = week number, subtitle = date range
-        const day = today.getDay();
-        const diff = today.getDate() - (day === 0 ? 6 : day - 1);
-        const start_date = new Date(today.getFullYear(), today.getMonth(), diff);
-        const end_date = new Date(start_date);
-        end_date.setDate(start_date.getDate() + 6);
-
-        const weekNum = getWeekNumber(today);
-        const startMonth = t(months[start_date.getMonth()]);
-        const endMonth = t(months[end_date.getMonth()]);
-        const rangeStr = start_date.getMonth() === end_date.getMonth()
-            ? `${start_date.getDate()} - ${end_date.getDate()} ${startMonth}`
-            : `${start_date.getDate()} ${startMonth} - ${end_date.getDate()} ${endMonth}`;
-
-        return { title: `${t('week')} №${weekNum}`, subtitle: rangeStr };
+        // Today's date
+        const dayName = today.toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { weekday: 'short' });
+        const dayNum = today.getDate();
+        const monthName = t(months[today.getMonth()]);
+        
+        return { title: `${dayName}, ${dayNum} ${monthName}`, subtitle: `${today.getFullYear()}` };
     } else if (period === 'week') {
         // Aggregated weeks of month
         const monthName = t(months[today.getMonth()]);
