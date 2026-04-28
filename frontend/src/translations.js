@@ -67,6 +67,14 @@ const translations = {
     save: 'Сохранить',
     cancel: 'Отмена',
     manageHabits: 'Управление привычками',
+    reminders: 'Напоминания',
+    enableReminders: 'Включить напоминания',
+    firstReminderTime: 'Время первого напоминания',
+    timesPerDay: 'Сколько раз в день',
+    custom: 'Другое',
+    customTimes: 'Количество раз',
+    reminderTimes: 'Время уведомлений',
+    testNotification: 'Тестовое уведомление',
 
     // Habit creation/editing
     createHabit: 'Создать привычку',
@@ -272,7 +280,15 @@ const translations = {
     agePlaceholder: 'e.g. 25',
     save: 'Save',
     cancel: 'Cancel',
-    manageHabits: 'Habit Management',
+    manageHabits: 'Manage Habits',
+    reminders: 'Reminders',
+    enableReminders: 'Enable Reminders',
+    firstReminderTime: 'First Reminder Time',
+    timesPerDay: 'Times per Day',
+    custom: 'Custom',
+    customTimes: 'Number of Times',
+    reminderTimes: 'Notification Times',
+    testNotification: 'Test Notification',
 
     // Habit creation/editing
     createHabit: 'Create Habit',

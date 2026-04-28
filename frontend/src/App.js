@@ -76,6 +76,42 @@ const App = () => {
   const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('Все');
   const [chartsSelectedCategory, setChartsSelectedCategory] = useState('Все');
 
+  // Reminder settings state
+  const [reminderEnabled, setReminderEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const settings = localStorage.getItem('reminderSettings');
+    return settings ? JSON.parse(settings).enabled : false;
+  });
+  const [reminderTimesPerDay, setReminderTimesPerDay] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    const settings = localStorage.getItem('reminderSettings');
+    return settings ? JSON.parse(settings).timesPerDay : 1;
+  });
+  const [customTimesPerDay, setCustomTimesPerDay] = useState(() => {
+    if (typeof window === 'undefined') return 4;
+    const settings = localStorage.getItem('reminderSettings');
+    return settings ? JSON.parse(settings).customTimesPerDay || 4 : 4;
+  });
+  const [reminderTimes, setReminderTimes] = useState(() => {
+    if (typeof window === 'undefined') return ['09:00'];
+    const settings = localStorage.getItem('reminderSettings');
+    if (settings) {
+      const parsed = JSON.parse(settings);
+      if (parsed.reminderTimes && Array.isArray(parsed.reminderTimes)) {
+        return parsed.reminderTimes;
+      }
+      // Migrate old single startTime to array
+      if (parsed.startTime) {
+        return [parsed.startTime];
+      }
+    }
+    return ['09:00'];
+  });
+  const [notificationPermission, setNotificationPermission] = useState(() => {
+    if (typeof window === 'undefined') return 'default';
+    return Notification.permission;
+  });
+
   // Quantity modal state
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [quantityModalData, setQuantityModalData] = useState(null);
@@ -348,6 +384,167 @@ const App = () => {
     if (typeof window === 'undefined') return;
     localStorage.setItem('habbits_collapsedCategories', JSON.stringify(collapsedCategories));
   }, [collapsedCategories]);
+
+  // Register Service Worker and handle notifications
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    const registerServiceWorker = async () => {
+      try {
+        const registration = await navigator.serviceWorker.register('/service-worker.js');
+        console.log('Service Worker registered:', registration);
+
+        // Send current settings to Service Worker
+        if (registration.active) {
+          const settings = {
+            enabled: reminderEnabled,
+            reminderTimes: reminderTimes,
+            timesPerDay: reminderTimesPerDay === 'custom' ? customTimesPerDay : reminderTimesPerDay,
+            customTimesPerDay: customTimesPerDay,
+            notificationsSentToday: 0,
+            sentReminders: []
+          };
+          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings });
+        }
+      } catch (error) {
+        console.error('Service Worker registration failed:', error);
+      }
+    };
+
+    registerServiceWorker();
+  }, [reminderEnabled, reminderTimes, reminderTimesPerDay, customTimesPerDay]);
+
+  // Update reminder settings in localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const settings = {
+      enabled: reminderEnabled,
+      reminderTimes: reminderTimes,
+      timesPerDay: reminderTimesPerDay,
+      customTimesPerDay: customTimesPerDay
+    };
+    localStorage.setItem('reminderSettings', JSON.stringify(settings));
+  }, [reminderEnabled, reminderTimes, reminderTimesPerDay, customTimesPerDay]);
+
+  // Request notification permission
+  const requestNotificationPermission = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    
+    if (Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      return permission;
+    }
+    return Notification.permission;
+  };
+
+  // Handle reminder enable toggle
+  const handleReminderToggle = async (enabled) => {
+    if (enabled) {
+      const permission = await requestNotificationPermission();
+      if (permission === 'granted') {
+        setReminderEnabled(true);
+      } else {
+        alert('Необходимо разрешить уведомления для работы напоминаний');
+      }
+    } else {
+      setReminderEnabled(false);
+    }
+  };
+
+  // Update reminder times when timesPerDay changes
+  const handleTimesPerDayChange = (value) => {
+    setReminderTimesPerDay(value);
+    const newCount = value === 'custom' ? customTimesPerDay : value;
+    const currentCount = reminderTimes.length;
+    
+    if (newCount > currentCount) {
+      // Add new times (default to 1 hour after the last time)
+      const newTimes = [...reminderTimes];
+      const lastTime = reminderTimes[currentCount - 1] || '09:00';
+      const [hours, minutes] = lastTime.split(':').map(Number);
+      const lastDate = new Date();
+      lastDate.setHours(hours, minutes, 0, 0);
+      
+      for (let i = currentCount; i < newCount; i++) {
+        const nextDate = new Date(lastDate);
+        nextDate.setHours(nextDate.getHours() + 1);
+        const nextTime = nextDate.toTimeString().slice(0, 5);
+        newTimes.push(nextTime);
+        lastDate.setHours(lastDate.getHours() + 1);
+      }
+      setReminderTimes(newTimes);
+    } else if (newCount < currentCount) {
+      // Remove excess times
+      setReminderTimes(reminderTimes.slice(0, newCount));
+    }
+  };
+
+  // Update reminder times when customTimesPerDay changes
+  useEffect(() => {
+    if (reminderTimesPerDay === 'custom') {
+      const newCount = customTimesPerDay;
+      const currentCount = reminderTimes.length;
+      
+      if (newCount > currentCount) {
+        const newTimes = [...reminderTimes];
+        const lastTime = reminderTimes[currentCount - 1] || '09:00';
+        const [hours, minutes] = lastTime.split(':').map(Number);
+        const lastDate = new Date();
+        lastDate.setHours(hours, minutes, 0, 0);
+        
+        for (let i = currentCount; i < newCount; i++) {
+          const nextDate = new Date(lastDate);
+          nextDate.setHours(nextDate.getHours() + 1);
+          const nextTime = nextDate.toTimeString().slice(0, 5);
+          newTimes.push(nextTime);
+          lastDate.setHours(lastDate.getHours() + 1);
+        }
+        setReminderTimes(newTimes);
+      } else if (newCount < currentCount) {
+        setReminderTimes(reminderTimes.slice(0, newCount));
+      }
+    }
+  }, [customTimesPerDay, reminderTimesPerDay]);
+
+  // Update a specific reminder time
+  const handleReminderTimeChange = (index, value) => {
+    const newTimes = [...reminderTimes];
+    newTimes[index] = value;
+    setReminderTimes(newTimes);
+  };
+
+  // Test notification
+  const testNotification = async () => {
+    if (typeof window === 'undefined') return;
+    
+    const permission = await requestNotificationPermission();
+    if (permission === 'granted') {
+      try {
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.getRegistration();
+          if (registration && registration.active) {
+            registration.active.postMessage({ type: 'TEST_NOTIFICATION' });
+            return;
+          }
+        }
+        // Fallback: show notification directly
+        new Notification('Habbits', {
+          body: 'Не забудьте отметить привычки!',
+          icon: '/favicon.ico'
+        });
+      } catch (error) {
+        console.error('Test notification error:', error);
+        // Fallback: show notification directly
+        new Notification('Habbits', {
+          body: 'Не забудьте отметить привычки!',
+          icon: '/favicon.ico'
+        });
+      }
+    } else {
+      alert('Необходимо разрешить уведомления для работы напоминаний');
+    }
+  };
 
   const goToWeek = (weekDate, direction) => {
     const date = new Date(weekDate);
@@ -651,8 +848,28 @@ const App = () => {
       ])
     ].filter((name) => name !== 'Все');
 
+    // Calculate today's completion for selected category
+    const selectedCategoryTodayCompleted = filteredHabits.reduce((count, habit) => {
+      const status = habit.statuses?.find(s => s && s.date === todayStr);
+      return (status && status.is_done && !status.is_restored) ? count + 1 : count;
+    }, 0);
+    const selectedCategoryTotal = filteredHabits.length;
+    const isSelectedCategoryComplete = selectedCategoryTodayCompleted === selectedCategoryTotal && selectedCategoryTotal > 0;
+
     return (
       <div className="habits-container">
+        {selectedCategory !== 'Все' && selectedCategoryTotal > 0 && (
+          <div className="top-right-counter">
+            <span className="counter-text">{selectedCategoryTodayCompleted}/{selectedCategoryTotal}</span>
+            {isSelectedCategoryComplete && (
+              <span className="counter-checkmark">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <path d="M15 4.5L6.75 12.75L3 9" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
+            )}
+          </div>
+        )}
         <div className="days-header">
           <div className="days-cols">
             {WEEK_DAYS.map((day, index) => {
@@ -701,6 +918,19 @@ const App = () => {
           if (!habits.length) return null;
           const isCollapsed = !!collapsedCategories[categoryKey];
 
+          // Count habits with at least one completion (not restored) this week
+          const completedHabitsCount = habits.reduce((count, habit) => {
+            const hasCompletion = habit.statuses?.some(s => s && s.is_done && !s.is_restored);
+            return hasCompletion ? count + 1 : count;
+          }, 0);
+
+          // Count habits completed today (not restored)
+          const todayCompletedCount = habits.reduce((count, habit) => {
+            const status = habit.statuses?.find(s => s && s.date === todayStr);
+            return (status && status.is_done && !status.is_restored) ? count + 1 : count;
+          }, 0);
+          const isTodayComplete = todayCompletedCount === habits.length && habits.length > 0;
+
           return (
             <div key={categoryKey} className={`category-group ${isCollapsed ? 'collapsed' : ''}`}>
               <div className="category-group-header">
@@ -715,7 +945,23 @@ const App = () => {
                 <div className="category-group-title">
                   {getCategoryDisplayName(categoryKey)}
                 </div>
-                <div className="category-habit-count">{habits.length}</div>
+                <div className="category-progress-cubes">
+                  {habits.map((habit, index) => {
+                    const status = habit.statuses?.find(s => s && s.date === todayStr);
+                    const isCompleted = status && status.is_done && !status.is_restored;
+                    return (
+                      <div key={habit.id} className={`progress-cube ${isCompleted ? 'filled' : 'empty'}`}></div>
+                    );
+                  })}
+                  {isTodayComplete && (
+                    <span className="category-checkmark">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M13.5 4.5L6 12L2.5 8.5" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </span>
+                  )}
+                </div>
+                <div className="category-habit-count">{todayCompletedCount}/{habits.length}</div>
               </div>
 
               {!isCollapsed && habits.map((habit) => {
@@ -2527,6 +2773,93 @@ const App = () => {
                 🌓 {t('autoTheme')}
               </button>
             </div>
+          </div>
+
+          <div className="settings-section reminder-settings">
+            <h3 className="section-title">🔔 {t('reminders')}</h3>
+            <div className="reminder-toggle-row">
+              <span className="reminder-label">{t('enableReminders')}</span>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={reminderEnabled}
+                  onChange={(e) => handleReminderToggle(e.target.checked)}
+                />
+                <span className="toggle-slider"></span>
+              </label>
+            </div>
+            
+            {reminderEnabled && (
+              <div className="reminder-options">
+                <div className="reminder-option">
+                  <label className="reminder-option-label">{t('timesPerDay')}:</label>
+                  <div className="frequency-options">
+                    <button
+                      className={`freq-btn ${reminderTimesPerDay === 1 ? 'active' : ''}`}
+                      onClick={() => handleTimesPerDayChange(1)}
+                    >
+                      1
+                    </button>
+                    <button
+                      className={`freq-btn ${reminderTimesPerDay === 2 ? 'active' : ''}`}
+                      onClick={() => handleTimesPerDayChange(2)}
+                    >
+                      2
+                    </button>
+                    <button
+                      className={`freq-btn ${reminderTimesPerDay === 3 ? 'active' : ''}`}
+                      onClick={() => handleTimesPerDayChange(3)}
+                    >
+                      3
+                    </button>
+                    <button
+                      className={`freq-btn ${reminderTimesPerDay === 'custom' ? 'active' : ''}`}
+                      onClick={() => handleTimesPerDayChange('custom')}
+                    >
+                      {t('custom')}
+                    </button>
+                  </div>
+                </div>
+                
+                {reminderTimesPerDay === 'custom' && (
+                  <div className="reminder-option">
+                    <label className="reminder-option-label">{t('customTimes')}:</label>
+                    <input
+                      type="number"
+                      className="number-input"
+                      min="1"
+                      max="10"
+                      value={customTimesPerDay}
+                      onChange={(e) => setCustomTimesPerDay(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
+                    />
+                  </div>
+                )}
+                
+                <div className="reminder-option">
+                  <label className="reminder-option-label">{t('reminderTimes')}:</label>
+                  <div className="reminder-times-list">
+                    {reminderTimes.map((time, index) => (
+                      <div key={index} className="reminder-time-item">
+                        <span className="reminder-time-number">{index + 1}.</span>
+                        <input
+                          type="time"
+                          className="time-input"
+                          value={time}
+                          onChange={(e) => handleReminderTimeChange(index, e.target.value)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <button
+                  className="btn-secondary btn-small test-notification-btn"
+                  onClick={testNotification}
+                >
+                  🧪 {t('testNotification')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -567,6 +567,106 @@ body {
   text-align: right;
 }
 
+.category-completion-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: #059669;
+  background-color: rgba(5, 150, 105, 0.1);
+  border-radius: 6px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  line-height: 1.2;
+}
+
+.dark-theme .category-completion-count {
+  color: #34D399;
+  background-color: rgba(52, 211, 153, 0.15);
+}
+
+.category-progress-cubes {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+}
+
+.progress-cube {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.progress-cube.filled {
+  background-color: #059669;
+}
+
+.progress-cube.empty {
+  background-color: #E5E7EB;
+}
+
+.dark-theme .progress-cube.filled {
+  background-color: #34D399;
+}
+
+.dark-theme .progress-cube.empty {
+  background-color: #404040;
+}
+
+.category-checkmark {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  animation: checkmarkPop 0.3s ease-out;
+}
+
+@keyframes checkmarkPop {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.top-right-counter {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(5, 150, 105, 0.1);
+  border: 1px solid rgba(5, 150, 105, 0.2);
+  border-radius: 20px;
+  padding: 6px 12px;
+  z-index: 100;
+}
+
+.counter-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #059669;
+}
+
+.counter-checkmark {
+  display: inline-flex;
+  align-items: center;
+  animation: checkmarkPop 0.3s ease-out;
+}
+
+.dark-theme .top-right-counter {
+  background-color: rgba(52, 211, 153, 0.15);
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.dark-theme .counter-text {
+  color: #34D399;
+}
+
 .category-group.collapsed .habit-row {
   display: none;
 }
@@ -3776,6 +3876,222 @@ body {
 /* Theme Settings */
 .theme-settings {
   margin-bottom: 20px;
+}
+
+.reminder-settings {
+  margin-bottom: 20px;
+}
+
+.reminder-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.reminder-label {
+  font-size: 15px;
+  color: #333;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #E0E0E0;
+  transition: 0.3s;
+  border-radius: 28px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #059669;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+.toggle-btn {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  border: 2px solid #E0E0E0;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.toggle-btn.active {
+  background: #059669;
+  border-color: #059669;
+  color: white;
+}
+
+.reminder-options {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #E0E0E0;
+}
+
+.reminder-option {
+  margin-bottom: 16px;
+}
+
+.reminder-option-label {
+  display: block;
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.time-input,
+.number-input {
+  padding: 8px 12px;
+  border: 1px solid #E0E0E0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  background: white;
+  width: 100%;
+  max-width: 150px;
+}
+
+.frequency-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.freq-btn {
+  padding: 8px 16px;
+  border: 1px solid #E0E0E0;
+  border-radius: 6px;
+  background: white;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.freq-btn:hover {
+  border-color: #059669;
+  background-color: #F0F0F0;
+}
+
+.freq-btn.active {
+  background: #059669;
+  border-color: #059669;
+  color: white;
+}
+
+.test-notification-btn {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.reminder-times-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reminder-time-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reminder-time-number {
+  font-size: 14px;
+  color: #666;
+  min-width: 24px;
+}
+
+.dark-theme .reminder-label {
+  color: #E0E0E0;
+}
+
+.dark-theme .toggle-btn {
+  border-color: #404040;
+  background: #2A2A2A;
+}
+
+.dark-theme .toggle-btn.active {
+  background: #34D399;
+  border-color: #34D399;
+}
+
+.dark-theme .toggle-slider {
+  background-color: #404040;
+}
+
+.dark-theme .toggle-switch input:checked + .toggle-slider {
+  background-color: #34D399;
+}
+
+.dark-theme .reminder-option-label {
+  color: #B0B0B0;
+}
+
+.dark-theme .reminder-time-number {
+  color: #999;
+}
+
+.dark-theme .time-input,
+.dark-theme .number-input {
+  background: #2A2A2A;
+  border-color: #404040;
+  color: #E0E0E0;
+}
+
+.dark-theme .freq-btn {
+  background: #2A2A2A;
+  border-color: #404040;
+  color: #E0E0E0;
+}
+
+.dark-theme .freq-btn:hover {
+  border-color: #34D399;
+  background-color: #3A3A3A;
+}
+
+.dark-theme .freq-btn.active {
+  background: #34D399;
+  border-color: #34D399;
+  color: #1A1A1A;
 }
 
 .theme-options {
