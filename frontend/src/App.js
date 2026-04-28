@@ -835,13 +835,10 @@ const App = () => {
                               {weeklyCount}
                             </span>
                             {weeklyAward && weeklyAward !== '👑' && habit.weekly_award_streak > 1 && (
-                              <span className="award-side award-right">{weeklyAward}{habit.weekly_award_streak > 1 ? <span className="award-streak">x{habit.weekly_award_streak}</span> : ''}</span>
+                              <span className="award-side award-right">{weeklyCount === 4 ? '⚡' : weeklyCount === 6 ? '⭐' : weeklyAward}{habit.weekly_award_streak > 1 ? <span className="award-streak">x{habit.weekly_award_streak}</span> : ''}</span>
                             )}
                             {weeklyAward && weeklyAward !== '👑' && habit.weekly_award_streak <= 1 && (
-                              <span className="award-side award-right">{weeklyAward}</span>
-                            )}
-                            {weeklyAward === '👑' && habit.crown_streak <= 1 && (
-                              <span className="award-side award-right">👑</span>
+                              <span className="award-side award-right">{weeklyCount === 4 ? '⚡' : weeklyCount === 6 ? '⭐' : weeklyAward}</span>
                             )}
                           </div>
                           <div className="habit-count monthly">{habit.monthly_total || 0}</div>
