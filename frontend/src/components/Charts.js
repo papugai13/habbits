@@ -23,9 +23,22 @@ const generatePeriodLabel = (period, referenceDate, t, language) => {
         
         return { title: `${dayName}, ${dayNum} ${monthName}`, subtitle: `${today.getFullYear()}` };
     } else if (period === 'week') {
-        // Aggregated weeks of month
-        const monthName = t(months[today.getMonth()]);
-        return { title: `${t('weeks')}: ${monthName} ${today.getFullYear()}`, subtitle: '' };
+        // Week number and date range
+        const dayOfWeek = today.getDay();
+        const diff = today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+        const monday = new Date(today);
+        monday.setDate(diff);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+
+        const formatDate = (date) => {
+            const day = date.getDate();
+            const monthName = t(months[date.getMonth()]);
+            return `${day} ${monthName}`;
+        };
+
+        const weekNum = getWeekNumber(today);
+        return { title: `${language === 'ru' ? 'Неделя' : t('week')} №${weekNum}`, subtitle: `${formatDate(monday)} - ${formatDate(sunday)}` };
     } else if (period === 'month') {
         return { title: `${t(months[today.getMonth()])} ${today.getFullYear()}`, subtitle: '' };
     } else if (period === 'year') {
@@ -51,14 +64,42 @@ const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData })
 
     const fontSize = period === 'year' ? (isMobile ? 8 : 9) : (isMobile ? 8 : 10);
 
-    // Check if this is today's day
-    const dataIndex = chartData.findIndex(item => item.dayNumber === payload.value);
+    // Find matching data item - use different keys based on period
+    let dataIndex = -1;
+    if (period === 'day') {
+        dataIndex = chartData.findIndex(item => item.dayNumber === payload.value);
+    } else {
+        dataIndex = chartData.findIndex(item => item.label === payload.value);
+    }
+    
     const isToday = dataIndex >= 0 && chartData[dataIndex]?.isToday;
-    const fontWeight = isToday ? 700 : (period === 'week' ? 600 : 500);
-    const fill = isToday ? '#22c55e' : (isDark ? "#E0E0E0" : "#666");
+    const isCurrentWeek = dataIndex >= 0 && chartData[dataIndex]?.isCurrentWeek;
+    const isCurrentMonth = dataIndex >= 0 && chartData[dataIndex]?.isCurrentMonth;
+    const isCurrentYear = dataIndex >= 0 && chartData[dataIndex]?.isCurrentYear;
+    const isHighlighted = isToday || isCurrentWeek || isCurrentMonth || isCurrentYear;
+    const fontWeight = isHighlighted ? 700 : (period === 'week' ? 600 : 500);
+    const fill = isHighlighted ? '#22c55e' : (isDark ? "#E0E0E0" : "#666");
+
+    // Calculate highlight rect to fit around the text
+    // Text is at y+16 with textAnchor="middle", fontSize
+    const padding = 4;
+    const rectWidth = Math.max(displayValue.length * fontSize * 0.65 + padding * 2, 28);
+    const rectHeight = fontSize + padding * 2;
+    const textVisualCenterY = 16 - fontSize * 0.35;
 
     return (
         <g transform={`translate(${x},${y})`}>
+            {isHighlighted && (
+                <rect
+                    x={-rectWidth / 2}
+                    y={textVisualCenterY - rectHeight / 2}
+                    width={rectWidth}
+                    height={rectHeight}
+                    fill="#22c55e"
+                    rx={4}
+                    opacity={0.2}
+                />
+            )}
             <text x={0} y={0} dy={16} textAnchor="middle" fill={fill} fontSize={fontSize} fontWeight={fontWeight}>
                 {displayValue}
             </text>
@@ -544,6 +585,18 @@ const Charts = ({
                 setPeriodLabel(generatePeriodLabel(period, chartDate, t, language));
                 const todayStr = new Date().toISOString().split('T')[0];
                 const weekDayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+                
+                // Calculate current week range for highlighting
+                const today = new Date();
+                const dayOfWeek = today.getDay();
+                const diff = today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+                const currentMonday = new Date(today);
+                currentMonday.setDate(diff);
+                currentMonday.setHours(0, 0, 0, 0);
+                const currentSunday = new Date(currentMonday);
+                currentSunday.setDate(currentMonday.getDate() + 6);
+                currentSunday.setHours(23, 59, 59, 999);
+                
                 const formattedData = json.data.map(item => {
                     const isFuture = item.date > todayStr;
                     const isToday = item.date === todayStr;
@@ -564,6 +617,18 @@ const Charts = ({
                     const parsedDate = new Date(item.date);
                     const weekDay = t(weekDayKeys[parsedDate.getDay()]);
                     const dayNumber = String(parsedDate.getDate());
+                    
+                    // Check if this is the current week
+                    const isCurrentWeek = period === 'week' && parsedDate >= currentMonday && parsedDate <= currentSunday;
+                    
+                    // Check if this is the current month
+                    const isCurrentMonth = period === 'month' && 
+                        parsedDate.getMonth() === today.getMonth() && 
+                        parsedDate.getFullYear() === today.getFullYear();
+                    
+                    // Check if this is the current year
+                    const isCurrentYear = period === 'year' && 
+                        parsedDate.getFullYear() === today.getFullYear();
 
                     return {
                         label: item.label || item.date,
@@ -576,7 +641,10 @@ const Charts = ({
                         countRestored: item.restored_days || 0,
                         countExtra: item.extra_quantity,
                         percentage: percentageStr,
-                        isToday: isToday
+                        isToday: isToday,
+                        isCurrentWeek: isCurrentWeek,
+                        isCurrentMonth: isCurrentMonth,
+                        isCurrentYear: isCurrentYear
                     };
                 });
                 setChartData(formattedData);
