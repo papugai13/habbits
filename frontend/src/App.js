@@ -75,6 +75,15 @@ const App = () => {
   const [showCategoryArchive, setShowCategoryArchive] = useState(false);
   const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('Все');
   const [chartsSelectedCategory, setChartsSelectedCategory] = useState('Все');
+  
+  // Settings section collapse state
+  const [collapsedSettingsSections, setCollapsedSettingsSections] = useState({
+    profile: false,
+    categories: false,
+    habits: false,
+    theme: false,
+    reminders: false
+  });
 
   // Reminder settings state
   const [reminderEnabled, setReminderEnabled] = useState(() => {
@@ -1010,6 +1019,7 @@ const App = () => {
                   return status?.is_done ? Math.max(acc, index) : acc;
                 }, -1);
                 const isLastMarkInStreak = lastMark !== -1;
+                const hasPrevWeekStreak = (habit.prev_week_count || 0) >= 2 && habit.prev_week_sun_done;
 
                 return (
                   <div key={habit.id} className="habit-row">
@@ -1058,7 +1068,9 @@ const App = () => {
                           const hasComment = status && status.comment;
                           const hasPhoto = status && status.photo;
                           const isDisabled = isFuture;
-                          const showDotClass = (!isDone && isLastMarkInStreak && index > lastMark) ? 'has-dot-1' : '';
+                          const hasEnoughCompletions = weeklyCount >= 2 || (habit.prev_week_count || 0) >= 2;
+                          const showDotFromPrevWeek = hasPrevWeekStreak && !isLastMarkInStreak && weeklyCount < 2;
+                          const showDotClass = (!isDone && ((isLastMarkInStreak && index > lastMark && hasEnoughCompletions) || showDotFromPrevWeek)) ? 'has-dot-1' : '';
                           const isMonthStart = index > 0 && slotDate.getDate() === 1;
 
                           const checkBoxBtn = (
@@ -2383,7 +2395,11 @@ const App = () => {
           </div>
 
           <div className="settings-section profile-settings">
-            <h3 className="section-title">{t('profile')}</h3>
+            <h3 className="section-title" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, profile: !collapsedSettingsSections.profile})}>
+              <span>{t('profile')}</span>
+              <span className={`collapse-icon ${collapsedSettingsSections.profile ? 'collapsed' : ''}`}>▼</span>
+            </h3>
+            {!collapsedSettingsSections.profile && (
             <div className="manage-profile-info">
               <div className="profile-info-row">
                 <span className="info-label">{t('username')}:</span>
@@ -2436,233 +2452,244 @@ const App = () => {
                 ✏️ {t('editProfile')}
               </button>
             </div>
+            )}
           </div>
 
           <div className="settings-section categories-settings">
-            <h3 className="section-title">
+            <h3 className="section-title" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, categories: !collapsedSettingsSections.categories})}>
               <span>{t('categories')}</span>
-              <button
-                className="add-category-btn"
-                onClick={() => setShowCreateCategoryModal(true)}
-              >
-                +
-              </button>
+              <div className="section-actions">
+                <button
+                  className="add-category-btn"
+                  onClick={(e) => { e.stopPropagation(); setShowCreateCategoryModal(true); }}
+                >
+                  +
+                </button>
+                <span className={`collapse-icon ${collapsedSettingsSections.categories ? 'collapsed' : ''}`}>▼</span>
+              </div>
             </h3>
 
-            <div className="manage-categories-list">
-              {categories.filter(c => c.id !== 'all').length === 0 ? (
-                <p className="no-habits-msg">{t('noCategories')}</p>
-
-              ) : (
-                categories.filter(c => c.id !== 'all').map(cat => (
-                  <div 
-                    key={cat.id} 
-                    className={`manage-category-item ${draggedCategoryId === cat.id ? 'dragging' : ''} ${dragOverCategoryId === cat.id && draggedCategoryId !== cat.id ? 'drag-over' : ''}`}
-                    draggable
-                    onDragStart={(e) => handleCategoryDragStart(e, cat.id)}
-                    onDragOver={(e) => handleCategoryDragOver(e, cat.id)}
-                    onDrop={(e) => handleCategoryDrop(e, cat.id)}
-                    onDragEnd={handleCategoryDragEnd}
-                    data-category-id={cat.id}
-                  >
-                    <div
-                      className="drag-handle"
-                      title={t('dragToReorder')}
-                      onTouchStart={(e) => handleCategoryTouchStart(e, cat.id)}
-                      onTouchMove={handleCategoryTouchMove}
-                      onTouchEnd={handleCategoryTouchEnd}
-                    >⠿</div>
-                    {editingCategoryId === cat.id ? (
-                      <div className="category-edit-row">
-                        <input
-                          type="text"
-                          className="category-edit-input"
-                          value={editingCategoryValue}
-                          onChange={(e) => setEditingCategoryValue(e.target.value)}
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleUpdateCategory(cat.id, editingCategoryValue);
-                            if (e.key === 'Escape') setEditingCategoryId(null);
-                          }}
-                        />
-                        <div className="category-edit-actions">
-                          <button
-                            className="manage-btn add-habit-btn"
-                            onClick={() => {
-                              setNewHabitCategory(String(cat.id));
-                              setNewHabitName('');
-                              setCreateError('');
-                              setShowAddCategory(false);
-                              setNewCategoryName('');
-                              setShowCreateModal(true);
-                            }}
-                            title={t('addHabit')}
-                          >
-                            ➕
-                          </button>
-                          <button
-                            className="manage-btn save-btn"
-                            onClick={() => handleUpdateCategory(cat.id, editingCategoryValue)}
-                            title={t('save')}
-
-                          >
-                            💾
-                          </button>
-                          <button
-                            className="manage-btn cancel-btn"
-                            onClick={() => setEditingCategoryId(null)}
-                            title={t('cancel')}
-
-                          >
-                            ❌
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="manage-category-info">
-                          <div className="manage-category-name">{cat.name}</div>
-                          {expandedCategoryId === cat.id && (
-                            <div className="category-habits-inline">
-                              {habitsData.filter(h => h.category_name === cat.name).length === 0 ? (
-                                <span className="no-habits-inline">{t('noHabitsInCategory')}</span>
-                              ) : (
-                                habitsData
-                                  .filter(h => h.category_name === cat.name)
-                                  .map(habit => (
-                                    <span key={habit.id} className="category-habit-tag">
-                                      {habit.name}
-                                    </span>
-                                  ))
+            {!collapsedSettingsSections.categories && (
+              <>
+                <div className="manage-categories-list">
+                  {categories.filter(c => c.id !== 'all').length === 0 ? (
+                    <p className="no-habits-msg">{t('noCategories')}</p>
+                  ) : (
+                    categories.filter(c => c.id !== 'all').map(cat => (
+                      <div 
+                        key={cat.id} 
+                        className={`manage-category-item ${draggedCategoryId === cat.id ? 'dragging' : ''} ${dragOverCategoryId === cat.id && draggedCategoryId !== cat.id ? 'drag-over' : ''}`}
+                        draggable
+                        onDragStart={(e) => handleCategoryDragStart(e, cat.id)}
+                        onDragOver={(e) => handleCategoryDragOver(e, cat.id)}
+                        onDrop={(e) => handleCategoryDrop(e, cat.id)}
+                        onDragEnd={handleCategoryDragEnd}
+                        data-category-id={cat.id}
+                      >
+                        <div
+                          className="drag-handle"
+                          title={t('dragToReorder')}
+                          onTouchStart={(e) => handleCategoryTouchStart(e, cat.id)}
+                          onTouchMove={handleCategoryTouchMove}
+                          onTouchEnd={handleCategoryTouchEnd}
+                        >⠿</div>
+                        {editingCategoryId === cat.id ? (
+                          <div className="category-edit-row">
+                            <input
+                              type="text"
+                              className="category-edit-input"
+                              value={editingCategoryValue}
+                              onChange={(e) => setEditingCategoryValue(e.target.value)}
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleUpdateCategory(cat.id, editingCategoryValue);
+                                if (e.key === 'Escape') setEditingCategoryId(null);
+                              }}
+                            />
+                            <div className="category-edit-actions">
+                              <button
+                                className="manage-btn add-habit-btn"
+                                onClick={() => {
+                                  setNewHabitCategory(String(cat.id));
+                                  setNewHabitName('');
+                                  setCreateError('');
+                                  setShowAddCategory(false);
+                                  setNewCategoryName('');
+                                  setShowCreateModal(true);
+                                }}
+                                title={t('addHabit')}
+                              >
+                                ➕
+                              </button>
+                              <button
+                                className="manage-btn save-btn"
+                                onClick={() => handleUpdateCategory(cat.id, editingCategoryValue)}
+                                title={t('save')}
+                              >
+                                💾
+                              </button>
+                              <button
+                                className="manage-btn cancel-btn"
+                                onClick={() => setEditingCategoryId(null)}
+                                title={t('cancel')}
+                              >
+                                ❌
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="manage-category-info">
+                              <div className="manage-category-name">{cat.name}</div>
+                              {expandedCategoryId === cat.id && (
+                                <div className="category-habits-inline">
+                                  {habitsData.filter(h => h.category_name === cat.name).length === 0 ? (
+                                    <span className="no-habits-inline">{t('noHabitsInCategory')}</span>
+                                  ) : (
+                                    habitsData
+                                      .filter(h => h.category_name === cat.name)
+                                      .map(habit => (
+                                        <span key={habit.id} className="category-habit-tag">
+                                          {habit.name}
+                                        </span>
+                                      ))
+                                  )}
+                                </div>
                               )}
                             </div>
-                          )}
-                        </div>
-                        <div className="manage-category-actions">
-                          <button
-                            className="manage-btn expand-btn"
-                            onClick={() => setExpandedCategoryId(expandedCategoryId === cat.id ? null : cat.id)}
-                            title={t('showHabits')}
-                          >
-                            {expandedCategoryId === cat.id ? '▲' : '▼'}
-                          </button>
-                          <button
-                            className="manage-btn edit-btn"
-                            onClick={() => {
-                              setEditingCategoryId(cat.id);
-                              setEditingCategoryValue(cat.name);
-                            }}
-                            title={t('rename')}
-
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            className="manage-btn archive-btn"
-                            onClick={() => handleArchiveCategory(cat.id)}
-                            title={t('archiveCategory')}
-
-                          >
-                            📦
-                          </button>
-                          <button
-                            className="manage-btn delete-btn"
-                            onClick={() => handleDeleteCategory(cat.id)}
-                            title={t('delete')}
-
-                          >
-                            
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="archive-section">
-              <button
-                className="archive-toggle-btn"
-                onClick={() => setShowCategoryArchive(!showCategoryArchive)}
-              >
-                <span className="archive-toggle-icon">{showCategoryArchive ? '▲' : '▼'}</span>
-                📁 {t('archive')} ({archivedCategories.length})
-              </button>
-
-              {showCategoryArchive && (
-                <div className="archived-habits-list">
-                  {archivedCategories.length === 0 ? (
-                    <p className="no-habits-msg">{t('categoryArchiveEmpty')}</p>
-                  ) : (
-                    archivedCategories.map(cat => (
-                      <div key={cat.id} className="archived-habit-item">
-                        <div className="manage-habit-info">
-                          <div className="manage-habit-name">{cat.name}</div>
-                        </div>
-                        <div className="manage-habit-actions">
-                          <button
-                            className="manage-btn unarchive-btn"
-                            onClick={() => handleUnarchiveCategory(cat.id)}
-                            title={t('unarchiveCategory')}
-                          >
-                            📤
-                          </button>
-                          <button
-                            className="manage-btn delete-btn"
-                            onClick={() => handleDeleteCategory(cat.id)}
-                            title={t('deleteForever')}
-                          >
-                            🗑️
-                          </button>
-                        </div>
+                            <div className="manage-category-actions">
+                              <button
+                                className="manage-btn expand-btn"
+                                onClick={() => setExpandedCategoryId(expandedCategoryId === cat.id ? null : cat.id)}
+                                title={t('showHabits')}
+                              >
+                                {expandedCategoryId === cat.id ? '▲' : '▼'}
+                              </button>
+                              <button
+                                className="manage-btn edit-btn"
+                                onClick={() => {
+                                  setEditingCategoryId(cat.id);
+                                  setEditingCategoryValue(cat.name);
+                                }}
+                                title={t('rename')}
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                className="manage-btn archive-btn"
+                                onClick={() => handleArchiveCategory(cat.id)}
+                                title={t('archiveCategory')}
+                              >
+                                📦
+                              </button>
+                              <button
+                                className="manage-btn delete-btn"
+                                onClick={() => handleDeleteCategory(cat.id)}
+                                title={t('delete')}
+                              >
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))
                   )}
                 </div>
-              )}
-            </div>
+
+                <div className="archive-section">
+                  <button
+                    className="archive-toggle-btn"
+                    onClick={() => setShowCategoryArchive(!showCategoryArchive)}
+                  >
+                    <span className="archive-toggle-icon">{showCategoryArchive ? '▲' : '▼'}</span>
+                    📁 {t('archive')} ({archivedCategories.length})
+                  </button>
+
+                  {showCategoryArchive && (
+                    <div className="archived-habits-list">
+                      {archivedCategories.length === 0 ? (
+                        <p className="no-habits-msg">{t('categoryArchiveEmpty')}</p>
+                      ) : (
+                        archivedCategories.map(cat => (
+                          <div key={cat.id} className="archived-habit-item">
+                            <div className="manage-habit-info">
+                              <div className="manage-habit-name">{cat.name}</div>
+                            </div>
+                            <div className="manage-habit-actions">
+                              <button
+                                className="manage-btn unarchive-btn"
+                                onClick={() => handleUnarchiveCategory(cat.id)}
+                                title={t('unarchiveCategory')}
+                              >
+                                📤
+                              </button>
+                              <button
+                                className="manage-btn delete-btn"
+                                onClick={() => handleDeleteCategory(cat.id)}
+                                title={t('deleteForever')}
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           <div className="settings-section">
-            <h3 className="section-title">{t('manageHabits')}</h3>
+            <h3 className="section-title" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, habits: !collapsedSettingsSections.habits})}>
+              <span>{t('manageHabits')}</span>
+              <div className="section-actions">
+                <button
+                  className="add-category-btn"
+                  onClick={(e) => { e.stopPropagation(); setNewHabitCategory(''); setNewHabitName(''); setCreateError(''); setShowAddCategory(false); setNewCategoryName(''); setShowCreateModal(true); }}
+                >
+                  +
+                </button>
+                <span className={`collapse-icon ${collapsedSettingsSections.habits ? 'collapsed' : ''}`}>▼</span>
+              </div>
+            </h3>
 
-            <div className="settings-category-filter">
-              {sortedCategories.map(cat => {
-                const displayName = cat.name === 'Все' ? t('allCategories') :
-                  (cat.name === 'Без категории' ? t('noCategory') : cat.name);
-                return (
-                  <button
-                    key={cat.id}
-                    className={`settings-cat-btn ${settingsSelectedCategory === cat.name ? 'active' : ''}`}
-                    onClick={() => setSettingsSelectedCategory(cat.name)}
-                  >
-                    {displayName}
-                  </button>
-                );
-              })}
-            </div>
+            {!collapsedSettingsSections.habits && (
+              <>
+                <div className="settings-category-filter">
+                  {sortedCategories.map(cat => {
+                    const displayName = cat.name === 'Все' ? t('allCategories') :
+                      (cat.name === 'Без категории' ? t('noCategory') : cat.name);
+                    return (
+                      <button
+                        key={cat.id}
+                        className={`settings-cat-btn ${settingsSelectedCategory === cat.name ? 'active' : ''}`}
+                        onClick={() => setSettingsSelectedCategory(cat.name)}
+                      >
+                        {displayName}
+                      </button>
+                    );
+                  })}
+                </div>
 
-
-            <div className="manage-habits-list">
-              {habitsData
-                .filter(h => !h.is_archived && (
-                  settingsSelectedCategory === 'Все' ||
-                  (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
-                  (h.category_name === settingsSelectedCategory)
-                ))
-                .length === 0 ? (
-                <p className="no-habits-msg">{t('noHabitsInCategory')}</p>
-
-              ) : (
-
-                habitsData
-                  .filter(h => !h.is_archived && (
-                    settingsSelectedCategory === 'Все' ||
-                    (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
-                    (h.category_name === settingsSelectedCategory)
-                  ))
-                  .map(habit => (
+                <div className="manage-habits-list">
+                  {habitsData
+                    .filter(h => !h.is_archived && (
+                      settingsSelectedCategory === 'Все' ||
+                      (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
+                      (h.category_name === settingsSelectedCategory)
+                    ))
+                    .length === 0 ? (
+                    <p className="no-habits-msg">{t('noHabitsInCategory')}</p>
+                  ) : (
+                    habitsData
+                      .filter(h => !h.is_archived && (
+                        settingsSelectedCategory === 'Все' ||
+                        (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
+                        (h.category_name === settingsSelectedCategory)
+                      ))
+                      .map(habit => (
                     <div
                       key={habit.id}
                       className={`manage-habit-item ${draggedHabitId === habit.id ? 'dragging' : ''} ${dragOverHabitId === habit.id && draggedHabitId !== habit.id ? 'drag-over' : ''}`}
@@ -2768,11 +2795,17 @@ const App = () => {
                 </div>
               )}
             </div>
+            </>
+            )}
           </div>
 
           <div className="settings-section theme-settings">
-            <h3 className="section-title">{t('theme')}</h3>
-            <div className="theme-options">
+            <h3 className="section-title section-title-centered" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, theme: !collapsedSettingsSections.theme})}>
+              <span>{t('theme')}</span>
+              <span className={`collapse-icon ${collapsedSettingsSections.theme ? 'collapsed' : ''}`}>▼</span>
+            </h3>
+            {!collapsedSettingsSections.theme && (
+              <div className="theme-options">
               <button
                 className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
                 onClick={() => {
@@ -2801,92 +2834,100 @@ const App = () => {
                 🌓 {t('autoTheme')}
               </button>
             </div>
+            )}
           </div>
 
           <div className="settings-section reminder-settings">
-            <h3 className="section-title">🔔 {t('reminders')}</h3>
-            <div className="reminder-toggle-row">
-              <span className="reminder-label">{t('enableReminders')}</span>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={reminderEnabled}
-                  onChange={(e) => handleReminderToggle(e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-            
-            {reminderEnabled && (
-              <div className="reminder-options">
-                <div className="reminder-option">
-                  <label className="reminder-option-label">{t('timesPerDay')}:</label>
-                  <div className="frequency-options">
-                    <button
-                      className={`freq-btn ${reminderTimesPerDay === 1 ? 'active' : ''}`}
-                      onClick={() => handleTimesPerDayChange(1)}
-                    >
-                      1
-                    </button>
-                    <button
-                      className={`freq-btn ${reminderTimesPerDay === 2 ? 'active' : ''}`}
-                      onClick={() => handleTimesPerDayChange(2)}
-                    >
-                      2
-                    </button>
-                    <button
-                      className={`freq-btn ${reminderTimesPerDay === 3 ? 'active' : ''}`}
-                      onClick={() => handleTimesPerDayChange(3)}
-                    >
-                      3
-                    </button>
-                    <button
-                      className={`freq-btn ${reminderTimesPerDay === 'custom' ? 'active' : ''}`}
-                      onClick={() => handleTimesPerDayChange('custom')}
-                    >
-                      {t('custom')}
-                    </button>
-                  </div>
-                </div>
-                
-                {reminderTimesPerDay === 'custom' && (
-                  <div className="reminder-option">
-                    <label className="reminder-option-label">{t('customTimes')}:</label>
+            <h3 className="section-title section-title-centered" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, reminders: !collapsedSettingsSections.reminders})}>
+              <span>🔔 {t('reminders')}</span>
+              <span className={`collapse-icon ${collapsedSettingsSections.reminders ? 'collapsed' : ''}`}>▼</span>
+            </h3>
+            {!collapsedSettingsSections.reminders && (
+              <>
+                <div className="reminder-toggle-row">
+                  <span className="reminder-label">{t('enableReminders')}</span>
+                  <label className="toggle-switch">
                     <input
-                      type="number"
-                      className="number-input"
-                      min="1"
-                      max="10"
-                      value={customTimesPerDay}
-                      onChange={(e) => setCustomTimesPerDay(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
+                      type="checkbox"
+                      checked={reminderEnabled}
+                      onChange={(e) => handleReminderToggle(e.target.checked)}
                     />
-                  </div>
-                )}
-                
-                <div className="reminder-option">
-                  <label className="reminder-option-label">{t('reminderTimes')}:</label>
-                  <div className="reminder-times-list">
-                    {reminderTimes.map((time, index) => (
-                      <div key={index} className="reminder-time-item">
-                        <span className="reminder-time-number">{index + 1}.</span>
-                        <input
-                          type="time"
-                          className="time-input"
-                          value={time}
-                          onChange={(e) => handleReminderTimeChange(index, e.target.value)}
-                        />
-                      </div>
-                    ))}
-                  </div>
+                    <span className="toggle-slider"></span>
+                  </label>
                 </div>
-                
-                <button
-                  className="btn-secondary btn-small test-notification-btn"
-                  onClick={testNotification}
-                >
-                  🧪 {t('testNotification')}
-                </button>
-              </div>
+
+                {reminderEnabled && (
+                  <div className="reminder-options">
+                    <div className="reminder-option">
+                      <label className="reminder-option-label">{t('timesPerDay')}:</label>
+                      <div className="frequency-options">
+                      <button
+                        className={`freq-btn ${reminderTimesPerDay === 1 ? 'active' : ''}`}
+                        onClick={() => handleTimesPerDayChange(1)}
+                      >
+                        1
+                      </button>
+                      <button
+                        className={`freq-btn ${reminderTimesPerDay === 2 ? 'active' : ''}`}
+                        onClick={() => handleTimesPerDayChange(2)}
+                      >
+                        2
+                      </button>
+                      <button
+                        className={`freq-btn ${reminderTimesPerDay === 3 ? 'active' : ''}`}
+                        onClick={() => handleTimesPerDayChange(3)}
+                      >
+                        3
+                      </button>
+                      <button
+                        className={`freq-btn ${reminderTimesPerDay === 'custom' ? 'active' : ''}`}
+                        onClick={() => handleTimesPerDayChange('custom')}
+                      >
+                        {t('custom')}
+                      </button>
+                    </div>
+                  </div>
+
+                  {reminderTimesPerDay === 'custom' && (
+                    <div className="reminder-option">
+                      <label className="reminder-option-label">{t('customTimes')}:</label>
+                      <input
+                        type="number"
+                        className="number-input"
+                        min="1"
+                        max="10"
+                        value={customTimesPerDay}
+                        onChange={(e) => setCustomTimesPerDay(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
+                      />
+                    </div>
+                  )}
+
+                  <div className="reminder-option">
+                    <label className="reminder-option-label">{t('reminderTimes')}:</label>
+                    <div className="reminder-times-list">
+                      {reminderTimes.map((time, index) => (
+                        <div key={index} className="reminder-time-item">
+                          <span className="reminder-time-number">{index + 1}.</span>
+                          <input
+                            type="time"
+                            className="time-input"
+                            value={time}
+                            onChange={(e) => handleReminderTimeChange(index, e.target.value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    className="btn-secondary btn-small test-notification-btn"
+                    onClick={testNotification}
+                  >
+                    🧪 {t('testNotification')}
+                  </button>
+                </div>
+                )}
+              </>
             )}
           </div>
         </div>
