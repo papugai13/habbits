@@ -25,6 +25,50 @@
     box-sizing: border-box;
 }
 
+.chart-wrapper {
+    text-align: left;
+}
+
+.main-chart-inner,
+.comparison-chart-inner {
+    text-align: left;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.main-chart-inner .recharts-wrapper,
+.comparison-chart-inner .recharts-wrapper {
+    text-align: left;
+    margin: 0;
+    width: 100%;
+}
+
+.main-chart-inner .recharts-surface,
+.comparison-chart-inner .recharts-surface {
+    width: 100%;
+}
+
+.main-chart-inner .recharts-bar-chart,
+.comparison-chart-inner .recharts-bar-chart {
+    width: 100%;
+    transform: none !important;
+}
+
+.main-chart-inner .recharts-cartesian-axis,
+.comparison-chart-inner .recharts-cartesian-axis {
+    transform: none !important;
+}
+
+.main-chart-inner .recharts-xAxis,
+.comparison-chart-inner .recharts-xAxis {
+    transform: translateX(0) !important;
+}
+
+.main-chart-inner .recharts-wrapper .recharts-cartesian-grid,
+.comparison-chart-inner .recharts-wrapper .recharts-cartesian-grid {
+    transform: none !important;
+}
+
 .comparison-chart-layout {
     display: flex;
     align-items: stretch;
