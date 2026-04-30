@@ -795,7 +795,7 @@ const App = () => {
       currentPhoto: photo
     });
 
-    const initialQuantity = getDefaultModalQuantity(isDone, isRestored, newDateStr);
+    const initialQuantity = getDefaultModalQuantity(habit.id);
 
     setQuantityValue(initialQuantity);
     setCommentValue(comment || '');
@@ -1586,18 +1586,16 @@ const App = () => {
     }
   };
 
-  const getDefaultModalQuantity = (currentStatus, isRestored, dayDate) => {
-    const todayStr = new Date().toLocaleDateString('en-CA');
-    const isLightGreenTarget = currentStatus ? isRestored : (dayDate < todayStr);
-    return isLightGreenTarget ? 1 : null;
+  const getDefaultModalQuantity = (isRestored) => {
+    // Темно-зеленая (isRestored=false) -> скролл <=1 (null)
+    // Светло-зеленая (isRestored=true) -> скролл 1
+    return isRestored ? 1 : null;
   };
 
   const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
     setQuantityModalData({ habitId, habitName, dayDate, currentStatus, currentQuantity, currentComment, currentPhoto, dateId, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, currentIsRestored: isRestored });
 
-    const initialQuantity = currentQuantity !== null && currentQuantity !== undefined
-      ? currentQuantity
-      : getDefaultModalQuantity(currentStatus, isRestored, dayDate);
+    const initialQuantity = getDefaultModalQuantity(isRestored);
 
     setQuantityValue(initialQuantity);
     setCommentValue(currentComment || '');
@@ -1607,7 +1605,7 @@ const App = () => {
   const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
     const timer = setTimeout(() => {
       openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored);
-    }, 200); // 200ms for long press
+    }, 200);
     setLongPressTimer(timer);
   };
 
@@ -3411,7 +3409,7 @@ const App = () => {
                       onChange={(val) => setQuantityValue(val)}
                     />
 
-                    {getDefaultModalQuantity(quantityModalData.currentStatus, quantityModalData.currentIsRestored, quantityModalData.dayDate) !== null && (
+                    {getDefaultModalQuantity(quantityModalData.currentIsRestored) !== null && (
                       <div className="preset-column presets-right">
                         <div className="preset-btn theme-purple weekly">
                           <div className="preset-badge">{liveWeeklyOverflow}</div>
