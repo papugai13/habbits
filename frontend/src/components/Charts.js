@@ -57,25 +57,28 @@ const getNumericDate = (dateStr) => {
 const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData }) => {
     if (!payload || payload.value === undefined || payload.value === null) return null;
 
-    let displayValue = String(payload.value);
+    const dataIndex = payload.value;
+    const dataItem = chartData[dataIndex];
+    
+    if (!dataItem) return null;
+
+    let displayValue = '';
+    if (period === 'day') {
+        displayValue = dataItem.dayNumber;
+    } else {
+        displayValue = dataItem.label;
+    }
+    
     if (isMobile && displayValue.length > 6) {
         displayValue = `${displayValue.slice(0, 6)}..`;
     }
 
     const fontSize = period === 'year' ? (isMobile ? 8 : 9) : (isMobile ? 8 : 10);
-
-    // Find matching data item - use different keys based on period
-    let dataIndex = -1;
-    if (period === 'day') {
-        dataIndex = chartData.findIndex(item => item.dayNumber === payload.value);
-    } else {
-        dataIndex = chartData.findIndex(item => item.label === payload.value);
-    }
     
-    const isToday = dataIndex >= 0 && chartData[dataIndex]?.isToday;
-    const isCurrentWeek = dataIndex >= 0 && chartData[dataIndex]?.isCurrentWeek;
-    const isCurrentMonth = dataIndex >= 0 && chartData[dataIndex]?.isCurrentMonth;
-    const isCurrentYear = dataIndex >= 0 && chartData[dataIndex]?.isCurrentYear;
+    const isToday = dataItem?.isToday;
+    const isCurrentWeek = dataItem?.isCurrentWeek;
+    const isCurrentMonth = dataItem?.isCurrentMonth;
+    const isCurrentYear = dataItem?.isCurrentYear;
     const isHighlighted = isToday || isCurrentWeek || isCurrentMonth || isCurrentYear;
     const fontWeight = isHighlighted ? 700 : (period === 'week' ? 600 : 500);
     const fill = isHighlighted ? '#22c55e' : (isDark ? "#E0E0E0" : "#666");
@@ -264,7 +267,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                     });
                     
                     const totalDaysInPeriod = 7;
-                    const formatted = Array.from(habitMap.values()).map(item => {
+                    const formatted = Array.from(habitMap.values()).map((item, index) => {
                         const rawPercent = totalDaysInPeriod > 0 
                             ? (item.countCapped / totalDaysInPeriod) * 100 
                             : 0;
@@ -273,6 +276,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                         const percentageStr = `${finalPercent}%`;
 
                         return {
+                            index: index,
                             id: item.id,
                             name: item.name,
                             shortName: item.shortName,
@@ -334,7 +338,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                             ? new Date(periodStartDate.getFullYear(), periodStartDate.getMonth() + 1, 0).getDate() 
                             : (periodStartDate.getFullYear() % 4 === 0 ? 366 : 365);
 
-                    const formatted = json.habits.map(item => {
+                    const formatted = json.habits.map((item, index) => {
                         const countCapped = item.completed_days || 0;
                         const rawPercent = totalDaysInPeriod > 0 
                             ? (countCapped / totalDaysInPeriod) * 100 
@@ -344,6 +348,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                         const percentageStr = `${finalPercent}%`;
 
                         return {
+                            index: index,
                             id: item.id,
                             name: item.name,
                             shortName: shortenName(item.name),
@@ -446,12 +451,14 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                                     allowDecimals={false}
                                 />
                                 <YAxis
-                                    type="category"
-                                    dataKey="shortName"
+                                    dataKey="index"
                                     stroke={isDark ? "#666" : "#999"}
                                     tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 10 }}
                                     interval={0}
                                     width={60}
+                                    tickFormatter={(value) => filteredData[value]?.shortName || ''}
+                                    domain={[0, 'dataMax']}
+                                    padding={{ top: 0, bottom: 0 }}
                                 />
 
                                 {viewType === 'habits' ? (
@@ -531,11 +538,11 @@ const Charts = ({
     const isTablet = windowWidth < 768;
     const isDark = theme === 'dark' || (theme === 'auto' && document.body.classList.contains('dark-theme'));
     const CHART_HEIGHT = isMobile ? 400 : isTablet ? 500 : 650;
-    const xAxisDataKey = period === 'day' ? 'dayNumber' : 'label';
+    const xAxisDataKey = 'index';
     const xAxisHeight = isMobile ? (period === 'week' ? 60 : 50) : (period === 'week' ? 60 : 40);
     const barLabelSize = isMobile ? 10 : isTablet ? 12 : 18;
-    const barCategoryGap = isMobile ? '30%' : '12%';
-    const barGap = isMobile ? 6 : 8;
+    const barCategoryGap = '0%';
+    const barGap = 0;
     const [periodLabel, setPeriodLabel] = useState({ title: '', subtitle: '' });
 
     const mainScrollRef = useRef(null);
@@ -597,7 +604,7 @@ const Charts = ({
                 currentSunday.setDate(currentMonday.getDate() + 6);
                 currentSunday.setHours(23, 59, 59, 999);
                 
-                const formattedData = json.data.map(item => {
+                const formattedData = json.data.map((item, index) => {
                     const isFuture = item.date > todayStr;
                     const isToday = item.date === todayStr;
                     const habitCount = item.habit_count || 0;
@@ -631,6 +638,7 @@ const Charts = ({
                         parsedDate.getFullYear() === today.getFullYear();
 
                     return {
+                        index: index,
                         label: item.label || item.date,
                         date: item.date,
                         fullDate: item.date,
@@ -782,7 +790,7 @@ const Charts = ({
                 <div className="chart-wrapper">
                     <div className="main-chart-scroll-wrapper" onScroll={handleMainScroll} ref={mainScrollRef}>
                         <div className="main-chart-inner" style={{ 
-                            minWidth: period === 'year' ? `${Math.max(700, chartData.length * (isMobile ? 50 : 70))}px` : (chartData.length > 7 ? `${chartData.length * (isMobile ? 50 : 70)}px` : '100%'),
+                            minWidth: `${Math.max(chartData.length * (isMobile ? 50 : 70), 400)}px`,
                             transition: 'min-width 0.3s ease'
                         }}>
                             <ResponsiveContainer width="100%" height="100%" style={{ overflow: 'visible' }}>
@@ -792,6 +800,7 @@ const Charts = ({
                                     barCategoryGap={barCategoryGap}
                                     barGap={barGap}
                                     barSize={isMobile ? 18 : isTablet ? 22 : 28}
+                                    maxBarSize={100}
                                 >
                                     <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#404040" : "#e0e0e0"} />
                                     <XAxis
@@ -802,6 +811,7 @@ const Charts = ({
                                         interval={0}
                                         tickLine={false}
                                         axisLine={false}
+                                        padding={{ left: 0, right: 0 }}
                                     />
                                     <YAxis
                                         stroke={isDark ? "#666" : "#666"}
