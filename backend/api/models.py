@@ -156,6 +156,19 @@ class Habit(models.Model):
         verbose_name="В архиве",
     )
 
+    TARGET_TYPE_CHOICES = [
+        ('at_least', 'Не менее (светло-зеленая)'),
+        ('less_or_equal', 'Не более (зеленая)'),
+    ]
+
+    target_type = models.CharField(
+        max_length=20,
+        choices=TARGET_TYPE_CHOICES,
+        default='at_least',
+        verbose_name="Тип цели",
+        help_text="Тип цели привычки: не менее (светло-зеленая) или не более (зеленая)"
+    )
+
     start_date = models.DateField(
         verbose_name="Дата начала",
         help_text="Дата создания привычки (можно изменить)",
