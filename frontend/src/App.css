@@ -1554,6 +1554,13 @@ body {
   border-color: #d1fae5;
 }
 
+.header-count-badge.weekly.current-week {
+  background-color: #059669;
+  color: #ffffff;
+  border-color: #059669;
+  box-shadow: 0 0 0 2px #d1fae5;
+}
+
 .header-count-badge.monthly {
   background-color: #f0fdf4;
   color: #10b981;
@@ -3292,6 +3299,13 @@ body {
   background-color: #2D2D2D;
   color: #059669;
   border-color: #059669;
+}
+
+.dark-theme .header-count-badge.weekly.current-week {
+  background-color: #059669;
+  color: #ffffff;
+  border-color: #059669;
+  box-shadow: 0 0 0 2px #2D2D2D;
 }
 
 .dark-theme .header-count-badge.monthly {

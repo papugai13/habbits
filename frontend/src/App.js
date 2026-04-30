@@ -932,7 +932,7 @@ const App = () => {
             })}
           </div>
           <div className="days-placeholder-end header-counts-container">
-            <div className="header-count-badge weekly">{t('week').substring(0, 3).toUpperCase()} {getWeekNumber(currentWeekDate)}</div>
+            <div className={`header-count-badge weekly ${currentWeekDate === getMondayString() ? 'current-week' : ''}`}>{language === 'ru' ? 'Неделя' : t('week')} №{getWeekNumber(currentWeekDate)}</div>
             <div className="header-count-badge monthly">{t('month').substring(0, 3).toUpperCase()}</div>
           </div>
         </div>
