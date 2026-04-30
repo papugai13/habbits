@@ -832,7 +832,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                     )
 
                     # Count habits that existed by this date
-                    habit_count = habits.filter(created_at__lte=current_date).count()
+                    habit_count = habits.filter(start_date__lte=current_date).count()
                     
                     statistics.append({
                         'date': current_date.isoformat(),
@@ -869,7 +869,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                     )
                     
                     days_in_period = (period_end - current_date).days + 1
-                    habit_count = habits.filter(created_at__lte=period_end).count()
+                    habit_count = habits.filter(start_date__lte=period_end).count()
                     
                     statistics.append({
                         'date': current_date.isoformat(),
@@ -913,7 +913,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                     )
                     
                     days_in_period = (period_end - current_date).days + 1
-                    habit_count = habits.filter(created_at__lte=period_end).count()
+                    habit_count = habits.filter(start_date__lte=period_end).count()
                     
                     months_ru = {
                         1: 'Янв', 2: 'Фев', 3: 'Мар', 4: 'Апр', 5: 'Май', 6: 'Июн',
@@ -955,7 +955,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                     extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(total=Sum('quantity'))['total'] or 0
                     completed_count = day_dates.filter(quantity__isnull=True).count() + extra_quantity
                     days_in_period = (period_end - current_date).days + 1
-                    habit_count = habits.filter(created_at__lte=period_end).count()
+                    habit_count = habits.filter(start_date__lte=period_end).count()
                     
                     statistics.append({
                         'date': current_date.isoformat(),
