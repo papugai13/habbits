@@ -399,6 +399,16 @@ class HabitViewSet(viewsets.ModelViewSet):
                     prev_sat = start_date - timedelta(days=2)
                     habit_data['prev_week_sun_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sun, is_done=True).exists()
                     habit_data['prev_week_sat_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sat, is_done=True).exists()
+
+                    # Count previous week completions for dot transition
+                    prev_week_start = start_date - timedelta(days=7)
+                    habit_data['prev_week_count'] = Date.objects.filter(
+                        user=user_profile,
+                        habit=habit,
+                        habit_date__range=[prev_week_start, prev_sun],
+                        is_done=True,
+                        is_restored=False
+                    ).count()
                     
                     habit_data['latest_comment'] = None
                     habit_data['latest_comment_details'] = None
