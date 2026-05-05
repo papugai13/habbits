@@ -288,4 +288,26 @@ class Achievement(models.Model):
     class Meta:
         verbose_name = "Ачивка"
         verbose_name_plural = "Ачивки"
+
+class ReminderSettings(models.Model):
+    user = models.OneToOneField(UserAll, on_delete=models.CASCADE, related_name='reminder_settings')
+    enabled = models.BooleanField(default=False)
+    text = models.CharField(max_length=255, default='Не забудьте отметить привычки!', verbose_name="Текст напоминания")
+    # Список времен в формате ["09:00", "18:00"]
+    times = models.JSONField(default=list, verbose_name="Время напоминаний")
+    
+    class Meta:
+        verbose_name = "Настройки напоминаний"
+        verbose_name_plural = "Настройки напоминаний"
+
+class PushSubscription(models.Model):
+    user = models.ForeignKey(UserAll, on_delete=models.CASCADE, related_name='push_subscriptions')
+    endpoint = models.URLField(max_length=500)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Подписка на пуш"
+        verbose_name_plural = "Подписки на пуш"
         

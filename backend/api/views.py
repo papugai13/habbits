@@ -14,10 +14,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Achievement, Category, Date, Habit, UserAll
+from .models import Achievement, Category, Date, Habit, UserAll, ReminderSettings, PushSubscription
 from .serializers import (
     AchievementSerializer, CategorySerializer, DateSerializer, HabitSerializer,
-    LoginSerializer, RegisterSerializer, UserAllSerializer, UserSerializer
+    LoginSerializer, RegisterSerializer, UserAllSerializer, UserSerializer,
+    ReminderSettingsSerializer, PushSubscriptionSerializer
 )
 
 
@@ -1251,4 +1252,43 @@ class CurrentUserView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def reminder_settings(request):
+    user_profile, _ = UserAll.objects.get_or_create(auth_user=request.user)
+    settings, _ = ReminderSettings.objects.get_or_create(user=user_profile)
+    
+    if request.method == 'PATCH':
+        serializer = ReminderSettingsSerializer(settings, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    serializer = ReminderSettingsSerializer(settings)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def subscribe_push(request):
+    user_profile, _ = UserAll.objects.get_or_create(auth_user=request.user)
+    serializer = PushSubscriptionSerializer(data=request.data)
+    if serializer.is_valid():
+        PushSubscription.objects.update_or_create(
+            user=user_profile,
+            endpoint=serializer.validated_data['endpoint'],
+            defaults={
+                'p256dh': serializer.validated_data['p256dh'],
+                'auth': serializer.validated_data['auth']
+            }
+        )
+        return Response({'status': 'subscribed'}, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def vapid_public_key(request):
+    from django.conf import settings
+    return Response({'publicKey': settings.VAPID_PUBLIC_KEY})
 
