@@ -1093,6 +1093,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                 'completed_days': completed_days,
                 'restored_days': restored_days,
                 'extra_quantity': extra_quantity,
+                'start_date': habit.start_date.isoformat() if habit.start_date else None,
             })
 
         return Response({
