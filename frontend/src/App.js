@@ -62,6 +62,10 @@ const App = () => {
   // Form state for creating habit
   const [newHabitName, setNewHabitName] = useState('');
   const [newHabitCategory, setNewHabitCategory] = useState('');
+  const [newHabitTargetType, setNewHabitTargetType] = useState('at_least');
+  const [newHabitStartDate, setNewHabitStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [editHabitStartDate, setEditHabitStartDate] = useState('');
+  const [editHabitTargetType, setEditHabitTargetType] = useState('at_least');
   const [createError, setCreateError] = useState('');
   // Categories state
   const [categories, setCategories] = useState([{ id: 'all', name: 'Все' }]);
@@ -1256,13 +1260,14 @@ const App = () => {
                           const isMissed = isPast && !isDone;
                           const hasComment = status && status.comment;
                           const hasPhoto = status && status.photo;
-                          const isDisabled = isFuture;
+                          const isBeforeCreation = habit.start_date && slotDateStr < habit.start_date;
+                          const isDisabled = isFuture || isBeforeCreation;
                           const showDotClass = dots[index];
                           const isMonthStart = index > 0 && slotDate.getDate() === 1;
 
                           const checkBoxBtn = (
                             <button
-                              className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${showDotClass}`}
+                              className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${showDotClass} ${isBeforeCreation ? 'before-creation' : ''}`}
                               onClick={() => {
                                 if (!isDisabled && !longPressTimer) {
                                   toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
@@ -2014,7 +2019,9 @@ const App = () => {
         credentials: 'include',
         body: JSON.stringify({
           name: newHabitName.trim(),
-          category: newHabitCategory === "" ? null : parseInt(newHabitCategory, 10)
+          category: newHabitCategory === "" ? null : parseInt(newHabitCategory, 10),
+          target_type: newHabitTargetType,
+          start_date: newHabitStartDate
         })
       });
 
@@ -2227,7 +2234,9 @@ const App = () => {
         credentials: 'include',
         body: JSON.stringify({
           name: editingHabit.name,
-          category: editingHabit.category === "" ? null : editingHabit.category
+          category: editingHabit.category === "" ? null : editingHabit.category,
+          target_type: editingHabit.target_type,
+          start_date: editingHabit.start_date
         })
       });
 
@@ -2489,6 +2498,7 @@ const App = () => {
             setCreateError('');
             setShowAddCategory(false);
             setNewCategoryName('');
+            setNewHabitStartDate(new Date().toISOString().split('T')[0]);
             setShowCreateModal(true);
           }}
         >
@@ -3242,6 +3252,28 @@ const App = () => {
                 </div>
               )}
 
+              <div className="form-group">
+                <label className="form-label">{language === 'ru' ? 'Тип цели' : 'Target Type'}</label>
+                <select
+                  className="form-input"
+                  value={newHabitTargetType}
+                  onChange={(e) => setNewHabitTargetType(e.target.value)}
+                >
+                  <option value="at_least">{language === 'ru' ? 'Не менее (светло-зеленая)' : 'At least (light green)'}</option>
+                  <option value="less_or_equal">{language === 'ru' ? 'Не более (зеленая)' : 'Less or equal (green)'}</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">{language === 'ru' ? 'Дата создания' : 'Start Date'}</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={newHabitStartDate}
+                  onChange={(e) => setNewHabitStartDate(e.target.value)}
+                />
+              </div>
+
               {createError && (
                 <div className="error-message">
                   {createError}
@@ -3358,6 +3390,28 @@ const App = () => {
                   {createError}
                 </div>
               )}
+
+              <div className="form-group">
+                <label className="form-label">{language === 'ru' ? 'Тип цели' : 'Target Type'}</label>
+                <select
+                  className="form-input"
+                  value={editingHabit.target_type || 'at_least'}
+                  onChange={(e) => setEditingHabit({ ...editingHabit, target_type: e.target.value })}
+                >
+                  <option value="at_least">{language === 'ru' ? 'Не менее (светло-зеленая)' : 'At least (light green)'}</option>
+                  <option value="less_or_equal">{language === 'ru' ? 'Не более (зеленая)' : 'Less or equal (green)'}</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">{language === 'ru' ? 'Дата создания' : 'Start Date'}</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={editingHabit.start_date || ''}
+                  onChange={(e) => setEditingHabit({ ...editingHabit, start_date: e.target.value })}
+                />
+              </div>
 
               <div className="form-actions">
                 <button
