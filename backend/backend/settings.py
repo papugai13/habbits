@@ -182,3 +182,10 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
 }
+
+# Push Notifications (VAPID)
+# Генерируйте свои ключи для продакшена!
+VAPID_PUBLIC_KEY = os.getenv('VAPID_PUBLIC_KEY', 'BFf2bYpPfRifarrkyixX5oKC9CAYZTDQKEeeRYVxfk78yQGj6RjD2dLG5I9fsGlf8stNLnvJp6a9lnKfWg-h4Wc')
+VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY', '89Lgpzgfph15C6shKiLh15qoyzd9rh1RWZHmZ1aShJI')
+VAPID_ADMIN_EMAIL = os.getenv('VAPID_ADMIN_EMAIL', 'mailto:admin@example.com')
+

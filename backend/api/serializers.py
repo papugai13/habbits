@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from .models import Achievement, Category, Date, UserAll, Habit
+from .models import Achievement, Category, Date, UserAll, Habit, ReminderSettings, PushSubscription
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -151,6 +151,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
+
 class LoginSerializer(serializers.Serializer):
     """Сериализатор для входа в систему"""
     username = serializers.CharField(required=True)
@@ -159,3 +160,13 @@ class LoginSerializer(serializers.Serializer):
         write_only=True,
         style={'input_type': 'password'}
     )
+
+class ReminderSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReminderSettings
+        fields = ('enabled', 'text', 'times')
+
+class PushSubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PushSubscription
+        fields = ('endpoint', 'p256dh', 'auth')

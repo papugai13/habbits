@@ -255,7 +255,8 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                                         shortName: shortenName(item.name),
                                         countCapped: 0,
                                         countRestored: 0,
-                                        countExtra: 0
+                                        countExtra: 0,
+                                        start_date: item.start_date
                                     });
                                 }
                                 const habit = habitMap.get(item.id);
@@ -266,8 +267,23 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                         }
                     });
                     
-                    const totalDaysInPeriod = 7;
                     const formatted = Array.from(habitMap.values()).map((item, index) => {
+                        let totalDaysInPeriod = 7;
+                        if (item.start_date) {
+                            const habitStart = new Date(item.start_date);
+                            habitStart.setHours(0,0,0,0);
+                            const currentStart = new Date(startDate);
+                            currentStart.setHours(0,0,0,0);
+                            const currentEnd = new Date(endDate);
+                            currentEnd.setHours(0,0,0,0);
+                            
+                            if (habitStart > currentEnd) {
+                                totalDaysInPeriod = 0;
+                            } else if (habitStart > currentStart) {
+                                totalDaysInPeriod = Math.round((currentEnd - habitStart) / 86400000) + 1;
+                            }
+                        }
+
                         const rawPercent = totalDaysInPeriod > 0 
                             ? (item.countCapped / totalDaysInPeriod) * 100 
                             : 0;
@@ -332,13 +348,32 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                         periodStartDate.setHours(0, 0, 0, 0);
                     }
 
-                    const totalDaysInPeriod = period === 'day'
-                        ? 1
-                        : period === 'month' 
-                            ? new Date(periodStartDate.getFullYear(), periodStartDate.getMonth() + 1, 0).getDate() 
-                            : (periodStartDate.getFullYear() % 4 === 0 ? 366 : 365);
+                    const periodEndDate = new Date(periodStartDate);
+                    if (period === 'month') {
+                        periodEndDate.setMonth(periodEndDate.getMonth() + 1);
+                        periodEndDate.setDate(0);
+                    } else if (period === 'year') {
+                        periodEndDate.setMonth(11, 31);
+                    }
+                    periodEndDate.setHours(23, 59, 59, 999);
 
                     const formatted = json.habits.map((item, index) => {
+                        let totalDaysInPeriod = period === 'day'
+                            ? 1
+                            : period === 'month' 
+                                ? new Date(periodStartDate.getFullYear(), periodStartDate.getMonth() + 1, 0).getDate() 
+                                : (periodStartDate.getFullYear() % 4 === 0 ? 366 : 365);
+                                
+                        if (item.start_date) {
+                            const habitStart = new Date(item.start_date);
+                            habitStart.setHours(0,0,0,0);
+                            if (habitStart > periodEndDate) {
+                                totalDaysInPeriod = 0;
+                            } else if (habitStart > periodStartDate) {
+                                totalDaysInPeriod = Math.round((periodEndDate - habitStart) / 86400000) + 1;
+                            }
+                        }
+
                         const countCapped = item.completed_days || 0;
                         const rawPercent = totalDaysInPeriod > 0 
                             ? (countCapped / totalDaysInPeriod) * 100 

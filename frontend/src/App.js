@@ -61,6 +61,7 @@ const App = () => {
 
   // Form state for creating habit
   const [newHabitName, setNewHabitName] = useState('');
+  const [newHabitStartDate, setNewHabitStartDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [newHabitCategory, setNewHabitCategory] = useState('');
   const [createError, setCreateError] = useState('');
   // Categories state
@@ -119,6 +120,11 @@ const App = () => {
   const [notificationPermission, setNotificationPermission] = useState(() => {
     if (typeof window === 'undefined') return 'default';
     return Notification.permission;
+  });
+  const [reminderText, setReminderText] = useState(() => {
+    if (typeof window === 'undefined') return 'Не забудьте отметить привычки!';
+    const settings = localStorage.getItem('reminderSettings');
+    return settings ? JSON.parse(settings).text || 'Не забудьте отметить привычки!' : 'Не забудьте отметить привычки!';
   });
 
   // Quantity modal state
@@ -463,29 +469,110 @@ const App = () => {
     localStorage.setItem('reminderSettings', JSON.stringify(settings));
   }, [reminderEnabled, reminderTimes, reminderTimesPerDay, customTimesPerDay]);
 
-  // Request notification permission
+  // Helper to convert VAPID key
+  const urlBase64ToUint8Array = (base64String) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  };
+
+  // Subscribe to Push Notifications
+  const subscribeToPush = async () => {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      
+      // Get VAPID public key from server
+      const keyResponse = await fetch('/api/v1/reminders/vapid-key/', { credentials: 'include' });
+      const { publicKey } = await keyResponse.json();
+      
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+      
+      const subJSON = subscription.toJSON();
+      await fetch('/api/v1/reminders/subscribe/', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          endpoint: subJSON.endpoint,
+          p256dh: subJSON.keys.p256dh,
+          auth: subJSON.keys.auth
+        })
+      });
+      console.log('Push subscription successful');
+    } catch (error) {
+      console.error('Push subscription failed:', error);
+    }
+  };
+
+  // Save reminder settings to server
+  const saveReminderSettingsToServer = async (updates) => {
+    try {
+      await fetch('/api/v1/reminders/settings/', {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include',
+        body: JSON.stringify(updates)
+      });
+    } catch (error) {
+      console.error('Failed to save reminder settings:', error);
+    }
+  };
+
+  // Request notification permission and subscribe
   const requestNotificationPermission = async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
     
-    if (Notification.permission === 'default') {
-      const permission = await Notification.requestPermission();
+    let permission = Notification.permission;
+    if (permission === 'default') {
+      permission = await Notification.requestPermission();
       setNotificationPermission(permission);
-      return permission;
     }
-    return Notification.permission;
+    
+    if (permission === 'granted') {
+      await subscribeToPush();
+    }
+    
+    return permission;
   };
 
   // Handle reminder enable toggle
   const handleReminderToggle = async (enabled) => {
+    setReminderEnabled(enabled);
     if (enabled) {
       const permission = await requestNotificationPermission();
-      if (permission === 'granted') {
-        setReminderEnabled(true);
-      } else {
+      if (permission !== 'granted') {
         alert('Необходимо разрешить уведомления для работы напоминаний');
+        setReminderEnabled(false);
+        return;
       }
-    } else {
-      setReminderEnabled(false);
+    }
+    
+    const settings = JSON.parse(localStorage.getItem('reminderSettings') || '{}');
+    const newSettings = { ...settings, enabled };
+    localStorage.setItem('reminderSettings', JSON.stringify(newSettings));
+    saveReminderSettingsToServer({ enabled, text: reminderText, times: reminderTimes });
+    
+    // Update SW
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        if (registration.active) {
+          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: newSettings });
+        }
+      });
     }
   };
 
@@ -544,11 +631,42 @@ const App = () => {
     }
   }, [customTimesPerDay, reminderTimesPerDay]);
 
+  const handleReminderTextChange = (text) => {
+    setReminderText(text);
+    const settings = JSON.parse(localStorage.getItem('reminderSettings') || '{}');
+    const newSettings = { ...settings, text };
+    localStorage.setItem('reminderSettings', JSON.stringify(newSettings));
+    saveReminderSettingsToServer({ text });
+    
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        if (registration.active) {
+          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: newSettings });
+        }
+      });
+    }
+  };
+
   // Update a specific reminder time
   const handleReminderTimeChange = (index, value) => {
     const newTimes = [...reminderTimes];
     newTimes[index] = value;
     setReminderTimes(newTimes);
+    
+    // Save to server
+    const settings = JSON.parse(localStorage.getItem('reminderSettings') || '{}');
+    const newSettings = { ...settings, reminderTimes: newTimes };
+    localStorage.setItem('reminderSettings', JSON.stringify(newSettings));
+    saveReminderSettingsToServer({ times: newTimes });
+    
+    // Update SW
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        if (registration.active) {
+          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: newSettings });
+        }
+      });
+    }
   };
 
   // Test notification
@@ -941,8 +1059,8 @@ const App = () => {
             })}
           </div>
           <div className="days-placeholder-end header-counts-container">
-            <div className={`header-count-badge weekly ${currentWeekDate === getMondayString() ? 'current-week' : ''}`}>{language === 'ru' ? 'Неделя' : t('week')} №{getWeekNumber(currentWeekDate)}</div>
-            <div className="header-count-badge monthly">{t('month').substring(0, 3).toUpperCase()}</div>
+            <div className={`header-count-badge weekly ${currentWeekDate === getMondayString() ? 'current-week' : ''}`}>{language === 'ru' ? 'НЕД' : t('week').substring(0, 3).toUpperCase()} {getWeekNumber(currentWeekDate)}</div>
+            <div className="header-count-badge monthly">{language === 'ru' ? 'МЕС' : t('month').substring(0, 3).toUpperCase()}</div>
           </div>
         </div>
 
@@ -1827,7 +1945,8 @@ const App = () => {
         credentials: 'include',
         body: JSON.stringify({
           name: newHabitName.trim(),
-          category: newHabitCategory === "" ? null : newHabitCategory
+          category: newHabitCategory === "" ? null : newHabitCategory,
+          start_date: newHabitStartDate || null
         })
       });
 
@@ -1841,6 +1960,7 @@ const App = () => {
 
       // Reset form and close modal
       setNewHabitName('');
+      setNewHabitStartDate(new Date().toISOString().split('T')[0]);
       setShowCreateModal(false);
 
       // Refresh habits list
@@ -2040,7 +2160,8 @@ const App = () => {
         credentials: 'include',
         body: JSON.stringify({
           name: editingHabit.name,
-          category: editingHabit.category === "" ? null : editingHabit.category
+          category: editingHabit.category === "" ? null : editingHabit.category,
+          start_date: editingHabit.start_date || null
         })
       });
 
@@ -2280,7 +2401,7 @@ const App = () => {
             <div className="week-navigation">
               <button className="week-nav-btn" onClick={handlePrevWeek}>&lt;</button>
               <div className="week-range-text" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.2'}}>
-                <span style={{fontSize: '0.85em', fontWeight: 'bold'}}>{language === 'ru' ? 'Неделя' : t('week')} №{getWeekNumber(currentWeekDate)}</span>
+                <span style={{fontSize: '0.85em', fontWeight: 'bold'}}>{language === 'ru' ? 'НЕД' : t('week').substring(0, 3).toUpperCase()} {getWeekNumber(currentWeekDate)}</span>
                 <span style={{fontSize: '0.9em', opacity: 0.8}}>{currentWeekRange()}</span>
               </div>
               <button className="week-nav-btn" onClick={handleNextWeek}>&gt;</button>
@@ -2296,6 +2417,7 @@ const App = () => {
             setCreateError('');
             setShowAddCategory(false);
             setNewCategoryName('');
+            setNewHabitStartDate(new Date().toISOString().split('T')[0]);
             setShowCreateModal(true);
           }}
         >
@@ -2645,7 +2767,7 @@ const App = () => {
               <div className="section-actions">
                 <button
                   className="add-category-btn"
-                  onClick={(e) => { e.stopPropagation(); setNewHabitCategory(''); setNewHabitName(''); setCreateError(''); setShowAddCategory(false); setNewCategoryName(''); setShowCreateModal(true); }}
+                  onClick={(e) => { e.stopPropagation(); setNewHabitCategory(''); setNewHabitName(''); setCreateError(''); setShowAddCategory(false); setNewCategoryName(''); setNewHabitStartDate(new Date().toISOString().split('T')[0]); setShowCreateModal(true); }}
                 >
                   +
                 </button>
@@ -2857,6 +2979,16 @@ const App = () => {
                 {reminderEnabled && (
                   <div className="reminder-options">
                     <div className="reminder-option">
+                      <label className="reminder-option-label">{language === 'ru' ? 'Текст напоминания' : 'Reminder Text'}:</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={reminderText}
+                        onChange={(e) => handleReminderTextChange(e.target.value)}
+                        placeholder={language === 'ru' ? 'Что вам напомнить?' : 'What to remind?'}
+                      />
+                    </div>
+                    <div className="reminder-option">
                       <label className="reminder-option-label">{t('timesPerDay')}:</label>
                       <div className="frequency-options">
                       <button
@@ -2959,6 +3091,7 @@ const App = () => {
                   setCreateError('');
                   setShowAddCategory(false);
                   setNewCategoryName('');
+                  setNewHabitStartDate(new Date().toISOString().split('T')[0]);
                   setShowCreateModal(false);
                 }}
               >
@@ -3035,6 +3168,17 @@ const App = () => {
                   </div>
                 </div>
               )}
+
+              <div className="form-group">
+                <label htmlFor="habit-start-date">{language === 'ru' ? 'Дата создания' : 'Creation Date'}</label>
+                <input
+                  id="habit-start-date"
+                  type="date"
+                  className="form-input"
+                  value={newHabitStartDate}
+                  onChange={(e) => setNewHabitStartDate(e.target.value)}
+                />
+              </div>
 
               {createError && (
                 <div className="error-message">
@@ -3146,6 +3290,17 @@ const App = () => {
                   </div>
                 </div>
               )}
+
+              <div className="form-group">
+                <label htmlFor="edit-habit-start-date">{language === 'ru' ? 'Дата создания' : 'Creation Date'}</label>
+                <input
+                  id="edit-habit-start-date"
+                  type="date"
+                  className="form-input"
+                  value={editingHabit.start_date || ''}
+                  onChange={(e) => setEditingHabit({ ...editingHabit, start_date: e.target.value })}
+                />
+              </div>
 
               {createError && (
                 <div className="error-message">

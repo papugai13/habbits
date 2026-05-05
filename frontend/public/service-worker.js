@@ -178,3 +178,29 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+// Handle incoming push notifications from server
+self.addEventListener('push', (event) => {
+  console.log('[Service Worker] Push Received.');
+  
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { title: 'Habbits', body: event.data.text() };
+    }
+  }
+
+  const title = data.title || 'Habbits';
+  const options = {
+    body: data.body || 'Пора отметить привычки!',
+    icon: data.icon || '/favicon.ico',
+    badge: data.badge || '/favicon-96x96.png',
+    tag: data.tag || 'habit-reminder',
+    data: data.url || '/'
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
