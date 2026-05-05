@@ -179,7 +179,7 @@ class Habit(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = unique_slugify(self, slugify(self.name))
-        if not self.start_date:
+        if self.pk is None and not self.start_date:
             from django.utils import timezone
             self.start_date = timezone.now().date()
         super().save(*args, **kwargs)
