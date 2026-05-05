@@ -253,6 +253,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                                         id: item.id,
                                         name: item.name,
                                         shortName: shortenName(item.name),
+                                        start_date: item.start_date,
                                         countCapped: 0,
                                         countRestored: 0,
                                         countExtra: 0
@@ -268,8 +269,22 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                     
                     const totalDaysInPeriod = 7;
                     const formatted = Array.from(habitMap.values()).map((item, index) => {
-                        const rawPercent = totalDaysInPeriod > 0 
-                            ? (item.countCapped / totalDaysInPeriod) * 100 
+                        let habitDaysInPeriod = 7;
+                        if (item.start_date) {
+                            const habitStart = new Date(item.start_date);
+                            const periodEnd = new Date(currentWeekDate);
+                            const periodStart = new Date(periodEnd);
+                            periodStart.setDate(periodStart.getDate() - 6);
+                            
+                            if (habitStart > periodStart) {
+                                const diffTime = Math.abs(periodEnd - habitStart);
+                                habitDaysInPeriod = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                                habitDaysInPeriod = Math.min(Math.max(habitDaysInPeriod, 1), 7);
+                            }
+                        }
+
+                        const rawPercent = habitDaysInPeriod > 0 
+                            ? (item.countCapped / habitDaysInPeriod) * 100 
                             : 0;
                         const roundedPercent = Math.round(rawPercent);
                         const finalPercent = (item.countCapped > 0 && roundedPercent === 0) ? 1 : roundedPercent;
@@ -339,9 +354,33 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                             : (periodStartDate.getFullYear() % 4 === 0 ? 366 : 365);
 
                     const formatted = json.habits.map((item, index) => {
+                        let habitDaysInPeriod = totalDaysInPeriod;
+                        if (item.start_date) {
+                            const habitStart = new Date(item.start_date);
+                            const periodStart = new Date(dateStr);
+                            const periodEnd = new Date(periodStart);
+                            if (period === 'month') {
+                                periodEnd.setMonth(periodEnd.getMonth() + 1);
+                                periodEnd.setDate(0);
+                            } else if (period === 'year') {
+                                periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+                                periodEnd.setDate(0);
+                            } else if (period === 'day') {
+                                // already 1
+                            }
+
+                            if (habitStart > periodStart && habitStart <= periodEnd) {
+                                const diffTime = Math.abs(periodEnd - habitStart);
+                                habitDaysInPeriod = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                                habitDaysInPeriod = Math.min(Math.max(habitDaysInPeriod, 1), totalDaysInPeriod);
+                            } else if (habitStart > periodEnd) {
+                                habitDaysInPeriod = 0;
+                            }
+                        }
+
                         const countCapped = item.completed_days || 0;
-                        const rawPercent = totalDaysInPeriod > 0 
-                            ? (countCapped / totalDaysInPeriod) * 100 
+                        const rawPercent = habitDaysInPeriod > 0 
+                            ? (countCapped / habitDaysInPeriod) * 100 
                             : 0;
                         const roundedPercent = Math.round(rawPercent);
                         const finalPercent = (countCapped > 0 && roundedPercent === 0) ? 1 : roundedPercent;
