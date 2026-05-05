@@ -451,13 +451,14 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                                     allowDecimals={false}
                                 />
                                 <YAxis
+                                    type="number"
                                     dataKey="index"
                                     stroke={isDark ? "#666" : "#999"}
                                     tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 10 }}
                                     interval={0}
                                     width={60}
                                     tickFormatter={(value) => filteredData[value]?.shortName || ''}
-                                    domain={[0, 'dataMax']}
+                                    domain={[0, Math.max(filteredData.length - 1, 0)]}
                                     padding={{ top: 0, bottom: 0 }}
                                 />
 
@@ -655,7 +656,16 @@ const Charts = ({
                         isCurrentYear: isCurrentYear
                     };
                 });
-                setChartData(formattedData);
+                // Добавим фиктивные точки если данных мало
+                let paddedData = formattedData;
+                if (formattedData.length === 1) {
+                    paddedData = [
+                        { ...formattedData[0], index: -1, countCapped: 0, countRestored: 0, countExtra: 0, label: '', dayMonth: '', dayNumber: '' },
+                        { ...formattedData[0], index: 0 },
+                        { ...formattedData[0], index: 1, countCapped: 0, countRestored: 0, countExtra: 0, label: '', dayMonth: '', dayNumber: '' }
+                    ];
+                }
+                setChartData(paddedData);
             }
         } catch (error) {
             console.error('Error fetching statistics:', error);
@@ -797,8 +807,8 @@ const Charts = ({
                                 <BarChart
                                     data={chartData}
                                     margin={{ top: 15, right: 30, left: 0, bottom: 10 }}
-                                    barCategoryGap={barCategoryGap}
-                                    barGap={barGap}
+                                    barCategoryGap={chartData.length === 1 ? "2%" : "10%"}
+                                    barGap={chartData.length === 1 ? 0 : 2}
                                     barSize={isMobile ? 18 : isTablet ? 22 : 28}
                                     maxBarSize={100}
                                 >
@@ -812,11 +822,14 @@ const Charts = ({
                                         tickLine={false}
                                         axisLine={false}
                                         padding={{ left: 0, right: 0 }}
+                                        type="category"
                                     />
                                     <YAxis
                                         stroke={isDark ? "#666" : "#666"}
                                         tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 12 }}
                                         allowDecimals={false}
+                                        domain={[0, 'dataMax']}
+                                        nice={true}
                                     />
                                     {viewType === 'habits' ? (
                                         <>

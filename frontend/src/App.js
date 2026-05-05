@@ -72,6 +72,8 @@ const App = () => {
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
   const [expandedCategoryId, setExpandedCategoryId] = useState(null);
   const [archivedCategories, setArchivedCategories] = useState([]);
+  const [weekLoading, setWeekLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
   const [showCategoryArchive, setShowCategoryArchive] = useState(false);
   const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('Все');
   const [chartsSelectedCategory, setChartsSelectedCategory] = useState('Все');
@@ -223,7 +225,10 @@ const App = () => {
   // Fetch categories from API
   const fetchCategories = React.useCallback(async () => {
     try {
-      const response = await fetch('/api/v1/categories/');
+      setApiError('');
+      const response = await fetch('/api/v1/categories/', {
+        credentials: 'include'
+      });
       if (response.ok) {
         const data = await response.json();
         setCategories(data);
@@ -244,13 +249,19 @@ const App = () => {
 
   const fetchArchivedCategories = React.useCallback(async () => {
     try {
-      const response = await fetch('/api/v1/categories/archived/');
+      setApiError('');
+      const response = await fetch('/api/v1/categories/archived/', {
+        credentials: 'include'
+      });
       if (response.ok) {
         const data = await response.json();
         setArchivedCategories(data);
+      } else {
+        setApiError(`Error loading archived categories: ${response.status}`);
       }
     } catch (error) {
       console.error('Error fetching archived categories:', error);
+      setApiError('Error fetching archived categories');
     }
   }, []);
 
@@ -259,14 +270,19 @@ const App = () => {
     if (!dateToFetch) return null;
 
     try {
-      const response = await fetch(`/api/v1/habits/weekly_status/?date=${dateToFetch}`);
+      setApiError('');
+      const response = await fetch(`/api/v1/habits/weekly_status/?date=${dateToFetch}`, {
+        credentials: 'include'
+      });
       if (response.ok) {
         const data = await response.json();
         weekDataCacheRef.current[dateToFetch] = data;
         return data;
       }
+      setApiError(`Error loading weekly habits: ${response.status}`);
     } catch (error) {
       console.error('Error fetching habits for week', dateToFetch, error);
+      setApiError('Error fetching weekly habits');
     }
     return null;
   };
@@ -279,7 +295,9 @@ const App = () => {
       return;
     }
 
+    setWeekLoading(true);
     const data = await fetchWeekHabits(targetDate);
+    setWeekLoading(false);
     if (data) {
       setHabitsData(data);
     }
@@ -319,20 +337,28 @@ const App = () => {
   // Fetch archived habits
   const fetchArchivedHabits = React.useCallback(async () => {
     try {
-      const response = await fetch('/api/v1/habits/archived/');
+      setApiError('');
+      const response = await fetch('/api/v1/habits/archived/', {
+        credentials: 'include'
+      });
       if (response.ok) {
         const data = await response.json();
         setArchivedHabits(data);
+      } else {
+        setApiError(`Error loading archived habits: ${response.status}`);
       }
     } catch (error) {
       console.error('Error fetching archived habits:', error);
+      setApiError('Error fetching archived habits');
     }
   }, []);
 
   // Check authentication status
   const checkAuth = React.useCallback(async () => {
     try {
-      const response = await fetch('/api/auth/me/');
+      const response = await fetch('/api/auth/me/', {
+        credentials: 'include'
+      });
 
       if (response.ok) {
         const userData = await response.json();
@@ -345,9 +371,11 @@ const App = () => {
         fetchArchivedCategories();
       } else {
         setIsAuthenticated(false);
+        setApiError(`Auth check failed: ${response.status}`);
       }
     } catch (error) {
       console.error('Auth check error:', error);
+      setApiError('Error checking authentication');
       setIsAuthenticated(false);
     } finally {
       setAuthLoading(false);
@@ -853,7 +881,7 @@ const App = () => {
     if (weekDate === currentWeekDate) {
       return habitsData;
     }
-    return weekDataCacheRef.current[weekDate] || [];
+    return weekDataCacheRef.current[weekDate] || habitsData;
   };
 
   const renderWeekPage = (weekDate, highlightWeekToday = false) => {
@@ -1827,7 +1855,7 @@ const App = () => {
         credentials: 'include',
         body: JSON.stringify({
           name: newHabitName.trim(),
-          category: newHabitCategory === "" ? null : newHabitCategory
+          category: newHabitCategory === "" ? null : parseInt(newHabitCategory, 10)
         })
       });
 
@@ -2274,6 +2302,12 @@ const App = () => {
           )}
         </div>
 
+        {apiError && (
+          <div className="api-error-banner">
+            <span>{apiError}</span>
+            <button className="api-error-dismiss" onClick={() => setApiError('')}>×</button>
+          </div>
+        )}
 
         {activeTab !== 'Settings' && (
           <div className="date-section">
@@ -2333,6 +2367,9 @@ const App = () => {
           onTouchEnd={handleSwipeEnd}
           onTouchCancel={handleSwipeEnd}
         >
+          {weekLoading && (
+            <div className="week-loading-banner">{t('loading')}...</div>
+          )}
           <div className="week-pages" ref={weekPagesRef}>
             <div className="week-page prev-week">
               {renderWeekPage(prevWeekDate)}
