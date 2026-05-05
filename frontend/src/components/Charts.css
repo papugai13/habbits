@@ -64,6 +64,25 @@
     transform: translateX(0) !important;
 }
 
+.main-chart-inner .recharts-bar-rectangle,
+.comparison-chart-inner .recharts-bar-rectangle {
+    transform: none !important;
+}
+
+.main-chart-inner .recharts-layer.recharts-bar-graph .recharts-bar {
+    transform: none !important;
+}
+
+/* Force bars to start from left */
+.main-chart-inner .recharts-bar-chart-horizontal,
+.comparison-chart-inner .recharts-bar-chart-horizontal {
+    transform: none !important;
+}
+
+.recharts-bar-graph .recharts-bar-rectangle {
+    transform: translateX(0) !important;
+}
+
 .main-chart-inner .recharts-wrapper .recharts-cartesian-grid,
 .comparison-chart-inner .recharts-wrapper .recharts-cartesian-grid {
     transform: none !important;
@@ -80,9 +99,10 @@
 .current-period-label {
     display: inline-flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     white-space: pre-line;
     line-height: 1.1;
+    text-align: left;
 }
 
 .comparison-period-subtitle,
@@ -113,7 +133,7 @@
 
 .chart-navigation-controls {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     gap: 20px;
     margin-bottom: 10px;
@@ -146,12 +166,12 @@
     font-weight: 600;
     color: #333;
     min-width: 100px;
-    text-align: center;
+    text-align: left;
 }
 
 .selectors-container {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     gap: 15px;
     flex-wrap: wrap;
@@ -264,6 +284,13 @@
     height: 100%;
     min-width: 0;
     box-sizing: border-box;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.main-chart-inner .recharts-wrapper {
+    width: 100%;
+    min-width: 100%;
 }
 
 .main-scroll-indicator-container {
