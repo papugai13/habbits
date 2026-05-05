@@ -4430,6 +4430,6 @@ body {
 }
 
 /* ─── Dark theme ─── */
-.add-btn {
+.dark-theme .add-btn {
   color: #f8f9fa !important;
 }
