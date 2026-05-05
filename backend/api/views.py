@@ -398,8 +398,10 @@ class HabitViewSet(viewsets.ModelViewSet):
                     # Check previous week for streak continuation (Sunday and Saturday)
                     prev_sun = start_date - timedelta(days=1)
                     prev_sat = start_date - timedelta(days=2)
+                    prev_fri = start_date - timedelta(days=3)
                     habit_data['prev_week_sun_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sun, is_done=True).exists()
                     habit_data['prev_week_sat_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sat, is_done=True).exists()
+                    habit_data['prev_week_fri_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_fri, is_done=True).exists()
 
                     # Count previous week completions for dot transition
                     prev_week_start = start_date - timedelta(days=7)

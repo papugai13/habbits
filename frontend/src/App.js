@@ -1155,20 +1155,64 @@ const App = () => {
                 const weeklyAward = getWeeklyAward(weeklyCount);
                 const statuses = habit.statuses || [];
 
-                const lastMark = WEEK_DAYS.reduce((acc, _, index) => {
+                // Determine incoming streak state from previous week
+                let currentStreak = 0;
+                let consecutiveMissed = 0;
+                let activeStreak = false;
+                const dMinus3 = habit.prev_week_fri_done;
+                const dMinus2 = habit.prev_week_sat_done;
+                const dMinus1 = habit.prev_week_sun_done;
+
+                // Initialize state based on the end of the previous week
+                if (dMinus1 && dMinus2) {
+                  activeStreak = true;
+                  currentStreak = 2;
+                  consecutiveMissed = 0;
+                } else if (dMinus2 && dMinus3 && !dMinus1) {
+                  activeStreak = true;
+                  currentStreak = 2; // Was 2+, now 1 miss
+                  consecutiveMissed = 1;
+                } else if (dMinus1) {
+                  currentStreak = 1;
+                  consecutiveMissed = 0;
+                } else {
+                  consecutiveMissed = (dMinus2 ? 1 : 2);
+                }
+
+                // Precalculate dots for the current week
+                const dots = new Array(7).fill('');
+                WEEK_DAYS.forEach((_, index) => {
                   const baseDate = new Date(currentWeekDate);
                   const dayOfWeek = baseDate.getDay();
                   const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                  const diff = index - currentDayIndex;
-
                   const slotDate = new Date(baseDate);
-                  slotDate.setDate(baseDate.getDate() + diff);
+                  slotDate.setDate(baseDate.getDate() + (index - currentDayIndex));
                   const slotDateStr = slotDate.toLocaleDateString('en-CA');
+                  
                   const status = statuses.find(s => s && s.date === slotDateStr);
-                  return status?.is_done ? Math.max(acc, index) : acc;
-                }, -1);
-                const isLastMarkInStreak = lastMark !== -1;
-                const hasPrevWeekStreak = (habit.prev_week_count || 0) >= 2 && habit.prev_week_sun_done;
+                  const isDone = status ? status.is_done : false;
+                  const isFuture = slotDateStr > todayStr;
+
+                  if (isDone) {
+                    currentStreak++;
+                    consecutiveMissed = 0;
+                    if (currentStreak >= 2) activeStreak = true;
+                  } else {
+                    currentStreak = 0;
+                    // Only count misses if the day is not in the future
+                    if (!isFuture) {
+                      consecutiveMissed++;
+                      if (consecutiveMissed >= 2) {
+                        activeStreak = false;
+                      }
+                    }
+                  }
+                  
+                  // If streak is active, show dots on all empty boxes (past, present, or future)
+                  if (activeStreak && !isDone) {
+                    dots[index] = 'has-dot-1';
+                  }
+                });
 
                 return (
                   <div key={habit.id} className="habit-row">
@@ -1218,9 +1262,7 @@ const App = () => {
                           const hasPhoto = status && status.photo;
                           const isBeforeCreation = habit.start_date && slotDateStr < habit.start_date;
                           const isDisabled = isFuture || isBeforeCreation;
-                          const hasEnoughCompletions = weeklyCount >= 2 || (habit.prev_week_count || 0) >= 2;
-                          const showDotFromPrevWeek = hasPrevWeekStreak && !isLastMarkInStreak && weeklyCount < 2;
-                          const showDotClass = (!isDone && ((isLastMarkInStreak && index > lastMark && hasEnoughCompletions) || showDotFromPrevWeek)) ? 'has-dot-1' : '';
+                          const showDotClass = dots[index];
                           const isMonthStart = index > 0 && slotDate.getDate() === 1;
 
                           const checkBoxBtn = (
