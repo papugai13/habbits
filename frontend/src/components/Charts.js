@@ -860,7 +860,6 @@ const Charts = ({
                                         interval={0}
                                         tickLine={false}
                                         axisLine={false}
-                                        padding={{ left: 0, right: 0 }}
                                         type="category"
                                     />
                                     <YAxis
