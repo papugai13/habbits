@@ -839,8 +839,8 @@ const Charts = ({
                 <div className="chart-wrapper">
                     <div className="main-chart-scroll-wrapper" onScroll={handleMainScroll} ref={mainScrollRef}>
                         <div className="main-chart-inner" style={{ 
-                            minWidth: `${Math.max(chartData.length * (isMobile ? 50 : 70), 400)}px`,
-                            transition: 'min-width 0.3s ease'
+                            width: `${Math.max(chartData.length * (isMobile ? 50 : 70), 400)}px`,
+                            transition: 'width 0.3s ease'
                         }}>
                             <ResponsiveContainer width="100%" height="100%" style={{ overflow: 'visible' }}>
                                 <BarChart
