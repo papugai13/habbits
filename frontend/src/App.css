@@ -708,6 +708,17 @@ body {
   word-break: break-word;
 }
 
+.name-streak {
+  font-weight: bold;
+  color: #059669;
+  font-size: 0.9em;
+  margin-left: 2px;
+}
+
+.dark-theme .name-streak {
+  color: #34D399;
+}
+
 .habit-thumbnail {
   width: 18px;
   height: 18px;
@@ -1922,10 +1933,10 @@ body {
   border-radius: 12px;
   padding: 20px;
   border: 1px solid #e0e0e0;
+  margin-bottom: 20px;
 }
 
 .profile-settings {
-  margin-bottom: 20px;
 }
 
 .manage-profile-info {
@@ -1968,6 +1979,12 @@ body {
   align-items: center;
   cursor: pointer;
   user-select: none;
+}
+
+.section-title-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .section-title-centered {
@@ -2118,16 +2135,63 @@ body {
   cursor: pointer;
   padding: 8px;
   border-radius: 8px;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+}
+
+.manage-btn svg {
+  display: block;
+}
+
+.manage-btn:hover {
+  background-color: #f0f0f0;
+  color: #333;
 }
 
 .edit-btn:hover {
-  background-color: #f0f0f0;
+  background-color: #eef2ff;
+  color: #4f46e5;
+}
+
+.archive-btn:hover {
+  background-color: #fff7ed;
+  color: #ea580c;
 }
 
 .delete-btn:hover {
-  background-color: #fee;
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.add-habit-btn {
+  color: #059669;
+}
+
+.add-habit-btn:hover {
+  background-color: #ecfdf5;
+  color: #059669;
+}
+
+.save-btn {
+  color: #059669;
+}
+
+.save-btn:hover {
+  background-color: #ecfdf5;
+  color: #059669;
+}
+
+.cancel-btn {
+  color: #94a3b8;
+}
+
+.cancel-btn:hover {
+  background-color: #f1f5f9;
+  color: #475569;
 }
 
 .expand-btn {
@@ -2816,7 +2880,6 @@ body {
 
 /* Category Management Styles */
 .categories-settings {
-  margin-bottom: 20px;
 }
 
 .manage-categories-list {
@@ -2858,6 +2921,13 @@ body {
   flex-shrink: 0;
 }
 
+.category-edit-row-container {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .category-edit-row {
   display: flex;
   gap: 10px;
@@ -2896,6 +2966,9 @@ body {
   font-size: 0.85em;
   color: #495057;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .no-habits-inline {
@@ -3959,11 +4032,9 @@ body {
 
 /* Theme Settings */
 .theme-settings {
-  margin-bottom: 20px;
 }
 
 .reminder-settings {
-  margin-bottom: 20px;
 }
 
 .reminder-toggle-row {
@@ -4432,4 +4503,114 @@ body {
 /* ─── Dark theme ─── */
 .dark-theme .add-btn {
   color: #f8f9fa !important;
+}
+
+/* Habit Selection Modal */
+.select-habits-modal {
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.select-habits-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 15px;
+  padding-right: 5px;
+}
+
+.select-habit-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.select-habit-item:hover {
+  background-color: #f5f5f5;
+}
+
+.select-habit-item.selected {
+  background-color: #f0fdf4;
+}
+
+.select-habit-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.select-habit-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-habit-category {
+  font-size: 12px;
+  color: #888;
+}
+
+.select-habit-checkbox {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  margin-left: 12px;
+  background-color: white;
+}
+
+.select-habit-item.selected .select-habit-checkbox {
+  background-color: #059669;
+  border-color: #059669;
+}
+
+.select-habit-item.selected .select-habit-checkbox::after {
+  content: '✓';
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.dark-theme .select-habit-item {
+  border-bottom-color: #444;
+}
+
+.dark-theme .select-habit-item:hover {
+  background-color: #333;
+}
+
+.dark-theme .select-habit-item.selected {
+  background-color: #1a2e25;
+}
+
+.dark-theme .select-habit-name {
+  color: #eee;
+}
+
+.dark-theme .select-habit-category {
+  color: #aaa;
+}
+
+.dark-theme .select-habit-checkbox {
+  border-color: #555;
+  background-color: #2D2D2D;
+}
+
+.dark-theme .select-habit-item.selected .select-habit-checkbox {
+  background-color: #10B981;
+  border-color: #10B981;
 }

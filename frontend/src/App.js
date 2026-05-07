@@ -80,6 +80,8 @@ const App = () => {
   const [apiError, setApiError] = useState('');
   const [showCategoryArchive, setShowCategoryArchive] = useState(false);
   const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('Все');
+  const [showSelectHabitsModal, setShowSelectHabitsModal] = useState(false);
+  const [selectingForCategoryId, setSelectingForCategoryId] = useState(null);
   const [chartsSelectedCategory, setChartsSelectedCategory] = useState('Все');
   
   // Settings section collapse state
@@ -346,7 +348,6 @@ const App = () => {
   // Fetch archived habits
   const fetchArchivedHabits = React.useCallback(async () => {
     try {
-      setApiError('');
       const response = await fetch('/api/v1/habits/archived/', {
         credentials: 'include'
       });
@@ -354,11 +355,10 @@ const App = () => {
         const data = await response.json();
         setArchivedHabits(data);
       } else {
-        setApiError(`Error loading archived habits: ${response.status}`);
+        console.error(`Error loading archived habits: ${response.status}`);
       }
     } catch (error) {
       console.error('Error fetching archived habits:', error);
-      setApiError('Error fetching archived habits');
     }
   }, []);
 
@@ -1217,7 +1217,21 @@ const App = () => {
                 return (
                   <div key={habit.id} className="habit-row">
                     <div className="habit-name">
-                      <span className="habit-text">{habit.name}</span>
+                      <span className="habit-text">
+                        {habit.name}
+                        {weeklyAward && (
+                          <span className="name-streak">
+                            {' '}{weeklyCount === 3 ? '⚡' : 
+                                 weeklyCount === 4 ? '⚡⚡' : 
+                                 weeklyCount === 5 ? '⭐' : 
+                                 weeklyCount === 6 ? '⭐⭐' : 
+                                 weeklyAward}
+                            {((weeklyAward === '👑' && habit.crown_streak > 1) || (weeklyAward !== '👑' && habit.weekly_award_streak > 1)) && (
+                              ` x${weeklyAward === '👑' ? habit.crown_streak : habit.weekly_award_streak}`
+                            )}
+                          </span>
+                        )}
+                      </span>
                     </div>
                     {habit.latest_comment && (
                       <div 
@@ -1261,7 +1275,7 @@ const App = () => {
                           const hasComment = status && status.comment;
                           const hasPhoto = status && status.photo;
                           const isBeforeCreation = habit.start_date && slotDateStr < habit.start_date;
-                          const isDisabled = isFuture || isBeforeCreation;
+                          const isDisabled = isFuture;
                           const showDotClass = dots[index];
                           const isMonthStart = index > 0 && slotDate.getDate() === 1;
 
@@ -1309,14 +1323,13 @@ const App = () => {
                             <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>
                               {weeklyCount}
                             </span>
-                            {weeklyAward && weeklyAward !== '👑' && habit.weekly_award_streak > 1 && (
-                              <span className="award-side award-right">{weeklyCount === 4 ? '⚡' : weeklyCount === 6 ? '⭐' : weeklyAward}{habit.weekly_award_streak > 1 ? <span className="award-streak">x{habit.weekly_award_streak}</span> : ''}</span>
-                            )}
-                            {weeklyAward && weeklyAward !== '👑' && habit.weekly_award_streak <= 1 && (
-                              <span className="award-side award-right">{weeklyCount === 4 ? '⚡' : weeklyCount === 6 ? '⭐' : weeklyAward}</span>
+                            {weeklyAward && weeklyAward !== '👑' && (
+                              <span className="award-side award-right">
+                                {weeklyCount === 4 ? '⚡' : weeklyCount === 6 ? '⭐' : weeklyAward}
+                              </span>
                             )}
                             {weeklyAward === '👑' && (
-                              <span className="crown-right">👑{habit.crown_streak > 1 ? <span className="crown-streak">x{habit.crown_streak}</span> : ''}</span>
+                              <span className="crown-right">👑</span>
                             )}
                           </div>
                           <div className="habit-count monthly">{habit.monthly_total || 0}</div>
@@ -2217,6 +2230,29 @@ const App = () => {
     setDragOverHabitId(null);
   };
 
+  const handleMoveHabitToCategory = async (habitId, categoryId) => {
+    try {
+      const csrf = getCookie('csrftoken');
+      const response = await fetch(`/api/v1/habits/${habitId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf
+        },
+        credentials: 'include',
+        body: JSON.stringify({ category: categoryId })
+      });
+      if (response.ok) {
+        await fetchHabits();
+      } else {
+        const err = await response.json();
+        alert(err.detail || 'Ошибка при перемещении привычки');
+      }
+    } catch (error) {
+      console.error('Error moving habit:', error);
+    }
+  };
+
   const handleUpdateHabit = async (e) => {
     e.preventDefault();
     if (!editingHabit) return;
@@ -2661,14 +2697,16 @@ const App = () => {
 
           <div className="settings-section categories-settings">
             <h3 className="section-title" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, categories: !collapsedSettingsSections.categories})}>
-              <span>{t('categories')}</span>
-              <div className="section-actions">
+              <div className="section-title-left">
+                <span>{t('categories')}</span>
                 <button
                   className="add-category-btn"
                   onClick={(e) => { e.stopPropagation(); setShowCreateCategoryModal(true); }}
                 >
                   +
                 </button>
+              </div>
+              <div className="section-actions">
                 <span className={`collapse-icon ${collapsedSettingsSections.categories ? 'collapsed' : ''}`}>▼</span>
               </div>
             </h3>
@@ -2696,50 +2734,82 @@ const App = () => {
                           onTouchStart={(e) => handleCategoryTouchStart(e, cat.id)}
                           onTouchMove={handleCategoryTouchMove}
                           onTouchEnd={handleCategoryTouchEnd}
-                        >⠿</div>
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="9" cy="5" r="1"></circle>
+                            <circle cx="9" cy="12" r="1"></circle>
+                            <circle cx="9" cy="19" r="1"></circle>
+                            <circle cx="15" cy="5" r="1"></circle>
+                            <circle cx="15" cy="12" r="1"></circle>
+                            <circle cx="15" cy="19" r="1"></circle>
+                          </svg>
+                        </div>
                         {editingCategoryId === cat.id ? (
-                          <div className="category-edit-row">
-                            <input
-                              type="text"
-                              className="category-edit-input"
-                              value={editingCategoryValue}
-                              onChange={(e) => setEditingCategoryValue(e.target.value)}
-                              autoFocus
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleUpdateCategory(cat.id, editingCategoryValue);
-                                if (e.key === 'Escape') setEditingCategoryId(null);
-                              }}
-                            />
-                            <div className="category-edit-actions">
-                              <button
-                                className="manage-btn add-habit-btn"
-                                onClick={() => {
-                                  setNewHabitCategory(String(cat.id));
-                                  setNewHabitName('');
-                                  setCreateError('');
-                                  setShowAddCategory(false);
-                                  setNewCategoryName('');
-                                  setShowCreateModal(true);
+                          <div className="category-edit-row-container">
+                            <div className="category-edit-row">
+                              <input
+                                type="text"
+                                className="category-edit-input"
+                                value={editingCategoryValue}
+                                onChange={(e) => setEditingCategoryValue(e.target.value)}
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleUpdateCategory(cat.id, editingCategoryValue);
+                                  if (e.key === 'Escape') setEditingCategoryId(null);
                                 }}
-                                title={t('addHabit')}
-                              >
-                                ➕
-                              </button>
-                              <button
-                                className="manage-btn save-btn"
-                                onClick={() => handleUpdateCategory(cat.id, editingCategoryValue)}
-                                title={t('save')}
-                              >
-                                💾
-                              </button>
-                              <button
-                                className="manage-btn cancel-btn"
-                                onClick={() => setEditingCategoryId(null)}
-                                title={t('cancel')}
-                              >
-                                ❌
-                              </button>
+                              />
+                              <div className="category-edit-actions">
+                                <button
+                                  className="manage-btn add-habit-btn"
+                                  onClick={() => {
+                                    setSelectingForCategoryId(cat.id);
+                                    setShowSelectHabitsModal(true);
+                                  }}
+                                  title={t('addHabit')}
+                                >
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                  </svg>
+                                </button>
+                                <button
+                                  className="manage-btn save-btn"
+                                  onClick={() => handleUpdateCategory(cat.id, editingCategoryValue)}
+                                  title={t('save')}
+                                >
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                    <polyline points="7 3 7 8 15 8"></polyline>
+                                  </svg>
+                                </button>
+                                <button
+                                  className="manage-btn cancel-btn"
+                                  onClick={() => setEditingCategoryId(null)}
+                                  title={t('cancel')}
+                                >
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                  </svg>
+                                </button>
+                              </div>
                             </div>
+                            { (expandedCategoryId === cat.id || editingCategoryId === cat.id) && (
+                              <div className="category-habits-inline">
+                                {habitsData.filter(h => h.category === cat.id).length === 0 ? (
+                                  <span className="no-habits-inline">{t('noHabitsInCategory')}</span>
+                                ) : (
+                                  habitsData
+                                    .filter(h => h.category === cat.id)
+                                    .map(habit => (
+                                      <span key={habit.id} className="category-habit-tag">
+                                        {habit.name}
+                                      </span>
+                                    ))
+                                )}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <>
@@ -2747,11 +2817,11 @@ const App = () => {
                               <div className="manage-category-name">{cat.name}</div>
                               {expandedCategoryId === cat.id && (
                                 <div className="category-habits-inline">
-                                  {habitsData.filter(h => h.category_name === cat.name).length === 0 ? (
+                                  {habitsData.filter(h => h.category === cat.id).length === 0 ? (
                                     <span className="no-habits-inline">{t('noHabitsInCategory')}</span>
                                   ) : (
                                     habitsData
-                                      .filter(h => h.category_name === cat.name)
+                                      .filter(h => h.category === cat.id)
                                       .map(habit => (
                                         <span key={habit.id} className="category-habit-tag">
                                           {habit.name}
@@ -2767,7 +2837,9 @@ const App = () => {
                                 onClick={() => setExpandedCategoryId(expandedCategoryId === cat.id ? null : cat.id)}
                                 title={t('showHabits')}
                               >
-                                {expandedCategoryId === cat.id ? '▲' : '▼'}
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points={expandedCategoryId === cat.id ? "18 15 12 9 6 15" : "6 9 12 15 18 9"}></polyline>
+                                </svg>
                               </button>
                               <button
                                 className="manage-btn edit-btn"
@@ -2777,20 +2849,33 @@ const App = () => {
                                 }}
                                 title={t('rename')}
                               >
-                                ✏️
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
                               </button>
                               <button
                                 className="manage-btn archive-btn"
                                 onClick={() => handleArchiveCategory(cat.id)}
                                 title={t('archiveCategory')}
                               >
-                                📦
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                                  <rect x="1" y="3" width="22" height="5"></rect>
+                                  <line x1="10" y1="12" x2="14" y2="12"></line>
+                                </svg>
                               </button>
                               <button
                                 className="manage-btn delete-btn"
                                 onClick={() => handleDeleteCategory(cat.id)}
                                 title={t('delete')}
                               >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6"></polyline>
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                                </svg>
                               </button>
                             </div>
                           </>
@@ -2845,16 +2930,18 @@ const App = () => {
             )}
           </div>
 
-          <div className="settings-section">
+          <div className="settings-section habits-settings">
             <h3 className="section-title" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, habits: !collapsedSettingsSections.habits})}>
-              <span>{t('manageHabits')}</span>
-              <div className="section-actions">
+              <div className="section-title-left">
+                <span>{t('manageHabits')}</span>
                 <button
                   className="add-category-btn"
                   onClick={(e) => { e.stopPropagation(); setNewHabitCategory(''); setNewHabitName(''); setCreateError(''); setShowAddCategory(false); setNewCategoryName(''); setShowCreateModal(true); }}
                 >
                   +
                 </button>
+              </div>
+              <div className="section-actions">
                 <span className={`collapse-icon ${collapsedSettingsSections.habits ? 'collapsed' : ''}`}>▼</span>
               </div>
             </h3>
@@ -2910,7 +2997,16 @@ const App = () => {
                         onTouchStart={(e) => handleTouchStart(e, habit.id)}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
-                      >⠿</div>
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="9" cy="5" r="1"></circle>
+                          <circle cx="9" cy="12" r="1"></circle>
+                          <circle cx="9" cy="19" r="1"></circle>
+                          <circle cx="15" cy="5" r="1"></circle>
+                          <circle cx="15" cy="12" r="1"></circle>
+                          <circle cx="15" cy="19" r="1"></circle>
+                        </svg>
+                      </div>
 
 
                       <div className="manage-habit-info">
@@ -2928,25 +3024,34 @@ const App = () => {
                             setShowEditModal(true);
                           }}
                           title={t('edit')}
-
                         >
-                          ✏️
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
                         </button>
                         <button
                           className="manage-btn archive-btn"
                           onClick={() => handleArchiveHabit(habit.id)}
                           title={t('archiveHabit')}
-
                         >
-                          📦
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                            <rect x="1" y="3" width="22" height="5"></rect>
+                            <line x1="10" y1="12" x2="14" y2="12"></line>
+                          </svg>
                         </button>
                         <button
                           className="manage-btn delete-btn"
                           onClick={() => handleDeleteHabit(habit.id)}
                           title={t('delete')}
-
                         >
-                          🗑️
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                          </svg>
                         </button>
                       </div>
                     </div>
@@ -3871,6 +3976,56 @@ const App = () => {
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSelectHabitsModal && (
+        <div className="modal-overlay" onClick={() => setShowSelectHabitsModal(false)}>
+          <div className="modal-content select-habits-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{language === 'ru' ? 'Выбрать из существующих' : 'Select existing habits'}</h2>
+              <button
+                className="modal-close"
+                onClick={() => setShowSelectHabitsModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="select-habits-list">
+              {habitsData
+                .filter((h, index, self) => 
+                  !h.is_archived && 
+                  self.findIndex(t => t.id === h.id) === index
+                )
+                .map(habit => {
+                  const isInCurrent = habit.category === selectingForCategoryId;
+                  return (
+                    <div 
+                      key={habit.id} 
+                      className={`select-habit-item ${isInCurrent ? 'selected' : ''}`}
+                      onClick={() => handleMoveHabitToCategory(habit.id, isInCurrent ? null : selectingForCategoryId)}
+                    >
+                      <div className="select-habit-info">
+                        <div className="select-habit-name">{habit.name}</div>
+                        <div className="select-habit-category">
+                          {habit.category_name || t('noCategory')}
+                        </div>
+                      </div>
+                      <div className="select-habit-checkbox">
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+            <div className="form-actions">
+              <button
+                className="btn-primary"
+                onClick={() => setShowSelectHabitsModal(false)}
+              >
+                {t('save')}
+              </button>
             </div>
           </div>
         </div>
