@@ -16,6 +16,11 @@ const getMondayString = (dateInput = new Date()) => {
   return monday.toLocaleDateString('en-CA');
 };
 
+const getDaysInCurrentMonth = (dateInput = new Date()) => {
+  const d = new Date(dateInput);
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+};
+
 
 const App = () => {
   // Helper to get CSRF token
@@ -64,6 +69,9 @@ const App = () => {
   const [newHabitCategory, setNewHabitCategory] = useState('');
   const [newHabitTargetType, setNewHabitTargetType] = useState('at_least');
   const [newHabitStartDate, setNewHabitStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newHabitUseTarget, setNewHabitUseTarget] = useState(false);
+  const [newHabitCompletionTarget, setNewHabitCompletionTarget] = useState('');
+  const [newHabitQuantityTarget, setNewHabitQuantityTarget] = useState('');
   const [editHabitStartDate, setEditHabitStartDate] = useState('');
   const [editHabitTargetType, setEditHabitTargetType] = useState('at_least');
   const [createError, setCreateError] = useState('');
@@ -1092,6 +1100,7 @@ const App = () => {
           <div className="days-placeholder-end header-counts-container">
             <div className={`header-count-badge weekly ${currentWeekDate === getMondayString() ? 'current-week' : ''}`}>{language === 'ru' ? 'НЕД' : t('week').substring(0, 3).toUpperCase()} {getWeekNumber(currentWeekDate)}</div>
             <div className="header-count-badge monthly">{language === 'ru' ? 'МЕС' : t('month').substring(0, 3).toUpperCase()}</div>
+            <div className="header-count-badge target">{language === 'ru' ? 'ЦЕЛЬ' : 'TGT'}</div>
           </div>
         </div>
 
@@ -1315,30 +1324,36 @@ const App = () => {
                       </div>
                       <div className="habit-counts-wrapper">
                         <div className="habit-count-container">
-                          <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''} ${weeklyCount === 3 ? 'has-single-lightning' : ''} ${weeklyCount === 4 ? 'has-double-lightning' : ''} ${weeklyCount === 5 ? 'has-single-star' : ''} ${weeklyCount === 6 ? 'has-double-star' : ''}`}>
-                            {((weeklyCount === 4 && weeklyAward.includes('⚡')) || (weeklyCount === 6 && weeklyAward.includes('⭐'))) && (
-                              <span className="award-side award-left">{weeklyCount === 4 ? '⚡' : '⭐'}</span>
-                            )}
+                          <div className="habit-count-row">
+                            <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''} ${weeklyCount === 3 ? 'has-single-lightning' : ''} ${weeklyCount === 4 ? 'has-double-lightning' : ''} ${weeklyCount === 5 ? 'has-single-star' : ''} ${weeklyCount === 6 ? 'has-double-star' : ''}`}>
+                              {((weeklyCount === 4 && weeklyAward.includes('⚡')) || (weeklyCount === 6 && weeklyAward.includes('⭐'))) && (
+                                <span className="award-side award-left">{weeklyCount === 4 ? '⚡' : '⭐'}</span>
+                              )}
 
-                            <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>
-                              {weeklyCount}
-                            </span>
-                            {weeklyAward && weeklyAward !== '👑' && (
-                              <span className="award-side award-right">
-                                {weeklyCount === 4 ? '⚡' : weeklyCount === 6 ? '⭐' : weeklyAward}
+                              <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>
+                                {weeklyCount}
                               </span>
-                            )}
-                            {weeklyAward === '👑' && (
-                              <span className="crown-right">👑</span>
-                            )}
+                              {weeklyAward && weeklyAward !== '👑' && (
+                                <span className="award-side award-right">
+                                  {weeklyCount === 4 ? '⚡' : weeklyCount === 6 ? '⭐' : weeklyAward}
+                                </span>
+                              )}
+                              {weeklyAward === '👑' && (
+                                <span className="crown-right">👑</span>
+                              )}
+                            </div>
+                            <div className="habit-count monthly">{habit.monthly_total || 0}</div>
+                            <div className={`habit-count target green-target ${!habit.use_target ? 'invisible' : ''}`}>
+                              {habit.use_target ? (habit.completion_target || 0) : ''}
+                            </div>
                           </div>
-                          <div className="habit-count monthly">{habit.monthly_total || 0}</div>
-                          {habit.weekly_overflow && (
-                            <div className="habit-count-overflow weekly">{habit.weekly_overflow}</div>
-                          )}
-                          {habit.monthly_overflow && (
-                            <div className="habit-count-overflow monthly">{habit.monthly_overflow}</div>
-                          )}
+                          <div className="habit-count-row">
+                            <div className="habit-count-overflow weekly">{habit.weekly_overflow || 0}</div>
+                            <div className="habit-count-overflow monthly">{habit.monthly_overflow || 0}</div>
+                            <div className={`habit-count-overflow target purple-target ${!habit.use_target ? 'invisible' : ''}`}>
+                              {habit.use_target ? (habit.quantity_target || 0) : ''}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2034,7 +2049,10 @@ const App = () => {
           name: newHabitName.trim(),
           category: newHabitCategory === "" ? null : parseInt(newHabitCategory, 10),
           target_type: newHabitTargetType,
-          start_date: newHabitStartDate
+          start_date: newHabitStartDate,
+          use_target: newHabitUseTarget,
+          completion_target: newHabitUseTarget ? (newHabitCompletionTarget !== '' ? parseInt(newHabitCompletionTarget, 10) : getDaysInCurrentMonth()) : null,
+          quantity_target: newHabitUseTarget && newHabitQuantityTarget !== '' ? parseInt(newHabitQuantityTarget, 10) : null
         })
       });
 
@@ -2272,7 +2290,10 @@ const App = () => {
           name: editingHabit.name,
           category: editingHabit.category === "" ? null : editingHabit.category,
           target_type: editingHabit.target_type,
-          start_date: editingHabit.start_date
+          start_date: editingHabit.start_date,
+          use_target: editingHabit.use_target,
+          completion_target: editingHabit.use_target ? (editingHabit.completion_target !== '' && editingHabit.completion_target !== null ? parseInt(editingHabit.completion_target, 10) : getDaysInCurrentMonth()) : null,
+          quantity_target: editingHabit.use_target && editingHabit.quantity_target !== '' && editingHabit.quantity_target !== null ? parseInt(editingHabit.quantity_target, 10) : null
         })
       });
 
@@ -2572,9 +2593,7 @@ const App = () => {
           onTouchEnd={handleSwipeEnd}
           onTouchCancel={handleSwipeEnd}
         >
-          {weekLoading && (
-            <div className="week-loading-banner">{t('loading')}...</div>
-          )}
+
           <div className="week-pages" ref={weekPagesRef}>
             <div className="week-page prev-week">
               {renderWeekPage(prevWeekDate)}
@@ -3379,6 +3398,52 @@ const App = () => {
                 />
               </div>
 
+              <div className="form-group">
+                <label className="form-label checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={newHabitUseTarget}
+                    onChange={(e) => setNewHabitUseTarget(e.target.checked)}
+                  />
+                  {language === 'ru' ? 'Использовать цель' : 'Use target'}
+                </label>
+              </div>
+
+              {newHabitUseTarget && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">{language === 'ru' ? 'Зеленая цель (дней в месяц)' : 'Green target (days per month)'}</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={newHabitCompletionTarget !== '' ? newHabitCompletionTarget : getDaysInCurrentMonth()}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const maxDays = getDaysInCurrentMonth();
+                        if (val === '' || parseInt(val) <= maxDays) {
+                          setNewHabitCompletionTarget(val);
+                        } else {
+                          setNewHabitCompletionTarget(maxDays.toString());
+                        }
+                      }}
+                      min="1"
+                      max={getDaysInCurrentMonth()}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{language === 'ru' ? 'Фиолетовая цель (количество в месяц)' : 'Purple target (quantity per month)'}</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={newHabitQuantityTarget}
+                      onChange={(e) => setNewHabitQuantityTarget(e.target.value)}
+                      placeholder={language === 'ru' ? 'Например: 100 страниц' : 'e.g. 100 pages'}
+                      min="1"
+                    />
+                  </div>
+                </>
+              )}
+
               {createError && (
                 <div className="error-message">
                   {createError}
@@ -3517,6 +3582,52 @@ const App = () => {
                   onChange={(e) => setEditingHabit({ ...editingHabit, start_date: e.target.value })}
                 />
               </div>
+
+              <div className="form-group">
+                <label className="form-label checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={editingHabit.use_target || false}
+                    onChange={(e) => setEditingHabit({ ...editingHabit, use_target: e.target.checked })}
+                  />
+                  {language === 'ru' ? 'Использовать цель' : 'Use target'}
+                </label>
+              </div>
+
+              {editingHabit.use_target && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">{language === 'ru' ? 'Зеленая цель (дней в месяц)' : 'Green target (days per month)'}</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={editingHabit.completion_target !== null && editingHabit.completion_target !== undefined ? editingHabit.completion_target : getDaysInCurrentMonth()}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const maxDays = getDaysInCurrentMonth();
+                        if (val === '' || parseInt(val) <= maxDays) {
+                          setEditingHabit({ ...editingHabit, completion_target: val });
+                        } else {
+                          setEditingHabit({ ...editingHabit, completion_target: maxDays.toString() });
+                        }
+                      }}
+                      min="1"
+                      max={getDaysInCurrentMonth()}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{language === 'ru' ? 'Фиолетовая цель (количество в месяц)' : 'Purple target (quantity per month)'}</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={editingHabit.quantity_target || ''}
+                      onChange={(e) => setEditingHabit({ ...editingHabit, quantity_target: e.target.value })}
+                      placeholder={language === 'ru' ? 'Например: 100 страниц' : 'e.g. 100 pages'}
+                      min="1"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="form-actions">
                 <button
