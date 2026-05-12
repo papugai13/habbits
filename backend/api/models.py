@@ -176,6 +176,23 @@ class Habit(models.Model):
         blank=True
     )
 
+    use_target = models.BooleanField(
+        default=False,
+        verbose_name="Использовать цель",
+    )
+    completion_target = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Цель выполнения",
+        help_text="Целевое количество дней выполнения в месяц"
+    )
+    quantity_target = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Цель количества",
+        help_text="Целевое количество действий (например, страниц) в месяц"
+    )
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = unique_slugify(self, slugify(self.name))
