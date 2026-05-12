@@ -38,7 +38,10 @@ const generatePeriodLabel = (period, referenceDate, t, language) => {
         };
 
         const weekNum = getWeekNumber(today);
-        return { title: `${language === 'ru' ? 'Неделя' : t('week')} №${weekNum}`, subtitle: `${formatDate(monday)} - ${formatDate(sunday)}` };
+        return { 
+            title: `${language === 'ru' ? 'Неделя' : t('week')} №${weekNum}, ${formatDate(monday)} - ${formatDate(sunday)}`, 
+            subtitle: `${today.getFullYear()}` 
+        };
     } else if (period === 'month') {
         return { title: `${t(months[today.getMonth()])} ${today.getFullYear()}`, subtitle: '' };
     } else if (period === 'year') {
@@ -83,21 +86,22 @@ const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData })
     const fontWeight = isHighlighted ? 700 : (period === 'week' ? 600 : 500);
     const fill = isHighlighted ? '#22c55e' : (isDark ? "#E0E0E0" : "#666");
 
-    // Calculate highlight rect to fit around the text
+    // Calculate highlight square backdrop to fit around the text
     // Text is at y+16 with textAnchor="middle", fontSize
     const padding = 4;
     const rectWidth = Math.max(displayValue.length * fontSize * 0.65 + padding * 2, 28);
     const rectHeight = fontSize + padding * 2;
+    const squareSize = Math.max(rectWidth, rectHeight);
     const textVisualCenterY = 16 - fontSize * 0.35;
 
     return (
         <g transform={`translate(${x},${y})`}>
             {isHighlighted && (
                 <rect
-                    x={-rectWidth / 2}
-                    y={textVisualCenterY - rectHeight / 2}
-                    width={rectWidth}
-                    height={rectHeight}
+                    x={-squareSize / 2}
+                    y={textVisualCenterY - squareSize / 2}
+                    width={squareSize}
+                    height={squareSize}
                     fill="#22c55e"
                     rx={4}
                     opacity={0.2}
@@ -643,6 +647,7 @@ const Charts = ({
                 const currentSunday = new Date(currentMonday);
                 currentSunday.setDate(currentMonday.getDate() + 6);
                 currentSunday.setHours(23, 59, 59, 999);
+                const currentMondayStr = currentMonday.toLocaleDateString('en-CA');
                 
                 const formattedData = json.data.map((item, index) => {
                     const isFuture = item.date > todayStr;
@@ -666,7 +671,7 @@ const Charts = ({
                     const dayNumber = String(parsedDate.getDate());
                     
                     // Check if this is the current week
-                    const isCurrentWeek = period === 'week' && parsedDate >= currentMonday && parsedDate <= currentSunday;
+                    const isCurrentWeek = period === 'week' && item.date === currentMondayStr;
                     
                     // Check if this is the current month
                     const isCurrentMonth = period === 'month' && 
