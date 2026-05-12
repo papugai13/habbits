@@ -1320,7 +1320,7 @@ const App = () => {
                               <span className="award-side award-left">{weeklyCount === 4 ? '⚡' : '⭐'}</span>
                             )}
 
-                            <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>
+                            <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''}`}>
                               {weeklyCount}
                             </span>
                             {weeklyAward && weeklyAward !== '👑' && (
