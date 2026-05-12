@@ -921,9 +921,6 @@ body {
   transform: none;
 }
 
-.habit-count-number.shifted-down {
-  transform: translateY(3px) !important;
-}
 
 /* === ОБЩИЕ СТИЛИ НАГРАД (звезды и молнии) === */
 .award-side {
