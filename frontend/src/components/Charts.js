@@ -39,8 +39,16 @@ const generatePeriodLabel = (period, referenceDate, t, language) => {
 
         const weekNum = getWeekNumber(today);
         return { 
-            title: `${language === 'ru' ? 'Неделя' : t('week')} №${weekNum}, ${formatDate(monday)} - ${formatDate(sunday)}`, 
-            subtitle: `${today.getFullYear()}` 
+            title: (
+                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.2' }}>
+                    <span>{language === 'ru' ? 'Неделя' : t('week')} №{weekNum}</span>
+                    <span style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                        <span style={{ fontSize: '0.9em', fontWeight: 'normal' }}>{formatDate(monday)} - {formatDate(sunday)}</span>
+                        <span style={{ fontSize: '0.8em', opacity: 0.7, fontWeight: 'normal' }}>{today.getFullYear()}</span>
+                    </span>
+                </span>
+            ), 
+            subtitle: null 
         };
     } else if (period === 'month') {
         return { title: `${t(months[today.getMonth()])} ${today.getFullYear()}`, subtitle: '' };
