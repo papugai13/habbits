@@ -642,6 +642,36 @@ const App = () => {
     }
   };
 
+  const handleExportData = () => {
+    const data = storageService.exportData();
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `habbits_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportData = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = storageService.importData(e.target.result);
+      if (result.success) {
+        alert(t('importSuccess'));
+        window.location.reload();
+      } else {
+        alert(t('importError'));
+      }
+    };
+    reader.readAsText(file);
+  };
+
   // Update reminder times when timesPerDay changes
   const handleTimesPerDayChange = (value) => {
     setReminderTimesPerDay(value);
@@ -3213,6 +3243,15 @@ const App = () => {
                   >
                     {t('localStorage')}
                   </button>
+                </div>
+                <div className="storage-actions" style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
+                  <button className="btn-secondary btn-small" onClick={handleExportData}>
+                    📤 {t('exportData')}
+                  </button>
+                  <label className="btn-secondary btn-small" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', marginBottom: 0 }}>
+                    📥 {t('importData')}
+                    <input type="file" accept=".json" onChange={handleImportData} style={{ display: 'none' }} />
+                  </label>
                 </div>
               </div>
             )}
