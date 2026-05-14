@@ -75,6 +75,11 @@ const translations = {
     customTimes: 'Количество раз',
     reminderTimes: 'Время уведомлений',
     testNotification: 'Тестовое уведомление',
+    storageSettings: 'Настройки хранения',
+    storageMode: 'Режим хранения',
+    cloudStorage: 'Облако (сервер)',
+    localStorage: 'Устройство (локально)',
+    storageModeNotice: 'При переключении режима данные не синхронизируются автоматически.',
 
     // Habit creation/editing
     createHabit: 'Создать привычку',
@@ -297,6 +302,11 @@ const translations = {
     customTimes: 'Number of Times',
     reminderTimes: 'Notification Times',
     testNotification: 'Test Notification',
+    storageSettings: 'Storage Settings',
+    storageMode: 'Storage Mode',
+    cloudStorage: 'Cloud (server)',
+    localStorage: 'Device (local)',
+    storageModeNotice: 'Data is not automatically synced when switching modes.',
 
     // Habit creation/editing
     createHabit: 'Create Habit',

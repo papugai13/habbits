@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList, Rectangle } from 'recharts';
 import './Charts.css';
+import storageService from '../storageService';
 
 const getWeekNumber = (dateInput) => {
     const date = typeof dateInput === 'string' ? new Date(dateInput) : new Date(dateInput);
@@ -211,7 +212,7 @@ const PercentageBadgeVertical = ({ x, y, width, height, value, badgeW, badgeH, f
     );
 };
 
-const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCategory, theme, t, language, chartData: mainChartData }) => {
+const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCategory, theme, t, language, chartData: mainChartData, storageMode }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const scrollRef = useRef(null);
@@ -232,11 +233,15 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
             try {
                 const apiDate = new Date(currentWeekDate);
                 const dateStr = apiDate.toISOString().split('T')[0];
-                const response = await fetch(`/api/v1/habits/habit_comparison/?period=${period}&date=${dateStr}&category=${selectedCategory || 'Все'}`, {
+                
+                const result = await storageService.getComparison(storageMode, {
+                    period,
+                    date: dateStr,
+                    category: selectedCategory || 'Все'
+                }, {
                     headers: { 'Accept-Language': language },
                     credentials: 'include'
                 });
-                const result = await response.json();
                 
                 const mappedData = (result.habits || result.data || []).map(item => ({
                     ...item,
@@ -255,7 +260,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
         };
 
         fetchHabitComparison();
-    }, [period, currentWeekDate, selectedCategory, language]);
+    }, [period, currentWeekDate, selectedCategory, language, storageMode]);
 
     const filteredData = useMemo(() => {
         return data.filter(item => {
@@ -366,7 +371,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     );
 };
 
-const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language }) => {
+const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, storageMode }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -386,9 +391,13 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language }
                 for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                     const dayStr = d.toISOString().split('T')[0];
                     promises.push(
-                        fetch(`/api/v1/habits/habit_comparison/?period=day&date=${dayStr}&category=Все`, {
+                        storageService.getComparison(storageMode, {
+                            period: 'day',
+                            date: dayStr,
+                            category: 'Все'
+                        }, {
                             credentials: 'include'
-                        }).then(res => res.json())
+                        })
                     );
                 }
                 
@@ -428,18 +437,19 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language }
             const dateStr = apiDate.toISOString().split('T')[0];
             
             try {
-                const response = await fetch(`/api/v1/habits/habit_comparison/?period=${period}&date=${dateStr}&category=Все`, {
+                const result = await storageService.getComparison(storageMode, {
+                    period,
+                    date: dateStr,
+                    category: 'Все'
+                }, {
                     credentials: 'include'
                 });
-                if (response.ok) {
-                    const json = await response.json();
-                    setData(json.habits.map(h => ({
-                        ...h,
-                        countCapped: h.completed_days,
-                        countRestored: h.restored_days,
-                        countExtra: h.extra_quantity
-                    })));
-                }
+                setData(result.habits.map(h => ({
+                    ...h,
+                    countCapped: h.completed_days,
+                    countRestored: h.restored_days,
+                    countExtra: h.extra_quantity
+                })));
             } catch (error) {
                 console.error(`Error fetching category comparison data:`, error);
             } finally {
@@ -447,7 +457,7 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language }
             }
         };
         fetchAllData();
-    }, [period, currentWeekDate]);
+    }, [period, currentWeekDate, storageMode]);
 
     const categoryStats = useMemo(() => {
         const stats = {};
@@ -519,7 +529,8 @@ const Charts = ({
     onSelectCategory,
     theme,
     t,
-    language
+    language,
+    storageMode
 }) => {
     const [period, setPeriod] = useState('day');
     const [viewType, setViewType] = useState('habits'); // 'habits' or 'quantity'
@@ -953,6 +964,7 @@ const Charts = ({
                     t={t}
                     language={language}
                     chartData={chartData}
+                    storageMode={storageMode}
                 />
             )}
 
@@ -962,6 +974,7 @@ const Charts = ({
                 theme={theme}
                 t={t}
                 language={language}
+                storageMode={storageMode}
             />
         </div>
     );

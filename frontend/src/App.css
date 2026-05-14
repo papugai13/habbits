@@ -2110,6 +2110,18 @@ body {
   right: 0;
 }
 
+.storage-mode-notice {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 12px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.storage-mode-options {
+  padding: 8px 0;
+}
+
 .section-actions {
   display: flex;
   align-items: center;
