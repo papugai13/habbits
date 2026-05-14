@@ -12,6 +12,22 @@ const LOCAL_STORAGE_KEYS = {
 // Helper to generate unique IDs for local items
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+// Helper to format date as YYYY-MM-DD in local time to avoid timezone shifts
+const toLocalDateString = (dateInput) => {
+  if (!dateInput) return '';
+  // If it's already a YYYY-MM-DD string, just return it
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+    return dateInput;
+  }
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return dateInput;
+  // Use UTC components to avoid timezone shifting
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const storageService = {
   getStorageMode: () => {
     return localStorage.getItem(LOCAL_STORAGE_KEYS.STORAGE_MODE) || 'cloud';
@@ -268,23 +284,44 @@ const storageService = {
       if (!response.ok) throw new Error('Failed to fetch weekly status');
       return response.json();
     } else {
-      const habits = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]');
-      const statuses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]');
-      const categories = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES) || '[]');
+      let habits = [];
+      let statuses = [];
+      let categories = [];
+      
+      try {
+        habits = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]');
+        if (!Array.isArray(habits)) habits = [];
+        
+        statuses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]');
+        if (!Array.isArray(statuses)) statuses = [];
+        
+        categories = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES) || '[]');
+        if (!Array.isArray(categories)) categories = [];
+      } catch (e) {
+        console.error("Error parsing local storage data", e);
+      }
       
       const start = new Date(date);
       const end = new Date(start);
       end.setDate(start.getDate() + 6);
-      const startStr = start.toISOString().split('T')[0];
-      const endStr = end.toISOString().split('T')[0];
+      const startStr = toLocalDateString(start);
+      const endStr = toLocalDateString(end);
 
       // Simulation of weekly status endpoint
       return habits.filter(h => !h.is_archived).map(h => {
-        const catObj = categories.find(c => c.id === h.category);
+        const catObj = categories.find(c => c.id === h.category || String(c.id) === String(h.category));
+        
+        // Filter statuses for this habit within the selected week range
+        const habitStatuses = statuses.filter(s => {
+          const habitIdMatch = String(s.habit) === String(h.id);
+          const dateMatch = s.date >= startStr && s.date <= endStr;
+          return habitIdMatch && dateMatch;
+        });
+
         return {
           ...h,
           category_name: catObj ? catObj.name : null,
-          statuses: statuses.filter(s => s.habit === h.id && s.date >= startStr && s.date <= endStr)
+          statuses: habitStatuses
         };
       });
     }
@@ -365,8 +402,8 @@ const storageService = {
           const start = new Date(date);
           const end = new Date(start);
           end.setDate(start.getDate() + 6);
-          const startStr = start.toISOString().split('T')[0];
-          const endStr = end.toISOString().split('T')[0];
+          const startStr = toLocalDateString(start);
+          const endStr = toLocalDateString(end);
           habitStatuses = habitStatuses.filter(s => s.date >= startStr && s.date <= endStr);
         } else if (period === 'month') {
           const month = date.substring(0, 7); // YYYY-MM
@@ -429,6 +466,67 @@ const storageService = {
         period,
         date,
         habits: [] // Simple stub for now
+      };
+    }
+  },
+
+  getDailyStatistics: async (mode, params, options = {}) => {
+    const { period, date, category } = params;
+    if (mode === 'cloud') {
+      const query = new URLSearchParams(params).toString();
+      const response = await fetch(`/api/v1/habits/daily_statistics/?${query}`, options);
+      if (!response.ok) throw new Error('Failed to fetch daily statistics');
+      return response.json();
+    } else {
+      // Local daily statistics simulation
+      const habits = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]');
+      const statuses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]');
+      
+      const stats = [];
+      const now = new Date();
+      let startOfPeriod;
+      
+      if (period === 'week') {
+        const d = new Date(date || now);
+        const day = d.getDay() === 0 ? 6 : d.getDay() - 1;
+        startOfPeriod = new Date(d);
+        startOfPeriod.setDate(d.getDate() - day);
+      } else if (period === 'month') {
+        const d = new Date(date || now);
+        startOfPeriod = new Date(d.getFullYear(), d.getMonth(), 1);
+      } else {
+        startOfPeriod = new Date(new Date().getFullYear(), 0, 1);
+      }
+      
+      startOfPeriod.setHours(0, 0, 0, 0);
+      
+      // Calculate daily stats for the period
+      for (let i = 0; i < (period === 'week' ? 7 : (period === 'month' ? 31 : 366)); i++) {
+        const current = new Date(startOfPeriod);
+        current.setDate(startOfPeriod.getDate() + i);
+        if (period === 'month' && current.getMonth() !== startOfPeriod.getMonth()) break;
+        if (period === 'year' && current.getFullYear() !== startOfPeriod.getFullYear()) break;
+        
+        const dateStr = toLocalDateString(current);
+        const dayStatuses = statuses.filter(s => s.date === dateStr && s.is_done);
+        
+        const habitCount = habits.filter(h => !h.is_archived).length;
+        const completedCount = dayStatuses.length;
+        
+        stats.push({
+          date: dateStr,
+          label: current.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+          habit_count: habitCount,
+          completed_count: completedCount,
+          completed_days: completedCount > 0 ? 1 : 0,
+          restored_days: 0, // Simplified
+          extra_quantity: 0
+        });
+      }
+      
+      return {
+        data: stats,
+        period_label: period
       };
     }
   }
