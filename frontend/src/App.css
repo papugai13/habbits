@@ -708,6 +708,17 @@ body {
   word-break: break-word;
 }
 
+.name-streak {
+  font-weight: bold;
+  color: #059669;
+  font-size: 0.9em;
+  margin-left: 2px;
+}
+
+.dark-theme .name-streak {
+  color: #34D399;
+}
+
 .habit-thumbnail {
   width: 18px;
   height: 18px;
@@ -823,7 +834,11 @@ body {
   border-radius: 8px;
   font-size: 15px;
   font-weight: 800;
-  min-width: 38px;
+  min-width: 36px;
+  max-width: 36px;
+  width: 36px;
+  flex-shrink: 0;
+  box-sizing: border-box;
   max-width: 38px;
   text-align: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -834,14 +849,24 @@ body {
 /* Контейнер для двух зеленых счетчиков (недельный и месячный) */
 .habit-count-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   position: relative;
-  min-height: 32px;
+  gap: 2px;
 }
 
+/* Горизонтальная строка счетчиков */
+.habit-count-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+
 .habit-count.weekly {
-  z-index: 2;
+  z-index: 3;
   position: relative;
   background-color: #FFFFFF;
   color: #064E3B;
@@ -851,15 +876,22 @@ body {
 }
 
 .habit-count.monthly {
-  z-index: 1;
+  z-index: 2;
   margin-left: -10px;
   padding-left: 10px;
   background-color: #059669;
   color: #FFFFFF;
   opacity: 1;
-  min-width: 38px;
-  max-width: 38px;
   border: none;
+}
+
+.habit-count.target.green-target {
+  background-color: transparent;
+  color: #059669;
+  border: 1.5px solid #059669;
+  z-index: 1;
+  margin-left: -10px;
+  padding-left: 10px;
 }
 
 .habit-counts-wrapper {
@@ -867,11 +899,10 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 60px;
-  max-width: 60px;
+  width: 90px;
+  max-width: 90px;
   flex-shrink: 0;
   min-width: 0;
-  padding-bottom: 30px;
 }
 
 .habit-count-number {
@@ -890,9 +921,6 @@ body {
   transform: none;
 }
 
-.habit-count-number.shifted-down {
-  transform: translateY(3px) !important;
-}
 
 /* === ОБЩИЕ СТИЛИ НАГРАД (звезды и молнии) === */
 .award-side {
@@ -1010,8 +1038,12 @@ body {
   flex-direction: column;
   align-items: center;
   position: relative;
-  min-height: 32px;
+  width: 88px;
+  max-width: 88px;
+  flex-shrink: 0;
+  min-width: 0;
 }
+
 
 /* Эмоджи-награда над счётчиком */
 .habit-award {
@@ -1055,7 +1087,8 @@ body {
   font-weight: 800;
   min-width: 36px;
   max-width: 36px;
-  padding: 0 4px;
+  width: 36px;
+  padding: 0;
   text-align: center;
   box-shadow: 0 1px 3px rgba(139, 92, 246, 0.3);
   pointer-events: none;
@@ -1063,33 +1096,44 @@ body {
 }
 
 .habit-count-overflow.weekly {
-  position: absolute;
-  top: 100%;
-  right: 100%;
-  transform: translateX(100%);
-  margin-top: 2px;
-  margin-right: -2px;
+  position: relative;
   background-color: #FFFFFF;
   color: #5B21B6;
   border: 1.5px solid #8B5CF6;
   opacity: 1;
-  z-index: 1;
+  z-index: 3;
   font-weight: 900;
 }
 
 .habit-count-overflow.monthly {
-  position: absolute;
-  top: 100%;
-  left: 100%;
-  transform: translateX(-100%);
-  margin-top: 2px;
-  margin-left: -2px;
+  position: relative;
   background-color: #8B5CF6;
   color: #FFFFFF;
   border: none;
-  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 1px 3px rgba(139, 92, 246, 0.3);
   z-index: 2;
   font-weight: 900;
+  margin-left: -10px;
+  padding-left: 10px;
+}
+
+.habit-count-overflow.target.purple-target {
+  background-color: transparent;
+  color: #8B5CF6;
+  border: 1.5px solid #8B5CF6;
+  z-index: 1;
+  margin-left: -10px;
+  padding-left: 10px;
+}
+
+.dark-theme .habit-count.target.green-target {
+  color: #34D399;
+  border-color: #34D399;
+}
+
+.dark-theme .habit-count-overflow.target.purple-target {
+  color: #C4B5FD;
+  border-color: #C4B5FD;
 }
 
 /* Нижняя навигация */
@@ -1332,10 +1376,33 @@ body {
   }
 
   .habit-count.monthly {
+    z-index: 2;
     margin-left: -6px;
     padding-left: 6px;
     max-width: 26px;
     box-shadow: none;
+    border: none;
+  }
+
+  .days-placeholder-end {
+    width: 66px;
+    gap: 0;
+  }
+
+  .header-count-badge {
+    width: 26px;
+    min-width: 26px;
+    max-width: 26px;
+  }
+
+  .header-count-badge.weekly,
+  .header-count-badge.monthly,
+  .header-count-badge.target {
+    margin-left: 0;
+    padding-left: 0;
+    position: static;
+    flex: 1;
+    min-width: 0;
   }
 
   .habit-count-container {
@@ -1344,8 +1411,18 @@ body {
 
   .habit-counts-wrapper {
     min-height: 24px;
-    width: 44px;
-    max-width: 44px;
+    width: 66px;
+    max-width: 66px;
+  }
+
+  .habit-count-row {
+    gap: 0;
+  }
+
+  .habit-count.target.green-target {
+    z-index: 1;
+    margin-left: -6px;
+    padding-left: 6px;
   }
 
   .habit-count-overflow {
@@ -1363,6 +1440,22 @@ body {
   .day-number {
     font-size: 12px;
   }
+
+  .habit-count-overflow.weekly {
+    z-index: 3;
+  }
+
+  .habit-count-overflow.monthly {
+    margin-left: -6px;
+    padding-left: 8px;
+    z-index: 2;
+  }
+
+  .habit-count-overflow.target.purple-target {
+    margin-left: -6px;
+    padding-left: 8px;
+    z-index: 1;
+  }
 }
 
 @media (max-width: 320px) {
@@ -1375,8 +1468,34 @@ body {
   }
 
   .habit-counts-wrapper {
-    width: 40px;
-    max-width: 40px;
+    width: 62px;
+    max-width: 62px;
+  }
+
+  .days-placeholder-end {
+    width: 62px;
+    gap: 0;
+  }
+
+  .header-count-badge {
+    width: 24px;
+    min-width: 24px;
+    max-width: 24px;
+  }
+
+  .habit-count-row {
+    gap: 0;
+  }
+
+  .header-count-badge.monthly,
+  .header-count-badge.target {
+    margin-left: 0;
+    padding-left: 0;
+  }
+
+  .days-placeholder-end {
+    width: 66px;
+    gap: 1px;
   }
 
   .habit-count {
@@ -1388,7 +1507,7 @@ body {
 
   .habit-count.monthly {
     margin-left: -5px;
-    padding-left: 5px;
+    padding-left: 6px;
     max-width: 24px;
   }
 
@@ -1543,14 +1662,13 @@ body {
 }
 
 .days-placeholder-end {
-  width: 78px; /* Increased to accommodate badges and sync with rows */
+  width: 88px; /* Matched to habit-counts-wrapper total visible width */
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   position: relative;
   gap: 2px;
-  padding: 0 4px;
 }
 
 
@@ -1561,31 +1679,37 @@ body {
   text-transform: uppercase;
   color: #64748b;
   background-color: #f1f5f9;
-  padding: 3px 5px;
+  padding: 3px 1px;
   border-radius: 6px;
   white-space: nowrap;
   flex: 1;
   text-align: center;
   border: 1px solid #e2e8f0;
+  box-sizing: border-box;
+}
+
+.invisible {
+  visibility: hidden;
 }
 
 .header-count-badge.weekly {
   background-color: #ecfdf5;
   color: #059669;
   border-color: #d1fae5;
-}
-
-.header-count-badge.weekly.current-week {
-  background-color: #059669;
-  color: #ffffff;
-  border-color: #059669;
-  box-shadow: 0 0 0 2px #d1fae5;
+  z-index: 3;
+  position: relative;
 }
 
 .header-count-badge.monthly {
   background-color: #f0fdf4;
   color: #10b981;
   border-color: #dcfce7;
+}
+
+.header-count-badge.target {
+  background-color: #ffffff;
+  color: #059669;
+  border-color: #059669;
 }
 
 /* Removed fixed widths for responsiveness */
@@ -1922,10 +2046,10 @@ body {
   border-radius: 12px;
   padding: 20px;
   border: 1px solid #e0e0e0;
+  margin-bottom: 20px;
 }
 
 .profile-settings {
-  margin-bottom: 20px;
 }
 
 .manage-profile-info {
@@ -1968,6 +2092,12 @@ body {
   align-items: center;
   cursor: pointer;
   user-select: none;
+}
+
+.section-title-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .section-title-centered {
@@ -2118,16 +2248,63 @@ body {
   cursor: pointer;
   padding: 8px;
   border-radius: 8px;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+}
+
+.manage-btn svg {
+  display: block;
+}
+
+.manage-btn:hover {
+  background-color: #f0f0f0;
+  color: #333;
 }
 
 .edit-btn:hover {
-  background-color: #f0f0f0;
+  background-color: #eef2ff;
+  color: #4f46e5;
+}
+
+.archive-btn:hover {
+  background-color: #fff7ed;
+  color: #ea580c;
 }
 
 .delete-btn:hover {
-  background-color: #fee;
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.add-habit-btn {
+  color: #059669;
+}
+
+.add-habit-btn:hover {
+  background-color: #ecfdf5;
+  color: #059669;
+}
+
+.save-btn {
+  color: #059669;
+}
+
+.save-btn:hover {
+  background-color: #ecfdf5;
+  color: #059669;
+}
+
+.cancel-btn {
+  color: #94a3b8;
+}
+
+.cancel-btn:hover {
+  background-color: #f1f5f9;
+  color: #475569;
 }
 
 .expand-btn {
@@ -2816,7 +2993,6 @@ body {
 
 /* Category Management Styles */
 .categories-settings {
-  margin-bottom: 20px;
 }
 
 .manage-categories-list {
@@ -2858,6 +3034,13 @@ body {
   flex-shrink: 0;
 }
 
+.category-edit-row-container {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .category-edit-row {
   display: flex;
   gap: 10px;
@@ -2896,6 +3079,9 @@ body {
   font-size: 0.85em;
   color: #495057;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .no-habits-inline {
@@ -3959,11 +4145,9 @@ body {
 
 /* Theme Settings */
 .theme-settings {
-  margin-bottom: 20px;
 }
 
 .reminder-settings {
-  margin-bottom: 20px;
 }
 
 .reminder-toggle-row {
@@ -4297,73 +4481,64 @@ body {
 }
 
 .dark-theme .habit-note-box {
-  background-color: #1f2937;
-  border-left-color: #22c55e;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  background-color: rgba(34, 197, 94, 0.1);
 }
 .dark-theme .habit-note-container:hover .habit-note-box {
-  background-color: #111827;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  background-color: rgba(34, 197, 94, 0.18);
 }
 .dark-theme .habit-note-container:active .habit-note-box {
-  background-color: #111827;
+  background-color: rgba(34, 197, 94, 0.25);
 }
 .dark-theme .habit-note-label {
   color: #22c55e;
 }
 .dark-theme .habit-note-text {
-  color: #d1d5db;
+  color: #94a3b8;
 }
 /* Habit Note Box (Daily Reports) */
 .habit-note-container {
-  margin-top: 20px;
-  margin-bottom: 24px;
-  padding: 0 4px;
+  margin: 2px 0 4px 0;
+  padding: 0;
   cursor: pointer;
   transition: all 0.2s ease;
   width: 100%;
 }
 
 .habit-note-box {
-  background-color: #f8fafc;
-  border-left: 3px solid #059669;
-  border-radius: 4px;
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: transform 0.1s ease, background-color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background-color: rgba(5, 150, 105, 0.08);
+  transition: background-color 0.2s ease;
+  max-width: 100%;
 }
 
 .habit-note-container:hover .habit-note-box {
-  background-color: #f1f5f9;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  background-color: rgba(5, 150, 105, 0.15);
 }
 
 .habit-note-container:active .habit-note-box {
-  transform: translateY(0);
-  background-color: #e2e8f0;
+  background-color: rgba(5, 150, 105, 0.2);
 }
 
 .habit-note-label {
   font-size: 10px;
   font-weight: 700;
   color: #059669;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .habit-note-text {
-  font-size: 13px;
-  color: #334155;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.3;
+  white-space: nowrap;
   overflow: hidden;
-  word-break: break-word;
+  text-overflow: ellipsis;
+  max-width: 180px;
 }
 
 /* Removing photo-related indicators if not used elsewhere */
@@ -4374,17 +4549,8 @@ body {
 /* ─── Extra small screens (< 360px) ─── */
 @media (max-width: 360px) {
   .habit-note-text {
-    font-size: 12px;
-    -webkit-line-clamp: 2;
-  }
-
-  .habit-note-container {
-    margin-top: 14px;
-    margin-bottom: 16px;
-  }
-
-  .habit-note-box {
-    padding: 6px 10px;
+    font-size: 11px;
+    max-width: 120px;
   }
 }
 
@@ -4432,4 +4598,114 @@ body {
 /* ─── Dark theme ─── */
 .dark-theme .add-btn {
   color: #f8f9fa !important;
+}
+
+/* Habit Selection Modal */
+.select-habits-modal {
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.select-habits-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 15px;
+  padding-right: 5px;
+}
+
+.select-habit-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.select-habit-item:hover {
+  background-color: #f5f5f5;
+}
+
+.select-habit-item.selected {
+  background-color: #f0fdf4;
+}
+
+.select-habit-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.select-habit-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-habit-category {
+  font-size: 12px;
+  color: #888;
+}
+
+.select-habit-checkbox {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  margin-left: 12px;
+  background-color: white;
+}
+
+.select-habit-item.selected .select-habit-checkbox {
+  background-color: #059669;
+  border-color: #059669;
+}
+
+.select-habit-item.selected .select-habit-checkbox::after {
+  content: '✓';
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.dark-theme .select-habit-item {
+  border-bottom-color: #444;
+}
+
+.dark-theme .select-habit-item:hover {
+  background-color: #333;
+}
+
+.dark-theme .select-habit-item.selected {
+  background-color: #1a2e25;
+}
+
+.dark-theme .select-habit-name {
+  color: #eee;
+}
+
+.dark-theme .select-habit-category {
+  color: #aaa;
+}
+
+.dark-theme .select-habit-checkbox {
+  border-color: #555;
+  background-color: #2D2D2D;
+}
+
+.dark-theme .select-habit-item.selected .select-habit-checkbox {
+  background-color: #10B981;
+  border-color: #10B981;
 }

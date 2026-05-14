@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+.habit-count {
+  background-color: #059669;
+  color: #FFFFFF;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  min-width: 36px;
+  max-width: 36px;
+  width: 36px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+.habit-count.weekly {
+  z-index: 3;
+  position: relative;
+  background-color: #FFFFFF;
+  color: #064E3B;
+  border: 2px solid #059669;
+  font-weight: 900;
+}
+.habit-count-number {
+  position: relative;
+  z-index: 2;
+  line-height: 1;
+  font-size: 16px;
+}
+.habit-count-number.shifted-down {
+  transform: translateY(3px) !important;
+}
+.crown-right {
+  font-size: 12px;
+  line-height: 1;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: #f0f0f0;
+}
+</style>
+</head>
+<body>
+  <div class="habit-count weekly">
+    <span class="habit-count-number shifted-down">7</span>
+    <span class="crown-right">👑</span>
+  </div>
+</body>
+</html>
