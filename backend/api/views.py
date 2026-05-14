@@ -968,6 +968,72 @@ class HabitViewSet(viewsets.ModelViewSet):
             'habits': statistics
         })
 
+    @action(detail=False, methods=['post'])
+    def update_status(self, request):
+        try:
+            user_profile, _ = UserAll.objects.get_or_create(
+                auth_user=request.user,
+                defaults={'name': request.user.username}
+            )
+            data = request.data
+            habit_id = data.get('habit_id')
+            habit_date_str = data.get('date')
+            
+            # Use data.get with explicit None check for quantity to allow resetting to null
+            is_done = data.get('is_done', False)
+            is_restored = data.get('is_restored', False)
+            quantity = data.get('quantity')
+            comment = data.get('comment')
+
+            if not habit_id:
+                return Response({'error': 'habit_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            habit = get_object_or_404(Habit, id=habit_id, user=user_profile)
+            
+            try:
+                habit_date = datetime.strptime(habit_date_str, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                return Response({'error': f'Invalid date format: {habit_date_str}'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Try to find existing entry
+            date_entry = Date.objects.filter(user=user_profile, habit=habit, habit_date=habit_date).first()
+
+            if date_entry:
+                if not is_done and not date_entry.comment and not date_entry.photo:
+                    # If unmarking and no metadata, just delete
+                    date_entry.delete()
+                    return Response({'status': 'deleted'})
+                else:
+                    # Update existing
+                    date_entry.is_done = is_done
+                    date_entry.is_restored = is_restored
+                    # Explicitly update quantity even if it is None (to allow clearing)
+                    date_entry.quantity = quantity
+                    if comment is not None:
+                        date_entry.comment = comment
+                    date_entry.save()
+            else:
+                if is_done or comment or (quantity is not None):
+                    # Create new
+                    date_entry = Date.objects.create(
+                        user=user_profile,
+                        habit=habit,
+                        habit_date=habit_date,
+                        is_done=is_done,
+                        is_restored=is_restored,
+                        quantity=quantity,
+                        comment=comment
+                    )
+                else:
+                    return Response({'status': 'nothing to do'})
+            
+            return Response(DateSerializer(date_entry).data)
+        except Exception as e:
+            import traceback
+            print(f"ERROR in update_status: {str(e)}")
+            traceback.print_exc()
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @ensure_csrf_cookie
