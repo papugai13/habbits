@@ -594,13 +594,15 @@ const Charts = ({
     const fetchStatistics = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/v1/habits/daily_statistics/?period=${period}&date=${chartDate}&category=${selectedCategory || 'Все'}`, {
+            const json = await storageService.getDailyStatistics(storageMode, {
+                period,
+                date: chartDate,
+                category: selectedCategory || 'Все'
+            }, {
                 credentials: 'include'
             });
 
-            if (response.ok) {
-                const json = await response.json();
-                setPeriodLabel(generatePeriodLabel(period, chartDate, t, language));
+            setPeriodLabel(generatePeriodLabel(period, chartDate, t, language));
                 const todayStr = new Date().toISOString().split('T')[0];
                 const weekDayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
                 
@@ -685,7 +687,6 @@ const Charts = ({
                     ];
                 }
                 setChartData(paddedData);
-            }
         } catch (error) {
             console.error('Error fetching statistics:', error);
         } finally {
