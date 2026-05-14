@@ -10,15 +10,15 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Achievement, Category, Date, Habit, UserAll
+from .models import Achievement, Category, Date, Habit, UserAll, ReminderSettings, PushSubscription
 from .serializers import (
     AchievementSerializer, CategorySerializer, DateSerializer, HabitSerializer,
-    LoginSerializer, RegisterSerializer, UserAllSerializer, UserSerializer
+    LoginSerializer, RegisterSerializer, UserAllSerializer, UserSerializer,
+    ReminderSettingsSerializer, PushSubscriptionSerializer
 )
 
 
@@ -364,12 +364,12 @@ class HabitViewSet(viewsets.ModelViewSet):
             start_date = reference_date - timedelta(days=days_since_monday)
             end_date = start_date + timedelta(days=6)
             
-            # Monthly range
-            start_of_month = date(reference_date.year, reference_date.month, 1)
-            if reference_date.month == 12:
-                next_month = date(reference_date.year + 1, 1, 1)
+            # Monthly range anchored to the start of the week
+            start_of_month = date(start_date.year, start_date.month, 1)
+            if start_date.month == 12:
+                next_month = date(start_date.year + 1, 1, 1)
             else:
-                next_month = date(reference_date.year, reference_date.month + 1, 1)
+                next_month = date(start_date.year, start_date.month + 1, 1)
             end_of_month = next_month - timedelta(days=1)
             
             result = []
@@ -380,16 +380,38 @@ class HabitViewSet(viewsets.ModelViewSet):
                     # Fetch latest comment within the viewed week
                     latest_date_entry = Date.objects.filter(
                         user=user_profile,
-                        habit=habit, 
+                        habit=habit,
                         habit_date__range=[start_date, end_date],
                         comment__isnull=False
                     ).exclude(comment__exact='').order_by('-habit_date').first()
 
+                    # If no comment in current week, check previous Sunday (carry over to Monday)
+                    if not latest_date_entry:
+                        prev_sunday = start_date - timedelta(days=1)  # Sunday of previous week
+                        latest_date_entry = Date.objects.filter(
+                            user=user_profile,
+                            habit=habit,
+                            habit_date=prev_sunday,
+                            comment__isnull=False
+                        ).exclude(comment__exact='').first()
+
                     # Check previous week for streak continuation (Sunday and Saturday)
                     prev_sun = start_date - timedelta(days=1)
                     prev_sat = start_date - timedelta(days=2)
+                    prev_fri = start_date - timedelta(days=3)
                     habit_data['prev_week_sun_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sun, is_done=True).exists()
                     habit_data['prev_week_sat_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sat, is_done=True).exists()
+                    habit_data['prev_week_fri_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_fri, is_done=True).exists()
+
+                    # Count previous week completions for dot transition
+                    prev_week_start = start_date - timedelta(days=7)
+                    habit_data['prev_week_count'] = Date.objects.filter(
+                        user=user_profile,
+                        habit=habit,
+                        habit_date__range=[prev_week_start, prev_sun],
+                        is_done=True,
+                        is_restored=False
+                    ).count()
                     
                     habit_data['latest_comment'] = None
                     habit_data['latest_comment_details'] = None
@@ -417,6 +439,15 @@ class HabitViewSet(viewsets.ModelViewSet):
                         habit=habit,
                         habit_date__range=[start_date, end_date]
                     ).exclude(photo=None).exclude(photo='').order_by('-habit_date', '-id').first()
+
+                    # If no photo in current week, check previous Sunday (carry over to Monday)
+                    if not latest_photo_entry:
+                        prev_sunday = start_date - timedelta(days=1)  # Sunday of previous week
+                        latest_photo_entry = Date.objects.filter(
+                            user=user_profile,
+                            habit=habit,
+                            habit_date=prev_sunday
+                        ).exclude(photo=None).exclude(photo='').first()
                     
                     habit_data['latest_photo'] = None
                     habit_data['latest_photo_details'] = None
@@ -438,6 +469,13 @@ class HabitViewSet(viewsets.ModelViewSet):
                         }
                         habit_data['latest_photo'] = photo_url
                     
+                    # Detect if habit has quantity tracking at all
+                    has_quantity_tracking = Date.objects.filter(
+                        user=user_profile,
+                        habit=habit,
+                        quantity__gt=0
+                    ).exists()
+
                     # Get statuses for the range (Monday to Sunday)
                     statuses = []
                     weekly_overflow = 0
@@ -452,8 +490,8 @@ class HabitViewSet(viewsets.ModelViewSet):
                         is_done = date_entry.is_done if date_entry else False
                         qty = date_entry.quantity if date_entry else None
                         
-                        if is_done and date_entry:
-                            weekly_overflow += (qty or 1)
+                        if is_done and date_entry and has_quantity_tracking and qty and qty > 0:
+                            weekly_overflow += qty
                         
                         photo_url = None
                         if date_entry and date_entry.photo:
@@ -474,21 +512,18 @@ class HabitViewSet(viewsets.ModelViewSet):
                     habit_data['statuses'] = statuses
                     habit_data['weekly_overflow'] = weekly_overflow
                     
-                    # Calculate monthly overflow (sum of ALL quantities, including restored)
-                    monthly_overflow = Date.objects.filter(
-                        user=user_profile,
-                        habit=habit,
-                        habit_date__range=[start_of_month, end_of_month],
-                        is_done=True
-                    ).aggregate(
-                        total=Sum(
-                            Case(
-                                When(quantity__isnull=True, then=Value(1)),
-                                default=F('quantity'),
-                                output_field=IntegerField()
-                            )
-                        )
-                    )['total'] or 0
+                    # Calculate monthly overflow (sum of positive quantities only)
+                    monthly_overflow = 0
+                    if has_quantity_tracking:
+                        monthly_overflow = Date.objects.filter(
+                            user=user_profile,
+                            habit=habit,
+                            habit_date__range=[start_of_month, end_of_month],
+                            is_done=True,
+                            quantity__gte=1
+                        ).aggregate(
+                            total=Sum('quantity')
+                        )['total'] or 0
                     
                     # Calculate monthly total (ONLY on-time completions, daily count)
                     monthly_total = Date.objects.filter(
@@ -501,6 +536,53 @@ class HabitViewSet(viewsets.ModelViewSet):
                     
                     habit_data['monthly_overflow'] = monthly_overflow
                     habit_data['monthly_total'] = monthly_total
+
+                    weekly_completions = Date.objects.filter(
+                        user=user_profile,
+                        habit=habit,
+                        habit_date__range=[start_date, end_date],
+                        is_done=True,
+                        is_restored=False
+                    ).count()
+
+                    # Calculate crown streak (consecutive weeks of 7/7 on-time completions)
+                    crown_streak = 0
+                    temp_week_start = start_date
+                    # Limit lookback to prevent excessive queries
+                    for _ in range(100):
+                        week_completions = Date.objects.filter(
+                            user=user_profile,
+                            habit=habit,
+                            habit_date__range=[temp_week_start, temp_week_start + timedelta(days=6)],
+                            is_done=True,
+                            is_restored=False
+                        ).count()
+                        
+                        if week_completions >= 7:
+                            crown_streak += 1
+                            temp_week_start -= timedelta(days=7)
+                        else:
+                            break
+                    habit_data['crown_streak'] = crown_streak
+
+                    weekly_award_streak = crown_streak if weekly_completions >= 7 else 1
+                    if weekly_completions in [3, 4, 5, 6]:
+                        temp_week_start = start_date - timedelta(days=7)
+                        while True:
+                            prev_week_completions = Date.objects.filter(
+                                user=user_profile,
+                                habit=habit,
+                                habit_date__range=[temp_week_start, temp_week_start + timedelta(days=6)],
+                                is_done=True,
+                                is_restored=False
+                            ).count()
+                            if prev_week_completions >= 7:
+                                weekly_award_streak += 1
+                                temp_week_start -= timedelta(days=7)
+                            else:
+                                break
+                    habit_data['weekly_award_streak'] = weekly_award_streak
+                    
                     result.append(habit_data)
                 except Exception as habit_e:
                     import traceback
@@ -640,6 +722,51 @@ class HabitViewSet(viewsets.ModelViewSet):
             traceback.print_exc()
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def _get_streak_history(self, habit, start_date, end_date):
+        """
+        Calculates streak history for a habit.
+        A streak becomes active after 2 consecutive hits.
+        A streak becomes inactive after 2 consecutive misses.
+        """
+        # Look back at least 2 days before start_date to determine initial state
+        lookback_start = habit.start_date or (start_date - timedelta(days=7))
+        if lookback_start > start_date - timedelta(days=7):
+            lookback_start = start_date - timedelta(days=7)
+            
+        dates = Date.objects.filter(
+            user=habit.user, habit=habit,
+            habit_date__range=[lookback_start, end_date],
+            is_done=True,
+            is_restored=False  # Only dark-green days count for streaks
+        ).values_list('habit_date', flat=True)
+        done_dates = set(dates)
+        
+        streak_active = False
+        consecutive_hits = 0
+        consecutive_misses = 0
+        
+        streak_history = {} # date -> bool
+        
+        curr = lookback_start
+        while curr <= end_date:
+            is_done = curr in done_dates
+            if is_done:
+                consecutive_hits += 1
+                consecutive_misses = 0
+                if consecutive_hits >= 2:
+                    streak_active = True
+            else:
+                consecutive_hits = 0
+                consecutive_misses += 1
+                if consecutive_misses >= 2:
+                    streak_active = False
+            
+            if curr >= start_date:
+                streak_history[curr] = streak_active
+                
+            curr += timedelta(days=1)
+        return streak_history
+
     @action(detail=False, methods=['get'])
     def daily_statistics(self, request):
         try:
@@ -678,12 +805,22 @@ class HabitViewSet(viewsets.ModelViewSet):
             }
 
             if period == 'day' or (not period and not request.query_params.get('start_date')):
-                # Последние 7 дней до указанной даты (или сегодня)
-                start_date = today - timedelta(days=6)
-                end_date = today
+                # Calendar week (Monday to Sunday) containing the specified date
+                days_since_monday = today.weekday()
+                start_date = today - timedelta(days=days_since_monday)
+                end_date = start_date + timedelta(days=6)
                 label = f"{start_date.strftime('%d.%m')} - {end_date.strftime('%d.%m')}"
             elif period == 'week':
-                days_since_monday = today.weekday()  # 0=Пн, 6=Вс
+                # Weeks of the month: start from Monday of the week containing the 1st
+                first_of_month = date(today.year, today.month, 1)
+                days_since_monday = first_of_month.weekday()
+                start_date = first_of_month - timedelta(days=days_since_monday)
+                if today.month == 12:
+                    next_month = date(today.year + 1, 1, 1)
+                else:
+                    next_month = date(today.year, today.month + 1, 1)
+                end_date = next_month - timedelta(days=1)
+                label = f"Недели: {MONTHS_RU[today.month]} {today.year}"
             elif period == 'month':
                 first_of_month = date(today.year, today.month, 1)
                 days_since_monday = first_of_month.weekday()
@@ -696,9 +833,10 @@ class HabitViewSet(viewsets.ModelViewSet):
                 end_date = next_month - timedelta(days=1)
                 label = f"{MONTHS_RU[today.month]} {today.year}"
             elif period == 'year':
-                start_date = date(today.year, 1, 1)
+                # For yearly period, we always show last 5 years relative to the selected year
+                start_date = date(today.year - 4, 1, 1)
                 end_date = date(today.year, 12, 31)
-                label = f"{start_date.year}"
+                label = f"{start_date.year} - {end_date.year}"
             else:
                 # Используем параметры start_date и end_date
                 start_date_str = request.query_params.get('start_date')
@@ -727,12 +865,17 @@ class HabitViewSet(viewsets.ModelViewSet):
                 else:
                     habits = habits.filter(category__name=category_name)
             
+            # Pre-calculate streaks for all selected habits
+            all_streak_histories = {}
+            for habit in habits:
+                all_streak_histories[habit.id] = self._get_streak_history(habit, start_date, end_date)
+
             # Собираем статистику по дням или агрегированным периодам
             statistics = []
             current_date = start_date
             
-            if period == 'day' or period == 'week' or not period:
-                # Daily bars
+            if period == 'day' or not period:
+                # Daily bars (Showing the week containing start_date)
                 while current_date <= end_date:
                     day_dates = Date.objects.filter(
                         user=user_profile,
@@ -753,8 +896,14 @@ class HabitViewSet(viewsets.ModelViewSet):
                     )
 
                     # Count habits that existed by this date
-                    habit_count = habits.filter(created_at__lte=current_date).count()
+                    habit_count = habits.filter(start_date__lte=current_date).count()
                     
+                    # Streak count for this day
+                    streak_count = 0
+                    for habit_id, history in all_streak_histories.items():
+                        if history.get(current_date):
+                            streak_count += 1
+
                     statistics.append({
                         'date': current_date.isoformat(),
                         'label': str(current_date.day),
@@ -764,11 +913,12 @@ class HabitViewSet(viewsets.ModelViewSet):
                         'completed_days': completed_days,
                         'restored_days': restored_days,
                         'extra_quantity': extra_quantity,
+                        'streak_count': streak_count,
                     })
                     current_date += timedelta(days=1)
             
-            elif period == 'month':
-                # Weekly bars (Calendar weeks Mon-Sun)
+            elif period == 'week':
+                # Weekly aggregation (Bars = Week groups of the month)
                 while current_date <= end_date:
                     period_end = current_date + timedelta(days=6)
                     day_dates = Date.objects.filter(
@@ -790,10 +940,17 @@ class HabitViewSet(viewsets.ModelViewSet):
                     )
                     
                     days_in_period = (period_end - current_date).days + 1
-
-                    # Count habits that existed by end of this chunk
-                    habit_count = habits.filter(created_at__lte=period_end).count()
+                    habit_count = habits.filter(start_date__lte=period_end).count()
                     
+                    # Streak count for this week (total marks across all habits)
+                    streak_count = 0
+                    c_date = current_date
+                    while c_date <= period_end:
+                        for habit_id, history in all_streak_histories.items():
+                            if history.get(c_date):
+                                streak_count += 1
+                        c_date += timedelta(days=1)
+
                     statistics.append({
                         'date': current_date.isoformat(),
                         'label': f"{current_date.day}-{period_end.day}",
@@ -803,11 +960,12 @@ class HabitViewSet(viewsets.ModelViewSet):
                         'completed_days': completed_days,
                         'restored_days': restored_days,
                         'extra_quantity': extra_quantity,
+                        'streak_count': streak_count,
                     })
                     current_date = period_end + timedelta(days=1)
 
-            elif period == 'year':
-                # Monthly bars (calendar months)
+            elif period == 'month':
+                # Monthly aggregation (Bars = months)
                 while current_date <= end_date:
                     # Get last day of current month
                     if current_date.month == 12:
@@ -836,15 +994,22 @@ class HabitViewSet(viewsets.ModelViewSet):
                     )
                     
                     days_in_period = (period_end - current_date).days + 1
-
-                    # Count habits that existed by end of this month
-                    habit_count = habits.filter(created_at__lte=period_end).count()
+                    habit_count = habits.filter(start_date__lte=period_end).count()
                     
                     months_ru = {
                         1: 'Янв', 2: 'Фев', 3: 'Мар', 4: 'Апр', 5: 'Май', 6: 'Июн',
                         7: 'Июл', 8: 'Авг', 9: 'Сен', 10: 'Окт', 11: 'Ноя', 12: 'Дек'
                     }
                     
+                    # Streak count for this month
+                    streak_count = 0
+                    c_date = current_date
+                    while c_date <= period_end:
+                        for habit_id, history in all_streak_histories.items():
+                            if history.get(c_date):
+                                streak_count += 1
+                        c_date += timedelta(days=1)
+
                     statistics.append({
                         'date': current_date.isoformat(),
                         'label': months_ru[current_date.month],
@@ -854,8 +1019,53 @@ class HabitViewSet(viewsets.ModelViewSet):
                         'completed_days': completed_days,
                         'restored_days': restored_days,
                         'extra_quantity': extra_quantity,
+                        'streak_count': streak_count,
                     })
                     current_date = period_end + timedelta(days=1)
+
+            elif period == 'year':
+                # Yearly aggregation (Bars = years)
+                # Show last 5 years ending in the selected year
+                current_date = start_date
+
+                while current_date <= end_date:
+                    period_end = date(current_date.year, 12, 31)
+                    period_end = min(period_end, end_date)
+                    
+                    day_dates = Date.objects.filter(
+                        user=user_profile,
+                        habit__in=habits,
+                        habit_date__range=[current_date, period_end],
+                        is_done=True
+                    )
+                    completed_days = day_dates.filter(is_restored=False).count()
+                    restored_days = day_dates.filter(is_restored=True).count()
+                    extra_quantity = day_dates.filter(quantity__isnull=False).aggregate(total=Sum('quantity'))['total'] or 0
+                    completed_count = day_dates.filter(quantity__isnull=True).count() + extra_quantity
+                    days_in_period = (period_end - current_date).days + 1
+                    habit_count = habits.filter(start_date__lte=period_end).count()
+                    
+                    # Streak count for this year
+                    streak_count = 0
+                    c_date = current_date
+                    while c_date <= period_end:
+                        for habit_id, history in all_streak_histories.items():
+                            if history.get(c_date):
+                                streak_count += 1
+                        c_date += timedelta(days=1)
+
+                    statistics.append({
+                        'date': current_date.isoformat(),
+                        'label': str(current_date.year),
+                        'days_in_period': days_in_period,
+                        'habit_count': habit_count,
+                        'completed_count': completed_count,
+                        'completed_days': completed_days,
+                        'restored_days': restored_days,
+                        'extra_quantity': extra_quantity,
+                        'streak_count': streak_count,
+                    })
+                    current_date = date(current_date.year + 1, 1, 1)
             
             return Response({
                 'data': statistics,
@@ -870,6 +1080,167 @@ class HabitViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
+    @action(detail=False, methods=['get'])
+    def analytics_chart(self, request):
+        try:
+            user_profile, _ = UserAll.objects.get_or_create(
+                auth_user=request.user,
+                defaults={'name': request.user.username, 'age': ''}
+            )
+            
+            # Filter by specific habit if provided
+            habit_id = request.query_params.get('habit_id')
+            habits = Habit.objects.filter(user=user_profile, is_archived=False)
+            if habit_id and habit_id != 'all' and habit_id:
+                try:
+                    habits = habits.filter(id=int(habit_id))
+                except (ValueError, TypeError):
+                    pass
+
+            # Get the earliest start_date among selected habits
+            start_date_of_chart = habits.aggregate(Min('start_date'))['start_date__min']
+            
+            today = date.today()
+            # If no habits or no start dates, use a default range
+            if not start_date_of_chart:
+                start_date_of_chart = today - timedelta(days=30)
+            
+            # Chart ends at the end of the current week
+            end_of_chart = today + timedelta(days=(6 - today.weekday()))
+            
+            # Align start to the first Monday of that week
+            days_since_monday = start_date_of_chart.weekday()
+            week_start = start_date_of_chart - timedelta(days=days_since_monday)
+            
+            weeks_data = []
+            MONTHS_RU = {
+                1: 'Январь', 2: 'Февраль', 3: 'Март', 4: 'Апрель',
+                5: 'Май', 6: 'Июнь', 7: 'Июль', 8: 'Август',
+                9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
+            }
+            
+            # Safeguard against too many weeks (e.g. if start_date was incorrectly set to year 1900)
+            if (end_of_chart - week_start).days > 1000:
+                week_start = end_of_chart - timedelta(days=365)
+            
+            week_index = 1
+            while week_start <= end_of_chart:
+                week_end = week_start + timedelta(days=6)
+                # Use Thursday to determine the month of the week (ISO 8601 style)
+                thursday = week_start + timedelta(days=3)
+                
+                week_dates = Date.objects.filter(
+                    user=user_profile,
+                    habit__in=habits,
+                    habit_date__range=[week_start, week_end],
+                    is_done=True,
+                    is_restored=False
+                )
+                
+                total_completions = week_dates.count()
+                
+                # Calculate total possible days in this week for active habits
+                total_possible_days = 0
+                for habit in habits:
+                    if habit.start_date and habit.start_date <= week_end:
+                        # If the habit started THIS week, adjust the total days
+                        if habit.start_date >= week_start:
+                            actual_start = habit.start_date
+                            actual_end = week_end
+                            total_possible_days += (actual_end - actual_start).days + 1
+                        else:
+                            # Not the first week, use 7 days
+                            total_possible_days += 7
+                
+                # If the week is completely in the future (shouldn't happen with the loop condition, but safe)
+                if total_possible_days <= 0:
+                    total_possible_days = 0
+                
+                active_habits_count = habits.filter(start_date__lte=week_end).count()
+                
+                avg_days = 0
+                display_days_done = total_completions
+                display_total_days = total_possible_days
+                
+                if active_habits_count > 0:
+                    avg_days = round(total_completions / active_habits_count, 1)
+                    if active_habits_count > 1:
+                        display_days_done = round(total_completions / active_habits_count, 1)
+                        display_total_days = round(total_possible_days / active_habits_count, 1)
+                    else:
+                        # Ensure integers when single habit is selected
+                        display_days_done = int(total_completions)
+                        display_total_days = int(total_possible_days)
+                
+                weeks_data.append({
+                    "week_label": f"н{week_start.isocalendar()[1]}",
+                    "month": thursday.month,
+                    "month_name": MONTHS_RU[thursday.month],
+                    "value": min(avg_days, 7),
+                    "days_done": display_days_done,
+                    "total_days": display_total_days,
+                    "week_start": week_start.isoformat(),
+                    "week_end": week_end.isoformat(),
+                })
+                
+                week_start += timedelta(days=7)
+                week_index += 1
+                
+            # Calculate month stats for all months present in weeks_data
+            months_data = {}
+            unique_months = [] # list of (year, month)
+            for w in weeks_data:
+                # Parse year/month from week_start
+                dt = date.fromisoformat(w['week_start']) + timedelta(days=3) # Thursday
+                key = (dt.year, dt.month)
+                if key not in unique_months:
+                    unique_months.append(key)
+            
+            prev_percentage = None
+            for i, (y, m) in enumerate(unique_months):
+                m_start = date(y, m, 1)
+                if m == 12:
+                    m_end = date(y, 12, 31)
+                else:
+                    m_end = date(y, m + 1, 1) - timedelta(days=1)
+                
+                days_in_month = (m_end - m_start).days + 1
+                active_habits = habits.filter(start_date__lte=m_end).count()
+                
+                month_dates = Date.objects.filter(
+                    user=user_profile,
+                    habit__in=habits,
+                    habit_date__range=[m_start, m_end],
+                    is_done=True,
+                    is_restored=False
+                )
+                
+                max_possible = active_habits * days_in_month
+                percentage = 0
+                if max_possible > 0:
+                    percentage = round((month_dates.count() / max_possible) * 100)
+                
+                trend = None
+                if prev_percentage is not None:
+                    trend = percentage - prev_percentage
+                
+                # We use 'm' as the key because the frontend expects data.months[currentMonth]
+                months_data[m] = {
+                    "percentage": percentage,
+                    "trend": trend
+                }
+                prev_percentage = percentage
+
+            return Response({
+                "weeks": weeks_data,
+                "months": months_data
+            })
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['get'])
     def habit_comparison(self, request):
@@ -899,12 +1270,16 @@ class HabitViewSet(viewsets.ModelViewSet):
             9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
         }
         
-        if period == 'week':
+        if period == 'day':
+            start_date = today
+            end_date = today
+            label = f"{today.strftime('%d.%m.%Y')}"
+        elif period == 'week':
             days_since_monday = today.weekday()
             start_date = today - timedelta(days=days_since_monday)
             end_date = start_date + timedelta(days=6)
-            month_name = MONTHS_RU[start_date.month]
-            label = f"Неделя {start_date.strftime('%d')} - {end_date.strftime('%d')} {month_name}"
+            week_num = start_date.isocalendar()[1]
+            label = f"{start_date.strftime('%d.%m')} - {end_date.strftime('%d.%m')} Неделя №{week_num}"
         elif period == 'month':
             start_date = date(today.year, today.month, 1)
             if today.month == 12:
@@ -912,20 +1287,17 @@ class HabitViewSet(viewsets.ModelViewSet):
             else:
                 next_month = date(today.year, today.month + 1, 1)
             end_date = next_month - timedelta(days=1)
-            months_ru_full = {
-                1: 'Январь', 2: 'Февраль', 3: 'Март', 4: 'Апрель',
-                5: 'Май', 6: 'Июнь', 7: 'Июль', 8: 'Август',
-                9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
-            }
-            label = f"{months_ru_full[start_date.month]} {start_date.year}"
+            label = f"{MONTHS_RU[start_date.month]} {start_date.year}"
         elif period == 'year':
             start_date = date(today.year, 1, 1)
             end_date = date(today.year, 12, 31)
-            label = f"Год ({today.year})"
+            label = f"{today.year}"
         else:
-            start_date = today - timedelta(days=6)
-            end_date = today
-            label = "Произвольный период"
+            # Fallback
+            days_since_monday = today.weekday()
+            start_date = today - timedelta(days=days_since_monday)
+            end_date = start_date + timedelta(days=6)
+            label = "За неделю"
 
         category_name = request.query_params.get('category')
         habits = Habit.objects.filter(user=user_profile, is_archived=False)
@@ -954,13 +1326,37 @@ class HabitViewSet(viewsets.ModelViewSet):
                 total=Sum('quantity')
             )['total'] or 0
 
-            # Show all active habits (user request: "показывать привычку даже если она не отмечена")
+            # Streak days for this habit in the period
+            # Use full week context for streaks to match daily_statistics logic
+            streak_start = start_date
+            streak_end = end_date
+            if period == 'day':
+                days_since_monday = start_date.weekday()
+                streak_start = start_date - timedelta(days=days_since_monday)
+                streak_end = streak_start + timedelta(days=6)
+            
+            streak_history = self._get_streak_history(habit, streak_start, streak_end)
+            streak_days = sum(1 for d, active in streak_history.items() if active and start_date <= d <= end_date)
+            
+            days_in_period = (end_date - start_date).days + 1
+            streak_percentage = (streak_days / days_in_period * 100) if days_in_period > 0 else 0
+
+            # Get actual dates done in this period
+            done_history = list(day_dates.values_list('habit_date', flat=True))
+            done_history_str = [d.isoformat() for d in done_history]
+
+            # Show all active habits
             statistics.append({
                 'id': habit.id,
                 'name': habit.name,
+                'category_name': habit.category.name if habit.category else 'Без категории',
                 'completed_days': completed_days,
                 'restored_days': restored_days,
                 'extra_quantity': extra_quantity,
+                'streak_days': streak_days,
+                'streak_percentage': streak_percentage,
+                'done_history': done_history_str,
+                'start_date': habit.start_date.isoformat() if habit.start_date else None,
             })
 
         return Response({
@@ -1060,7 +1456,8 @@ class RegisterView(APIView):
 class LoginView(APIView):
     """Вход в систему"""
     permission_classes = [AllowAny]
-    
+    authentication_classes = []  # Disable CSRF for login
+
     @method_decorator(ensure_csrf_cookie)
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
@@ -1099,21 +1496,63 @@ class LogoutView(APIView):
 
 class CurrentUserView(APIView):
     """Получение и обновление данных текущего пользователя"""
-    permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]  # Add support for file uploads
-    
+    permission_classes = [AllowAny]
+
     @method_decorator(ensure_csrf_cookie)
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
 
     def get(self, request):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
     def patch(self, request):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
         serializer = UserSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def reminder_settings(request):
+    user_profile, _ = UserAll.objects.get_or_create(auth_user=request.user)
+    settings, _ = ReminderSettings.objects.get_or_create(user=user_profile)
+    
+    if request.method == 'PATCH':
+        serializer = ReminderSettingsSerializer(settings, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    serializer = ReminderSettingsSerializer(settings)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def subscribe_push(request):
+    user_profile, _ = UserAll.objects.get_or_create(auth_user=request.user)
+    serializer = PushSubscriptionSerializer(data=request.data)
+    if serializer.is_valid():
+        PushSubscription.objects.update_or_create(
+            user=user_profile,
+            endpoint=serializer.validated_data['endpoint'],
+            defaults={
+                'p256dh': serializer.validated_data['p256dh'],
+                'auth': serializer.validated_data['auth']
+            }
+        )
+        return Response({'status': 'subscribed'}, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def vapid_public_key(request):
+    from django.conf import settings
+    return Response({'publicKey': settings.VAPID_PUBLIC_KEY})
 

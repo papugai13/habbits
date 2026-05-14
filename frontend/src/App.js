@@ -3,8 +3,25 @@ import './App.css';
 import Login from './components/Login';
 import Register from './components/Register';
 import Charts from './components/Charts';
+import Analytics from './components/Analytics';
 import DrumPicker from './components/DrumPicker';
 import translations from './translations';
+import storageService from './storageService';
+
+
+const getMondayString = (dateInput = new Date()) => {
+  const d = new Date(dateInput);
+  const day = d.getDay();
+  // Adjust logic to find Monday: Sunday(0) -> -6, Monday(1) -> 0, Tuesday(2) -> -1, etc.
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+  return monday.toLocaleDateString('en-CA');
+};
+
+const getDaysInCurrentMonth = (dateInput = new Date()) => {
+  const d = new Date(dateInput);
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+};
 
 
 const App = () => {
@@ -25,8 +42,21 @@ const App = () => {
   }
 
   const [selectedCategory, setSelectedCategory] = useState('Все');
-  const [activeTab, setActiveTab] = useState('Habits');
-  const [language, setLanguage] = useState(localStorage.getItem('language') || 'ru');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === 'undefined') return 'Habits';
+    return localStorage.getItem('habbits_activeTab') || 'Habits';
+  });
+  const [language, setLanguage] = useState(() => {
+    if (typeof window === 'undefined') return 'ru';
+    return localStorage.getItem('language') || 'ru';
+  });
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === 'undefined') return 'auto';
+    return localStorage.getItem('theme') || 'auto';
+  });
+  const [storageMode, setStorageMode] = useState(() => {
+    return storageService.getStorageMode();
+  });
 
   const [habitsData, setHabitsData] = useState([]);
 
@@ -42,6 +72,13 @@ const App = () => {
   // Form state for creating habit
   const [newHabitName, setNewHabitName] = useState('');
   const [newHabitCategory, setNewHabitCategory] = useState('');
+  const [newHabitTargetType, setNewHabitTargetType] = useState('at_least');
+  const [newHabitStartDate, setNewHabitStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newHabitUseTarget, setNewHabitUseTarget] = useState(false);
+  const [newHabitCompletionTarget, setNewHabitCompletionTarget] = useState('');
+  const [newHabitQuantityTarget, setNewHabitQuantityTarget] = useState('');
+  const [editHabitStartDate, setEditHabitStartDate] = useState('');
+  const [editHabitTargetType, setEditHabitTargetType] = useState('at_least');
   const [createError, setCreateError] = useState('');
   // Categories state
   const [categories, setCategories] = useState([{ id: 'all', name: 'Все' }]);
@@ -50,18 +87,72 @@ const App = () => {
   const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
+  const [expandedCategoryId, setExpandedCategoryId] = useState(null);
   const [archivedCategories, setArchivedCategories] = useState([]);
+  const [weekLoading, setWeekLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
   const [showCategoryArchive, setShowCategoryArchive] = useState(false);
   const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('Все');
+  const [showSelectHabitsModal, setShowSelectHabitsModal] = useState(false);
+  const [selectingForCategoryId, setSelectingForCategoryId] = useState(null);
   const [chartsSelectedCategory, setChartsSelectedCategory] = useState('Все');
+  
+  // Settings section collapse state
+  const [collapsedSettingsSections, setCollapsedSettingsSections] = useState({
+    profile: false,
+    categories: false,
+    habits: false,
+    theme: false,
+    reminders: false,
+    storage: false
+  });
+
+  // Reminder settings state
+  const [reminderEnabled, setReminderEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const settings = localStorage.getItem('reminderSettings');
+    return settings ? JSON.parse(settings).enabled : false;
+  });
+  const [reminderTimesPerDay, setReminderTimesPerDay] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    const settings = localStorage.getItem('reminderSettings');
+    return settings ? JSON.parse(settings).timesPerDay : 1;
+  });
+  const [customTimesPerDay, setCustomTimesPerDay] = useState(() => {
+    if (typeof window === 'undefined') return 4;
+    const settings = localStorage.getItem('reminderSettings');
+    return settings ? JSON.parse(settings).customTimesPerDay || 4 : 4;
+  });
+  const [reminderTimes, setReminderTimes] = useState(() => {
+    if (typeof window === 'undefined') return ['09:00'];
+    const settings = localStorage.getItem('reminderSettings');
+    if (settings) {
+      const parsed = JSON.parse(settings);
+      if (parsed.reminderTimes && Array.isArray(parsed.reminderTimes)) {
+        return parsed.reminderTimes;
+      }
+      // Migrate old single startTime to array
+      if (parsed.startTime) {
+        return [parsed.startTime];
+      }
+    }
+    return ['09:00'];
+  });
+  const [notificationPermission, setNotificationPermission] = useState(() => {
+    if (typeof window === 'undefined') return 'default';
+    return Notification.permission;
+  });
+  const [reminderText, setReminderText] = useState(() => {
+    if (typeof window === 'undefined') return 'Не забудьте отметить привычки!';
+    const settings = localStorage.getItem('reminderSettings');
+    return settings ? JSON.parse(settings).text || 'Не забудьте отметить привычки!' : 'Не забудьте отметить привычки!';
+  });
 
   // Quantity modal state
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [quantityModalData, setQuantityModalData] = useState(null);
   const [quantityValue, setQuantityValue] = useState(null);
   const [commentValue, setCommentValue] = useState('');
-  const [photoFile, setPhotoFile] = useState(null);
-  const [deletePhoto, setDeletePhoto] = useState(false);
   const [longPressTimer, setLongPressTimer] = useState(null);
   const [editingHabit, setEditingHabit] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -70,20 +161,19 @@ const App = () => {
   const [reportData, setReportData] = useState(null);
   const [reportPeriod, setReportPeriod] = useState('day');
   const [isReportLoading, setIsReportLoading] = useState(false);
-  const [currentWeekDate, setCurrentWeekDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [currentWeekDate, setCurrentWeekDate] = useState(getMondayString());
   const weekDataCacheRef = React.useRef({});
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const lightboxTouchStartY = React.useRef(null);
   const [lightboxTranslateY, setLightboxTranslateY] = useState(0);
   const reorderLongPressTimer = React.useRef(null);
   const touchStartPos = React.useRef({ x: 0, y: 0 });
-  const isTouchDraggingInProgress = React.useRef(false);
+  const isHabitTouchDragging = React.useRef(false);
+  const isCategoryTouchDragging = React.useRef(false);
 
   // Swipe navigation refs
   const swipeStartPos = React.useRef({ x: 0, y: 0 });
   const isSwiping = React.useRef(false);
-  const [swipeDirection, setSwipeDirection] = useState(null);
-  const [isDraggingWeekSwipe, setIsDraggingWeekSwipe] = useState(false);
   const swipeOffsetRef = React.useRef(0);
   const pendingRafRef = React.useRef(null);
   const habitsContainerRef = React.useRef(null);
@@ -111,6 +201,14 @@ const App = () => {
   // Archive state
   const [archivedHabits, setArchivedHabits] = useState([]);
   const [showArchive, setShowArchive] = useState(false);
+  const [collapsedCategories, setCollapsedCategories] = useState(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      return JSON.parse(localStorage.getItem('habbits_collapsedCategories') || '{}');
+    } catch {
+      return {};
+    }
+  });
 
   // Drag-and-drop state
   const [draggedHabitId, setDraggedHabitId] = useState(null);
@@ -122,8 +220,6 @@ const App = () => {
   const [highlightToday, setHighlightToday] = useState(false);
 
   // Transition animation state
-  const [isFadingOut, setIsFadingOut] = useState(false);
-  const [isFadingIn, setIsFadingIn] = useState(false);
 
   const t = (key) => {
     return translations[language][key] || key;
@@ -146,78 +242,104 @@ const App = () => {
   const bottomTabs = [
     { id: 'Habits', label: t('journals'), icon: '✔️', disabled: false },
     { id: 'Charts', label: t('charts'), icon: '📊', disabled: false },
+    { id: 'Analytics', label: t('analytics'), icon: '📈', disabled: false },
     { id: 'Settings', label: t('settings'), icon: '⚙️', disabled: false },
   ];
 
 
 
-  // Fetch categories from API
+  // Fetch categories from storage
   const fetchCategories = React.useCallback(async () => {
     try {
-      const response = await fetch('/api/v1/categories/');
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data);
+      setApiError('');
+      const data = await storageService.getCategories(storageMode, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
+      setCategories(data);
 
-        const hasSelectedCategory = data.some(category => category.id.toString() === newHabitCategory);
-        if (data.length > 0) {
-          if (newHabitCategory !== "" && (!newHabitCategory || !hasSelectedCategory)) {
-            setNewHabitCategory(data[0].id.toString());
-          }
-        } else if (newHabitCategory) {
-          setNewHabitCategory('');
+      const hasSelectedCategory = data.some(category => category.id.toString() === newHabitCategory);
+      if (data.length > 0) {
+        if (newHabitCategory !== "" && (!newHabitCategory || !hasSelectedCategory)) {
+          setNewHabitCategory(data[0].id.toString());
         }
+      } else if (newHabitCategory) {
+        setNewHabitCategory('');
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
-  }, [newHabitCategory]);
+  }, [storageMode, newHabitCategory]);
 
   const fetchArchivedCategories = React.useCallback(async () => {
     try {
-      const response = await fetch('/api/v1/categories/archived/');
-      if (response.ok) {
-        const data = await response.json();
-        setArchivedCategories(data);
-      }
+      setApiError('');
+      const data = await storageService.getArchivedCategories(storageMode, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
+      setArchivedCategories(data);
     } catch (error) {
       console.error('Error fetching archived categories:', error);
+      setApiError('Error fetching archived categories');
     }
-  }, []);
+  }, [storageMode]);
 
   const fetchWeekHabits = async (targetDate) => {
     const dateToFetch = targetDate;
     if (!dateToFetch) return null;
 
     try {
-      const response = await fetch(`/api/v1/habits/weekly_status/?date=${dateToFetch}`);
-      if (response.ok) {
-        const data = await response.json();
-        weekDataCacheRef.current[dateToFetch] = data;
-        return data;
-      }
+      setApiError('');
+      const data = await storageService.getWeeklyStatus(storageMode, dateToFetch, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
+      const cacheKey = `${storageMode}_${dateToFetch}`;
+      weekDataCacheRef.current[cacheKey] = data;
+      return data;
     } catch (error) {
       console.error('Error fetching habits for week', dateToFetch, error);
+      setApiError('Error fetching weekly habits');
     }
     return null;
   };
 
   const loadWeekData = React.useCallback(async (targetDate) => {
     if (!targetDate) return;
-    const cached = weekDataCacheRef.current[targetDate];
+    const cacheKey = `${storageMode}_${targetDate}`;
+    const cached = weekDataCacheRef.current[cacheKey];
     if (cached) {
       setHabitsData(cached);
       return;
     }
 
+    setWeekLoading(true);
+    console.log(`[App] Loading week data for ${targetDate} (${storageMode})`);
     const data = await fetchWeekHabits(targetDate);
+    setWeekLoading(false);
     if (data) {
+      console.log(`[App] Loaded ${data.length} habits for ${targetDate}`);
       setHabitsData(data);
+      // Cache the result
+      const cacheKey = `${storageMode}_${targetDate}`;
+      weekDataCacheRef.current[cacheKey] = data;
+    } else {
+      console.warn(`[App] Failed to load habits for ${targetDate}`);
+      setHabitsData([]);
     }
-  }, []);
+  }, [storageMode]); // Added storageMode dependency
 
   const prefetchWeekIfNeeded = async (weekDate) => {
-    if (!weekDate || weekDataCacheRef.current[weekDate]) return;
+    if (!weekDate) return;
+    const cacheKey = `${storageMode}_${weekDate}`;
+    if (weekDataCacheRef.current[cacheKey]) return;
     await fetchWeekHabits(weekDate);
   };
 
@@ -243,47 +365,58 @@ const App = () => {
 
   const fetchHabits = React.useCallback(async (targetDate) => {
     const dateKey = targetDate || currentWeekDate;
-    delete weekDataCacheRef.current[dateKey];
+    const cacheKey = `${storageMode}_${dateKey}`;
+    delete weekDataCacheRef.current[cacheKey];
     return loadWeekData(dateKey);
-  }, [currentWeekDate, loadWeekData]);
+  }, [currentWeekDate, loadWeekData, storageMode]); // Added storageMode dependency
 
   // Fetch archived habits
   const fetchArchivedHabits = React.useCallback(async () => {
     try {
-      const response = await fetch('/api/v1/habits/archived/');
-      if (response.ok) {
-        const data = await response.json();
-        setArchivedHabits(data);
-      }
+      const data = await storageService.getArchivedHabits(storageMode, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
+      setArchivedHabits(data);
     } catch (error) {
       console.error('Error fetching archived habits:', error);
     }
-  }, []);
+  }, [storageMode]);
 
   // Check authentication status
   const checkAuth = React.useCallback(async () => {
     try {
-      const response = await fetch('/api/auth/me/');
+      const response = await fetch('/api/auth/me/', {
+        credentials: 'include'
+      });
 
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
         setIsAuthenticated(true);
-        // Fetch data after authentication confirmed
-        fetchHabits();
-        fetchArchivedHabits();
-        fetchCategories();
-        fetchArchivedCategories();
       } else {
         setIsAuthenticated(false);
       }
+      
+      // Always fetch data from the current storage mode
+      fetchHabits();
+      fetchArchivedHabits();
+      fetchCategories();
+      fetchArchivedCategories();
     } catch (error) {
       console.error('Auth check error:', error);
+      // Still load data even if auth fails (especially for local mode)
+      fetchHabits();
+      fetchArchivedHabits();
+      fetchCategories();
+      fetchArchivedCategories();
       setIsAuthenticated(false);
     } finally {
       setAuthLoading(false);
     }
-  }, [fetchHabits, fetchArchivedHabits, fetchCategories, fetchArchivedCategories]);
+  }, [fetchHabits, fetchArchivedHabits, fetchCategories, fetchArchivedCategories, storageMode]); // Added storageMode dependency
 
   // Check authentication status on mount
   useEffect(() => {
@@ -292,19 +425,383 @@ const App = () => {
 
   // Fetch habits when currentWeekDate changes
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated || storageMode === 'local') {
       loadWeekData(currentWeekDate);
       prefetchAdjacentWeeks(currentWeekDate);
     }
-  }, [currentWeekDate, isAuthenticated, loadWeekData, prefetchAdjacentWeeks]);
+  }, [currentWeekDate, isAuthenticated, loadWeekData, prefetchAdjacentWeeks, storageMode]);
+
+  // Apply theme
+  useEffect(() => {
+    const applyTheme = () => {
+      let currentTheme = theme;
+      if (theme === 'auto') {
+        const hour = new Date().getHours();
+        currentTheme = (hour >= 6 && hour < 18) ? 'light' : 'dark';
+      }
+      document.body.className = currentTheme === 'dark' ? 'dark-theme' : '';
+    };
+    applyTheme();
+    if (theme === 'auto') {
+      const interval = setInterval(applyTheme, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('habbits_activeTab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('habbits_collapsedCategories', JSON.stringify(collapsedCategories));
+  }, [collapsedCategories]);
+
+  // Handle storage mode changes
+  useEffect(() => {
+    // Clear cache when mode changes
+    weekDataCacheRef.current = {};
+    // Trigger re-fetch
+    checkAuth();
+  }, [storageMode]); // Re-fetch everything when storage mode changes
+
+  // Register Service Worker and handle notifications
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    const registerServiceWorker = async () => {
+      try {
+        const registration = await navigator.serviceWorker.register('/service-worker.js');
+        console.log('Service Worker registered:', registration);
+
+        // Send current settings to Service Worker
+        if (registration.active) {
+          const settings = {
+            enabled: reminderEnabled,
+            reminderTimes: reminderTimes,
+            timesPerDay: reminderTimesPerDay === 'custom' ? customTimesPerDay : reminderTimesPerDay,
+            customTimesPerDay: customTimesPerDay,
+            notificationsSentToday: 0,
+            sentReminders: []
+          };
+          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings });
+        }
+      } catch (error) {
+        console.error('Service Worker registration failed:', error);
+      }
+    };
+
+    registerServiceWorker();
+
+    // Listen for messages from Service Worker (e.g., REQUEST_SETTINGS)
+    const handleServiceWorkerMessage = (event) => {
+      if (event.data && event.data.type === 'REQUEST_SETTINGS') {
+        console.log('[App] Received REQUEST_SETTINGS from Service Worker');
+        const settings = {
+          enabled: reminderEnabled,
+          reminderTimes: reminderTimes,
+          timesPerDay: reminderTimesPerDay === 'custom' ? customTimesPerDay : reminderTimesPerDay,
+          customTimesPerDay: customTimesPerDay,
+          notificationsSentToday: 0,
+          sentReminders: []
+        };
+        
+        navigator.serviceWorker.ready.then(registration => {
+          if (registration.active) {
+            registration.active.postMessage({ type: 'SETTINGS_RESPONSE', settings });
+            console.log('[App] Sent SETTINGS_RESPONSE to Service Worker');
+          }
+        });
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+    };
+  }, [reminderEnabled, reminderTimes, reminderTimesPerDay, customTimesPerDay]);
+
+  // Update reminder settings in localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const settings = {
+      enabled: reminderEnabled,
+      reminderTimes: reminderTimes,
+      timesPerDay: reminderTimesPerDay,
+      customTimesPerDay: customTimesPerDay
+    };
+    localStorage.setItem('reminderSettings', JSON.stringify(settings));
+  }, [reminderEnabled, reminderTimes, reminderTimesPerDay, customTimesPerDay]);
+
+  // Helper to convert VAPID key
+  const urlBase64ToUint8Array = (base64String) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  };
+
+  // Subscribe to Push Notifications
+  const subscribeToPush = async () => {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      
+      // Get VAPID public key from server
+      const keyResponse = await fetch('/api/v1/reminders/vapid-key/', { credentials: 'include' });
+      const { publicKey } = await keyResponse.json();
+      
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+      
+      const subJSON = subscription.toJSON();
+      await fetch('/api/v1/reminders/subscribe/', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          endpoint: subJSON.endpoint,
+          p256dh: subJSON.keys.p256dh,
+          auth: subJSON.keys.auth
+        })
+      });
+      console.log('Push subscription successful');
+    } catch (error) {
+      console.error('Push subscription failed:', error);
+    }
+  };
+
+  // Save reminder settings to server
+  const saveReminderSettingsToServer = async (updates) => {
+    try {
+      await fetch('/api/v1/reminders/settings/', {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include',
+        body: JSON.stringify(updates)
+      });
+    } catch (error) {
+      console.error('Failed to save reminder settings:', error);
+    }
+  };
+
+  // Request notification permission and subscribe
+  const requestNotificationPermission = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    
+    let permission = Notification.permission;
+    if (permission === 'default') {
+      permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+    }
+    
+    if (permission === 'granted') {
+      await subscribeToPush();
+    }
+    
+    return permission;
+  };
+
+  // Handle reminder enable toggle
+  const handleReminderToggle = async (enabled) => {
+    setReminderEnabled(enabled);
+    if (enabled) {
+      const permission = await requestNotificationPermission();
+      if (permission !== 'granted') {
+        alert('Необходимо разрешить уведомления для работы напоминаний');
+        setReminderEnabled(false);
+        return;
+      }
+    }
+    
+    const settings = JSON.parse(localStorage.getItem('reminderSettings') || '{}');
+    const newSettings = { ...settings, enabled };
+    localStorage.setItem('reminderSettings', JSON.stringify(newSettings));
+    saveReminderSettingsToServer({ enabled, text: reminderText, times: reminderTimes });
+    
+    // Update SW
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        if (registration.active) {
+          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: newSettings });
+        }
+      });
+    }
+  };
+
+  const handleExportData = () => {
+    const data = storageService.exportData();
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `habbits_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportData = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = storageService.importData(e.target.result);
+      if (result.success) {
+        alert(t('importSuccess'));
+        window.location.reload();
+      } else {
+        alert(t('importError'));
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Update reminder times when timesPerDay changes
+  const handleTimesPerDayChange = (value) => {
+    setReminderTimesPerDay(value);
+    const newCount = value === 'custom' ? customTimesPerDay : value;
+    const currentCount = reminderTimes.length;
+    
+    if (newCount > currentCount) {
+      // Add new times (default to 1 hour after the last time)
+      const newTimes = [...reminderTimes];
+      const lastTime = reminderTimes[currentCount - 1] || '09:00';
+      const [hours, minutes] = lastTime.split(':').map(Number);
+      const lastDate = new Date();
+      lastDate.setHours(hours, minutes, 0, 0);
+      
+      for (let i = currentCount; i < newCount; i++) {
+        const nextDate = new Date(lastDate);
+        nextDate.setHours(nextDate.getHours() + 1);
+        const nextTime = nextDate.toTimeString().slice(0, 5);
+        newTimes.push(nextTime);
+        lastDate.setHours(lastDate.getHours() + 1);
+      }
+      setReminderTimes(newTimes);
+    } else if (newCount < currentCount) {
+      // Remove excess times
+      setReminderTimes(reminderTimes.slice(0, newCount));
+    }
+  };
+
+  // Update reminder times when customTimesPerDay changes
+  useEffect(() => {
+    if (reminderTimesPerDay === 'custom') {
+      const newCount = customTimesPerDay;
+      const currentCount = reminderTimes.length;
+      
+      if (newCount > currentCount) {
+        const newTimes = [...reminderTimes];
+        const lastTime = reminderTimes[currentCount - 1] || '09:00';
+        const [hours, minutes] = lastTime.split(':').map(Number);
+        const lastDate = new Date();
+        lastDate.setHours(hours, minutes, 0, 0);
+        
+        for (let i = currentCount; i < newCount; i++) {
+          const nextDate = new Date(lastDate);
+          nextDate.setHours(nextDate.getHours() + 1);
+          const nextTime = nextDate.toTimeString().slice(0, 5);
+          newTimes.push(nextTime);
+          lastDate.setHours(lastDate.getHours() + 1);
+        }
+        setReminderTimes(newTimes);
+      } else if (newCount < currentCount) {
+        setReminderTimes(reminderTimes.slice(0, newCount));
+      }
+    }
+  }, [customTimesPerDay, reminderTimesPerDay]);
+
+  const handleReminderTextChange = (text) => {
+    setReminderText(text);
+    const settings = JSON.parse(localStorage.getItem('reminderSettings') || '{}');
+    const newSettings = { ...settings, text };
+    localStorage.setItem('reminderSettings', JSON.stringify(newSettings));
+    saveReminderSettingsToServer({ text });
+    
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        if (registration.active) {
+          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: newSettings });
+        }
+      });
+    }
+  };
+
+  // Update a specific reminder time
+  const handleReminderTimeChange = (index, value) => {
+    const newTimes = [...reminderTimes];
+    newTimes[index] = value;
+    setReminderTimes(newTimes);
+    
+    // Save to server
+    const settings = JSON.parse(localStorage.getItem('reminderSettings') || '{}');
+    const newSettings = { ...settings, reminderTimes: newTimes };
+    localStorage.setItem('reminderSettings', JSON.stringify(newSettings));
+    saveReminderSettingsToServer({ times: newTimes });
+    
+    // Update SW
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        if (registration.active) {
+          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: newSettings });
+        }
+      });
+    }
+  };
+
+  // Test notification
+  const testNotification = async () => {
+    if (typeof window === 'undefined') return;
+    
+    const permission = await requestNotificationPermission();
+    if (permission === 'granted') {
+      try {
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.getRegistration();
+          if (registration && registration.active) {
+            registration.active.postMessage({ type: 'TEST_NOTIFICATION' });
+            return;
+          }
+        }
+        // Fallback: show notification directly
+        new Notification('Habbits', {
+          body: 'Не забудьте отметить привычки!',
+          icon: '/favicon.ico'
+        });
+      } catch (error) {
+        console.error('Test notification error:', error);
+        // Fallback: show notification directly
+        new Notification('Habbits', {
+          body: 'Не забудьте отметить привычки!',
+          icon: '/favicon.ico'
+        });
+      }
+    } else {
+      alert('Необходимо разрешить уведомления для работы напоминаний');
+    }
+  };
 
   const goToWeek = (weekDate, direction) => {
     const date = new Date(weekDate);
     const weekString = date.toLocaleDateString('en-CA');
 
     // Apply page slide direction class first
-    setSwipeDirection(direction);
-    setTimeout(() => setSwipeDirection(null), 300);
 
     // If cached, show immediately, иначе загрузится параллельно
     if (weekDataCacheRef.current[weekString]) {
@@ -327,11 +824,7 @@ const App = () => {
   };
 
   const handleToday = () => {
-    const today = new Date();
-    const day = today.getDay();
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Monday
-    const monday = new Date(today.setDate(diff));
-    const targetWeek = monday.toLocaleDateString('en-CA');
+    const targetWeek = getMondayString();
 
     if (currentWeekDate === targetWeek) {
       // Already on the current week, just highlight today
@@ -339,14 +832,10 @@ const App = () => {
       setTimeout(() => setHighlightToday(false), 1000);
     } else {
       // Transition to the current week with animation
-      setIsFadingOut(true);
       setTimeout(() => {
         setCurrentWeekDate(targetWeek);
-        setIsFadingOut(false);
-        setIsFadingIn(true);
         setHighlightToday(true);
         setTimeout(() => {
-          setIsFadingIn(false);
           setHighlightToday(false);
         }, 1000);
       }, 250);
@@ -360,7 +849,6 @@ const App = () => {
     swipeStartPos.current = { x: touch.clientX, y: touch.clientY };
     isSwiping.current = false;
     swipeOffsetRef.current = 0;
-    setIsDraggingWeekSwipe(false);
     setSwipeTransitionStyle('none');
     applySwipeOffset(0);
     if (pendingRafRef.current) {
@@ -390,8 +878,6 @@ const App = () => {
     if (distX > 15 && distX > distY) {
       if (!isSwiping.current) {
         isSwiping.current = true;
-        setIsDraggingWeekSwipe(true);
-        setSwipeDirection(diffX > 0 ? 'right' : 'left');
       }
       if (e.cancelable) e.preventDefault();
       swipeOffsetRef.current = diffX;
@@ -407,7 +893,6 @@ const App = () => {
   const handleSwipeEnd = (e) => {
     if (!isSwiping.current) {
       swipeStartPos.current = { x: 0, y: 0 };
-      setIsDraggingWeekSwipe(false);
       setSwipeTransitionStyle('none');
       applySwipeOffset(0);
       return;
@@ -436,7 +921,6 @@ const App = () => {
       const finalOffset = diffX > 0 ? width : -width;
       setSwipeTransitionStyle('transform 0.15s cubic-bezier(0.22, 0.61, 0.36, 1)');
       applySwipeOffset(finalOffset);
-      setIsDraggingWeekSwipe(false);
       if (e.cancelable) e.preventDefault();
       setTimeout(() => {
         goToWeek(targetWeekString, direction);
@@ -446,8 +930,6 @@ const App = () => {
     } else {
       setSwipeTransitionStyle('transform 0.15s cubic-bezier(0.22, 0.61, 0.36, 1)');
       applySwipeOffset(0);
-      setIsDraggingWeekSwipe(false);
-      setSwipeDirection(null);
       setTimeout(() => {
         setSwipeTransitionStyle('none');
       }, 170);
@@ -527,12 +1009,10 @@ const App = () => {
       currentPhoto: photo
     });
 
-    const initialQuantity = getDefaultModalQuantity(isDone, isRestored, newDateStr);
+    const initialQuantity = getDefaultModalQuantity(habit.id);
 
     setQuantityValue(initialQuantity);
     setCommentValue(comment || '');
-    setPhotoFile(null);
-    setDeletePhoto(false);
 
     // Clear animation class after it finishes
     setTimeout(() => {
@@ -548,17 +1028,28 @@ const App = () => {
     return () => el.removeEventListener('touchmove', handleModalSwipeMove);
   }, [showQuantityModal]);
 
-  const currentWeekRange = () => {
-    const curr = new Date(currentWeekDate);
+  const getRussianMonthName = (monthIndex) => {
+    const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    return months[monthIndex] || '';
+  };
+
+  const formatWeekRange = (dateObj) => {
+    const curr = new Date(dateObj);
     const day = curr.getDay();
     const diff = curr.getDate() - (day === 0 ? 6 : day - 1);
     const firstDay = new Date(curr.setDate(diff));
     const lastDay = new Date(firstDay);
     lastDay.setDate(firstDay.getDate() + 6);
 
-    const langSub = language === 'ru' ? 'ru-RU' : 'en-US';
+    if (language === 'ru') {
+      return `${firstDay.getDate()} ${getRussianMonthName(firstDay.getMonth())} - ${lastDay.getDate()} ${getRussianMonthName(lastDay.getMonth())}`;
+    }
+
+    const langSub = 'en-US';
     return `${firstDay.toLocaleDateString(langSub, { day: 'numeric', month: 'short' })} - ${lastDay.toLocaleDateString(langSub, { day: 'numeric', month: 'short' })}`;
   };
+
+  const currentWeekRange = () => formatWeekRange(currentWeekDate);
 
   const prevWeekDate = (() => {
     const date = new Date(currentWeekDate);
@@ -576,7 +1067,8 @@ const App = () => {
     if (weekDate === currentWeekDate) {
       return habitsData;
     }
-    return weekDataCacheRef.current[weekDate] || [];
+    const cacheKey = `${storageMode}_${weekDate}`;
+    return weekDataCacheRef.current[cacheKey] || [];
   };
 
   const renderWeekPage = (weekDate, highlightWeekToday = false) => {
@@ -584,8 +1076,52 @@ const App = () => {
     const todayStr = new Date().toLocaleDateString('en-CA');
     const pageHabitsData = getWeekData(weekDate);
 
+    const filteredHabits = pageHabitsData.filter(habit => {
+      if (selectedCategory === 'Все') return true;
+      if (selectedCategory === 'Без категории') return !habit.category_name;
+      return habit.category_name === selectedCategory;
+    });
+
+    const groupedHabits = filteredHabits.reduce((acc, habit) => {
+      const categoryKey = habit.category_name || 'Без категории';
+      if (!acc[categoryKey]) acc[categoryKey] = [];
+      acc[categoryKey].push(habit);
+      return acc;
+    }, {});
+
+    const categoryOrder = selectedCategory === 'Все'
+      ? sortedCategories.map((cat) => cat.name).filter((name) => name !== 'Все')
+      : [selectedCategory];
+
+    const orderedCategories = [
+      ...new Set([
+        ...categoryOrder,
+        ...Object.keys(groupedHabits)
+      ])
+    ].filter((name) => name !== 'Все');
+
+    // Calculate today's completion for selected category
+    const selectedCategoryTodayCompleted = filteredHabits.reduce((count, habit) => {
+      const status = habit.statuses?.find(s => s && s.date === todayStr);
+      return (status && status.is_done && !status.is_restored) ? count + 1 : count;
+    }, 0);
+    const selectedCategoryTotal = filteredHabits.length;
+    const isSelectedCategoryComplete = selectedCategoryTodayCompleted === selectedCategoryTotal && selectedCategoryTotal > 0;
+
     return (
       <div className="habits-container">
+        {selectedCategory !== 'Все' && selectedCategoryTotal > 0 && (
+          <div className="top-right-counter">
+            <span className="counter-text">{selectedCategoryTodayCompleted}/{selectedCategoryTotal}</span>
+            {isSelectedCategoryComplete && (
+              <span className="counter-checkmark">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <path d="M15 4.5L6.75 12.75L3 9" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
+            )}
+          </div>
+        )}
         <div className="days-header">
           <div className="days-cols">
             {WEEK_DAYS.map((day, index) => {
@@ -601,9 +1137,17 @@ const App = () => {
               const isTodayCol = columnDateStr === todayStr;
               const isMonthStart = index > 0 && columnDate.getDate() === 1;
 
+              // Count completed (non-restored) habits for this day
+              const completedCount = filteredHabits.reduce((count, habit) => {
+                const status = habit.statuses?.find(s => s && s.date === columnDateStr);
+                return (status && status.is_done && !status.is_restored) ? count + 1 : count;
+              }, 0);
+              const totalHabits = filteredHabits.length;
+
               return (
                 <React.Fragment key={day}>
                   <div className={`grid-col day-col ${isTodayCol ? (highlightWeekToday ? 'today highlight' : 'today') : ''} ${isMonthStart ? 'month-start' : ''}`}>
+                    <div className="day-completion-count">{completedCount}/{totalHabits}</div>
                     <div className="day-name">{day}</div>
                     <div className="day-number">{columnDate.getDate()}</div>
                   </div>
@@ -612,203 +1156,268 @@ const App = () => {
             })}
           </div>
           <div className="days-placeholder-end header-counts-container">
-            <div className="header-count-badge weekly">{t('week').substring(0, 3).toUpperCase()}</div>
-            <div className="header-count-badge monthly">{t('month').substring(0, 3).toUpperCase()}</div>
+            <div className={`header-count-badge weekly ${currentWeekDate === getMondayString() ? 'current-week' : ''}`}>{language === 'ru' ? 'НЕД' : t('week').substring(0, 3).toUpperCase()} {getWeekNumber(currentWeekDate)}</div>
+            <div className="header-count-badge monthly">{language === 'ru' ? 'МЕС' : t('month').substring(0, 3).toUpperCase()}</div>
+            <div className="header-count-badge target">{language === 'ru' ? 'ЦЕЛЬ' : 'TGT'}</div>
           </div>
         </div>
 
-        {pageHabitsData.filter(habit => {
-          if (selectedCategory === 'Все') return true;
-          if (selectedCategory === 'Без категории') return !habit.category_name;
-          return habit.category_name === selectedCategory;
-        }).map((habit) => {
-          const weeklyCount = getHabitCount(habit);
-          const weeklyAward = getWeeklyAward(weeklyCount);
-          const statuses = habit.statuses || [];
+        {orderedCategories.length === 0 && (
+          <div className="no-habits-msg">{t('noHabitsInCategory')}</div>
+        )}
 
-          const getStreakInfo = (stats, habit) => {
-            let lastMark = -1;
-            if (!stats || !Array.isArray(stats)) return { lastMark: -1, isLastMarkInStreak: false };
+        {orderedCategories.map((categoryKey) => {
+          const habits = groupedHabits[categoryKey] || [];
+          if (!habits.length) return null;
+          const isCollapsed = !!collapsedCategories[categoryKey];
 
-            for (let i = stats.length - 1; i >= 0; i--) {
-              if (stats[i] && stats[i].is_done) {
-                lastMark = i;
-                break;
-              }
-            }
+          // Count habits with at least one completion (not restored) this week
+          const completedHabitsCount = habits.reduce((count, habit) => {
+            const hasCompletion = habit.statuses?.some(s => s && s.is_done && !s.is_restored);
+            return hasCompletion ? count + 1 : count;
+          }, 0);
 
-            let isLastMarkInStreak = false;
-            if (lastMark >= 1) {
-              isLastMarkInStreak = (stats[lastMark].is_done && !stats[lastMark].is_restored) &&
-                (stats[lastMark - 1].is_done && !stats[lastMark - 1].is_restored);
-            } else if (lastMark === 0) {
-              isLastMarkInStreak = (stats[0].is_done && !stats[0].is_restored) && habit.prev_week_sun_done;
-            } else if (lastMark === -1) {
-              isLastMarkInStreak = habit.prev_week_sun_done && habit.prev_week_sat_done;
-            }
-
-            const today = new Date();
-            const baseDate = new Date(currentWeekDate);
-            const displayedWeekStarts = baseDate;
-            const nextWeekStarts = new Date(baseDate);
-            nextWeekStarts.setDate(baseDate.getDate() + 7);
-
-            let comparisonIndex = -1;
-            if (today >= displayedWeekStarts && today < nextWeekStarts) {
-              const day = today.getDay();
-              comparisonIndex = day === 0 ? 6 : day - 1;
-            } else if (today >= nextWeekStarts) {
-              comparisonIndex = 6;
-            }
-
-            if (comparisonIndex !== -1 && (comparisonIndex - lastMark) > 2) {
-              isLastMarkInStreak = false;
-            }
-
-            return { lastMark, isLastMarkInStreak };
-          };
-
-          const { lastMark, isLastMarkInStreak } = getStreakInfo(statuses, habit);
+          // Count habits completed today (not restored)
+          const todayCompletedCount = habits.reduce((count, habit) => {
+            const status = habit.statuses?.find(s => s && s.date === todayStr);
+            return (status && status.is_done && !status.is_restored) ? count + 1 : count;
+          }, 0);
+          const isTodayComplete = todayCompletedCount === habits.length && habits.length > 0;
 
           return (
-            <div key={habit.id} className="habit-row">
-              <div className="habit-name">
-                <span className="habit-text">{habit.name}</span>
-                {(habit.latest_comment || habit.latest_photo) && (
-                  <div className="habit-meta-row">
+            <div key={categoryKey} className={`category-group ${isCollapsed ? 'collapsed' : ''}`}>
+              <div className="category-group-header">
+                <button
+                  type="button"
+                  className="category-collapse-btn"
+                  onClick={() => toggleCategoryCollapse(categoryKey)}
+                  aria-label={isCollapsed ? t('expand') : t('collapse')}
+                >
+                  {isCollapsed ? '▶' : '▼'}
+                </button>
+                <div className="category-group-title">
+                  {getCategoryDisplayName(categoryKey)}
+                </div>
+                <div className="category-progress-cubes">
+                  {habits.map((habit, index) => {
+                    const status = habit.statuses?.find(s => s && s.date === todayStr);
+                    const isCompleted = status && status.is_done && !status.is_restored;
+                    return (
+                      <div key={habit.id} className={`progress-cube ${isCompleted ? 'filled' : 'empty'}`}></div>
+                    );
+                  })}
+                  {isTodayComplete && (
+                    <span className="category-checkmark">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M13.5 4.5L6 12L2.5 8.5" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </span>
+                  )}
+                </div>
+                <div className="category-habit-count">{todayCompletedCount}/{habits.length}</div>
+              </div>
+
+              {!isCollapsed && habits.map((habit) => {
+                const weeklyCount = getHabitCount(habit);
+                const weeklyAward = getWeeklyAward(weeklyCount);
+                const statuses = habit.statuses || [];
+
+                // Determine incoming streak state from previous week
+                let currentStreak = 0;
+                let consecutiveMissed = 0;
+                let activeStreak = false;
+                const dMinus3 = habit.prev_week_fri_done;
+                const dMinus2 = habit.prev_week_sat_done;
+                const dMinus1 = habit.prev_week_sun_done;
+
+                // Initialize state based on the end of the previous week
+                if (dMinus1 && dMinus2) {
+                  activeStreak = true;
+                  currentStreak = 2;
+                  consecutiveMissed = 0;
+                } else if (dMinus2 && dMinus3 && !dMinus1) {
+                  activeStreak = true;
+                  currentStreak = 2; // Was 2+, now 1 miss
+                  consecutiveMissed = 1;
+                } else if (dMinus1) {
+                  currentStreak = 1;
+                  consecutiveMissed = 0;
+                } else {
+                  consecutiveMissed = (dMinus2 ? 1 : 2);
+                }
+
+                // Precalculate dots for the current week
+                const dots = new Array(7).fill('');
+                WEEK_DAYS.forEach((_, index) => {
+                  const baseDate = new Date(currentWeekDate);
+                  const dayOfWeek = baseDate.getDay();
+                  const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                  const slotDate = new Date(baseDate);
+                  slotDate.setDate(baseDate.getDate() + (index - currentDayIndex));
+                  const slotDateStr = slotDate.toLocaleDateString('en-CA');
+                  
+                  const status = statuses.find(s => s && s.date === slotDateStr);
+                  const isDone = status ? status.is_done : false;
+                  const isFuture = slotDateStr > todayStr;
+
+                  if (isDone) {
+                    currentStreak++;
+                    consecutiveMissed = 0;
+                    if (currentStreak >= 2) activeStreak = true;
+                  } else {
+                    currentStreak = 0;
+                    // Only count misses if the day is not in the future
+                    if (!isFuture) {
+                      consecutiveMissed++;
+                      if (consecutiveMissed >= 2) {
+                        activeStreak = false;
+                      }
+                    }
+                  }
+                  
+                  // If streak is active, show dots on all empty boxes (past, present, or future)
+                  if (activeStreak && !isDone) {
+                    dots[index] = 'has-dot-1';
+                  }
+                });
+
+                return (
+                  <div key={habit.id} className="habit-row">
+                    <div className="habit-name">
+                      <span className="habit-text">
+                        {habit.name}
+                        {weeklyAward && (
+                          <span className="name-streak">
+                            {' '}{weeklyCount === 3 ? '⚡' : 
+                                 weeklyCount === 4 ? '⚡⚡' : 
+                                 weeklyCount === 5 ? '⭐' : 
+                                 weeklyCount === 6 ? '⭐⭐' : 
+                                 weeklyAward}
+                            {((weeklyAward === '👑' && habit.crown_streak > 1) || (weeklyAward !== '👑' && habit.weekly_award_streak > 1)) && (
+                              ` x${weeklyAward === '👑' ? habit.crown_streak : habit.weekly_award_streak}`
+                            )}
+                          </span>
+                        )}
+                      </span>
+                    </div>
                     {habit.latest_comment && (
-                      <div
-                        className="habit-latest-comment"
-                        title={habit.latest_comment}
+                      <div 
+                        className="habit-note-container"
                         onClick={() => {
                           const d = habit.latest_comment_details;
                           if (d) {
                             const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow);
+                            openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, d.is_restored);
                           }
                         }}
-                        style={{ cursor: 'pointer' }}
                       >
-                        <span className="comment-indicator-circle"></span>
-                        <span className="comment-text">{habit.latest_comment}</span>
+                        <div className="habit-note-box">
+                          <span className="habit-note-label">{t('comment')}:</span>
+                          <span className="habit-note-text">{habit.latest_comment}</span>
+                        </div>
                       </div>
                     )}
-                    {habit.latest_photo && (
-                      <img
-                        src={habit.latest_photo}
-                        alt=""
-                        className="habit-thumbnail"
-                        onClick={() => setLightboxUrl(habit.latest_photo)}
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="habit-row-content">
-                <div className="habit-checks">
-                  {WEEK_DAYS.map((_, index) => {
-                    const baseDate = new Date(currentWeekDate);
-                    const dayOfWeek = baseDate.getDay();
-                    const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                    const diff = index - currentDayIndex;
+                    <div className="habit-row-content">
+                      <div className="habit-checks">
+                        {WEEK_DAYS.map((_, index) => {
+                          const baseDate = new Date(currentWeekDate);
+                          const dayOfWeek = baseDate.getDay();
+                          const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                          const diff = index - currentDayIndex;
 
-                    const slotDate = new Date(baseDate);
-                    slotDate.setDate(baseDate.getDate() + diff);
-                    const slotDateStr = slotDate.toLocaleDateString('en-CA');
+                          const slotDate = new Date(baseDate);
+                          slotDate.setDate(baseDate.getDate() + diff);
+                          const slotDateStr = slotDate.toLocaleDateString('en-CA');
 
-                    const status = statuses.find(s => s && s.date === slotDateStr);
-                    const isDone = status ? status.is_done : false;
-                    const isRestored = status ? status.is_restored : false;
-                    const statusId = status ? status.id : null;
-                    const quantity = status ? status.quantity : null;
+                          const status = statuses.find(s => s && s.date === slotDateStr);
+                          const isDone = status ? status.is_done : false;
+                          const isRestored = status ? status.is_restored : false;
+                          const statusId = status ? status.id : null;
+                          const quantity = status ? status.quantity : null;
 
-                    const isToday = slotDateStr === todayStr;
-                    const isPast = slotDateStr < todayStr;
-                    const isFuture = slotDateStr > todayStr;
-                    const isMissed = isPast && !isDone;
-                    const hasComment = status && status.comment;
-                    const hasPhoto = status && status.photo;
-                    const isDisabled = isFuture;
-                    const showDotClass = (!isDone && isLastMarkInStreak && index > lastMark) ? 'has-dot-1' : '';
-                    const isMonthStart = index > 0 && slotDate.getDate() === 1;
+                          const isToday = slotDateStr === todayStr;
+                          const isPast = slotDateStr < todayStr;
+                          const isFuture = slotDateStr > todayStr;
+                          const isMissed = isPast && !isDone;
+                          const hasComment = status && status.comment;
+                          const hasPhoto = status && status.photo;
+                          const isBeforeCreation = habit.start_date && slotDateStr < habit.start_date;
+                          const isDisabled = isFuture;
+                          const showDotClass = dots[index];
+                          const isMonthStart = index > 0 && slotDate.getDate() === 1;
 
-                    const checkBoxBtn = (
-                      <button
-                        className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${hasPhoto ? 'has-photo' : ''} ${showDotClass}`}
-                        onClick={() => {
-                          if (!isDisabled && !longPressTimer) {
-                            toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
-                          }
-                        }}
-                        onMouseDown={() => {
-                          const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                          !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
-                        }}
-                        onMouseUp={handleLongPressEnd}
-                        onMouseLeave={handleLongPressEnd}
-                        onTouchStart={() => {
-                          const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                          !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
-                        }}
-                        onTouchMove={handleLongPressEnd}
-                        onTouchEnd={handleLongPressEnd}
-                        disabled={isDisabled}
-                      >
-                        {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
-                        {hasComment && <span className="attachment-indicator"></span>}
-                        {hasPhoto && <span className="photo-indicator"></span>}
-                      </button>
-                    );
+                          const checkBoxBtn = (
+                            <button
+                              className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${showDotClass} ${isBeforeCreation ? 'before-creation' : ''}`}
+                              onClick={() => {
+                                if (!isDisabled && !longPressTimer) {
+                                  toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
+                                }
+                              }}
+                              onMouseDown={() => {
+                                const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
+                              }}
+                              onMouseUp={handleLongPressEnd}
+                              onMouseLeave={handleLongPressEnd}
+                              onTouchStart={() => {
+                                const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
+                              }}
+                              onTouchMove={handleLongPressEnd}
+                              onTouchEnd={handleLongPressEnd}
+                              disabled={isDisabled}
+                            >
+                              {isDone && (quantity !== null && quantity !== undefined) && <span className="quantity-display">{quantity}</span>}
+                              {hasComment && <span className="attachment-indicator"></span>}
+                            </button>
+                          );
 
-                    return (
-                      <div key={slotDateStr} className={`grid-col ${isMonthStart ? 'month-start' : ''}`}>
-                        {checkBoxBtn}
+                          return (
+                            <div key={slotDateStr} className={`grid-col ${isMonthStart ? 'month-start' : ''}`}>
+                              {checkBoxBtn}
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                </div>
-                <div className="habit-counts-wrapper">
-                  <div className="habit-count-container">
-                    <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''} ${weeklyCount === 3 ? 'has-single-lightning' : ''} ${weeklyCount === 4 ? 'has-double-lightning' : ''} ${weeklyCount === 5 ? 'has-single-star' : ''} ${weeklyCount === 6 ? 'has-double-star' : ''}`}>
-                      {weeklyAward === '👑' && (
-                        <span className="crown-top">👑</span>
-                      )}
-                      <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''} ${weeklyCount >= 7 ? 'shifted-down' : ''}`}>{weeklyCount}</span>
-                      {weeklyAward && weeklyAward.includes('⚡') && (
-                        weeklyCount >= 4 ? (
-                          <div className="lightning-double">
-                            <span className="lightning-item lightning-left">⚡</span>
-                            <span className="lightning-item lightning-right">⚡</span>
+                      <div className="habit-counts-wrapper">
+                        <div className="habit-count-container">
+                          <div className="habit-count-row">
+                            <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''} ${weeklyCount === 3 ? 'has-single-lightning' : ''} ${weeklyCount === 4 ? 'has-double-lightning' : ''} ${weeklyCount === 5 ? 'has-single-star' : ''} ${weeklyCount === 6 ? 'has-double-star' : ''}`}>
+                              {((weeklyCount === 4 && weeklyAward.includes('⚡')) || (weeklyCount === 6 && weeklyAward.includes('⭐'))) && (
+                                <span className="award-side award-left">{weeklyCount === 4 ? '⚡' : '⭐'}</span>
+                              )}
+
+                              <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''}`}>
+                                {weeklyCount}
+                              </span>
+                              {weeklyAward && weeklyAward !== '👑' && (
+                                <span className="award-side award-right">
+                                  {weeklyCount === 4 ? '⚡' : weeklyCount === 6 ? '⭐' : weeklyAward}
+                                </span>
+                              )}
+                              {weeklyAward === '👑' && (
+                                <span className="crown-right">👑</span>
+                              )}
+                            </div>
+                            <div className="habit-count monthly">{habit.monthly_total || 0}</div>
+                            <div className={`habit-count target green-target ${!habit.use_target ? 'invisible' : ''}`}>
+                              {habit.use_target ? (habit.completion_target || 0) : ''}
+                            </div>
                           </div>
-                        ) : (
-                          <span className="lightning-item lightning-single">⚡</span>
-                        )
-                      )}
-                      {weeklyAward && weeklyAward.includes('⭐') && (
-                        weeklyCount >= 6 ? (
-                          <div className="star-double">
-                            <span className="star-item star-left">⭐</span>
-                            <span className="star-item star-right">⭐</span>
+                          <div className="habit-count-row">
+                            <div className="habit-count-overflow weekly">{habit.weekly_overflow || 0}</div>
+                            <div className="habit-count-overflow monthly">{habit.monthly_overflow || 0}</div>
+                            <div className={`habit-count-overflow target purple-target ${!habit.use_target ? 'invisible' : ''}`}>
+                              {habit.use_target ? (habit.quantity_target || 0) : ''}
+                            </div>
                           </div>
-                        ) : (
-                          <span className="star-item star-single">⭐</span>
-                        )
-                      )}
-                    </div>
-                    <div className="habit-count monthly">
-                      <span className="habit-count-number">{habit.monthly_total || 0}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="habit-overflow-container">
-                    {(habit.weekly_overflow > 0) && (
-                      <div className="habit-count-overflow weekly">{habit.weekly_overflow}</div>
-                    )}
-                    {(habit.monthly_overflow > 0) && (
-                      <div className="habit-count-overflow monthly">{habit.monthly_overflow}</div>
-                    )}
-                  </div>
-                </div>
-              </div>
+                );
+              })}
             </div>
           );
         })}
@@ -863,7 +1472,7 @@ const App = () => {
     }
 
     const preventDefault = (e) => {
-      if (isTouchDraggingInProgress.current && e.cancelable) {
+      if (isHabitTouchDragging.current && e.cancelable) {
         e.preventDefault();
       }
     };
@@ -927,135 +1536,103 @@ const App = () => {
 
 
     try {
-      const response = await fetch('/api/v1/categories/', {
-        method: 'POST',
+      const newCat = await storageService.saveCategory(storageMode, { name: newCategoryName.trim() }, {
         headers: {
-          'Content-Type': 'application/json',
           'X-CSRFToken': getCookie('csrftoken')
         },
-        credentials: 'include',
-        body: JSON.stringify({ name: newCategoryName.trim() })
+        credentials: 'include'
       });
 
-      if (response.ok) {
-        const newCat = await response.json();
-        setNewCategoryName('');
-        setShowAddCategory(false);
-        setShowCreateCategoryModal(false);
-        await fetchCategories();
-        if (showEditModal && editingHabit) {
-          setEditingHabit({ ...editingHabit, category: newCat.id.toString() });
-        } else {
-          setNewHabitCategory(newCat.id.toString());
-        }
+      setNewCategoryName('');
+      setShowAddCategory(false);
+      setShowCreateCategoryModal(false);
+      await fetchCategories();
+      if (showEditModal && editingHabit) {
+        setEditingHabit({ ...editingHabit, category: newCat.id.toString() });
       } else {
-        const err = await response.json();
-        const errorMessage = err.name ? err.name[0] : (err.detail || t('categoryCreateError'));
-
-        setCreateError(errorMessage);
+        setNewHabitCategory(newCat.id.toString());
       }
     } catch (error) {
       console.error('Error creating category:', error);
+      setCreateError(t('categoryCreateError'));
     }
   };
 
   const handleUpdateCategory = async (id, newName) => {
     if (!newName.trim()) return;
     try {
-      const response = await fetch(`/api/v1/categories/${id}/`, {
-        method: 'PATCH',
+      await storageService.saveCategory(storageMode, { id, name: newName.trim() }, {
         headers: {
-          'Content-Type': 'application/json',
           'X-CSRFToken': getCookie('csrftoken')
         },
-        credentials: 'include',
-        body: JSON.stringify({ name: newName.trim() })
+        credentials: 'include'
       });
 
-      if (response.ok) {
-        setEditingCategoryId(null);
-        await fetchCategories();
-        await fetchHabits(); // Refresh habits to pick up name changes if cached
-      } else {
-        const err = await response.json();
-        alert(err.name ? err.name[0] : t('categoryUpdateError'));
-
-      }
+      setEditingCategoryId(null);
+      await fetchCategories();
+      await fetchHabits(); // Refresh habits to pick up name changes if cached
     } catch (error) {
       console.error('Error updating category:', error);
+      alert(t('categoryUpdateError'));
     }
   };
 
   const handleDeleteCategory = async (id) => {
     if (!window.confirm(t('categoryDeleteConfirm'))) {
-
       return;
     }
     try {
-      const response = await fetch(`/api/v1/categories/${id}/`, {
-        method: 'DELETE',
+      await storageService.deleteCategory(storageMode, id, {
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include'
       });
 
-      if (response.ok) {
-        await fetchCategories();
-        await fetchArchivedCategories();
-        await fetchHabits(); // Habits category will be updated to null
-      } else {
-        alert(t('categoryDeleteError'));
-
-      }
+      await fetchCategories();
+      await fetchArchivedCategories();
+      await fetchHabits(); // Habits category will be updated to null
     } catch (error) {
       console.error('Error deleting category:', error);
+      alert(t('categoryDeleteError'));
     }
   };
 
   const handleArchiveCategory = async (id) => {
     try {
-      const response = await fetch(`/api/v1/categories/${id}/archive/`, {
-        method: 'POST',
+      await storageService.archiveCategory(storageMode, id, {
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include'
       });
 
-      if (response.ok) {
-        await fetchCategories();
-        await fetchArchivedCategories();
-        await fetchHabits();
-        await fetchArchivedHabits();
-      } else {
-        alert(t('categoryArchiveError'));
-      }
+      await fetchCategories();
+      await fetchArchivedCategories();
+      await fetchHabits();
+      await fetchArchivedHabits();
     } catch (error) {
       console.error('Error archiving category:', error);
+      alert(t('categoryArchiveError'));
     }
   };
 
   const handleUnarchiveCategory = async (id) => {
     try {
-      const response = await fetch(`/api/v1/categories/${id}/archive/`, {
-        method: 'POST',
+      await storageService.archiveCategory(storageMode, id, {
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include'
       });
 
-      if (response.ok) {
-        await fetchCategories();
-        await fetchArchivedCategories();
-        await fetchHabits();
-        await fetchArchivedHabits();
-      } else {
-        alert(t('categoryArchiveError'));
-      }
+      await fetchCategories();
+      await fetchArchivedCategories();
+      await fetchHabits();
+      await fetchArchivedHabits();
     } catch (error) {
       console.error('Error unarchiving category:', error);
+      alert(t('categoryArchiveError'));
     }
   };
 
@@ -1080,7 +1657,9 @@ const App = () => {
       const newList = [...prevList];
       const [removed] = newList.splice(draggedIndex, 1);
       newList.splice(targetIndex, 0, removed);
-      return newList;
+      
+      // Update order field to match new positions
+      return newList.map((c, index) => ({ ...c, order: index }));
     });
   };
 
@@ -1096,19 +1675,15 @@ const App = () => {
     if (e) e.preventDefault();
     
     setCategories(currentList => {
-      const reorderPayload = currentList
+      const orderedIds = currentList
         .filter(c => c.id !== 'all' && c.id !== 'none')
-        .map((c, index) => ({ id: c.id, order: index }));
+        .map(c => c.id);
         
-      const csrf = getCookie('csrftoken');
-      fetch('/api/v1/categories/reorder/', {
-        method: 'POST',
+      storageService.reorderCategories(storageMode, orderedIds, {
         headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf
+          'X-CSRFToken': getCookie('csrftoken')
         },
-        credentials: 'include',
-        body: JSON.stringify(reorderPayload)
+        credentials: 'include'
       }).catch(error => {
         console.error('Error saving category order:', error);
         fetchCategories(); // revert on error
@@ -1128,61 +1703,43 @@ const App = () => {
 
   const handleCategoryTouchStart = (e, catId) => {
     if (e.touches.length > 1) return;
-
+    // e.preventDefault() not needed here since touch-action: none is on drag-handle
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
-    isTouchDraggingInProgress.current = false;
-
-    reorderLongPressTimer.current = setTimeout(() => {
-      setDraggedCategoryId(catId);
-      isTouchDraggingInProgress.current = true;
-      if (navigator.vibrate) navigator.vibrate(50);
-    }, 200);
+    setDraggedCategoryId(catId);
+    isCategoryTouchDragging.current = true;
+    if (navigator.vibrate) navigator.vibrate(50);
   };
 
   const handleCategoryTouchMove = (e) => {
-    if (!reorderLongPressTimer.current && !isTouchDraggingInProgress.current) return;
+    if (!isCategoryTouchDragging.current) return;
+    if (e.cancelable) e.preventDefault();
 
     const touch = e.touches[0];
-    const distX = Math.abs(touch.clientX - touchStartPos.current.x);
-    const distY = Math.abs(touch.clientY - touchStartPos.current.y);
 
-    if (!isTouchDraggingInProgress.current && (distX > 10 || distY > 10)) {
-      if (reorderLongPressTimer.current) {
-        clearTimeout(reorderLongPressTimer.current);
-        reorderLongPressTimer.current = null;
-      }
-      return;
-    }
+    // Hide dragged element so elementFromPoint can see through it
+    const draggedEl = document.querySelector(`.manage-category-item[data-category-id="${draggedCategoryId}"]`);
+    if (draggedEl) draggedEl.style.pointerEvents = 'none';
 
-    if (isTouchDraggingInProgress.current) {
-      const draggedEl = document.querySelector(`.manage-category-item[data-category-id="${draggedCategoryId}"]`);
-      if (draggedEl) draggedEl.style.pointerEvents = 'none';
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
 
-      const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (draggedEl) draggedEl.style.pointerEvents = '';
 
-      if (draggedEl) draggedEl.style.pointerEvents = '';
-
-      const habitItem = element?.closest('.manage-category-item');
-
-      if (habitItem) {
-        const targetId = parseInt(habitItem.getAttribute('data-category-id'));
-        if (targetId && targetId !== draggedCategoryId) {
-          liveSwapCategories(draggedCategoryId, targetId);
-          if (navigator.vibrate) navigator.vibrate(20);
-        }
+    const categoryItem = element?.closest('.manage-category-item');
+    if (categoryItem) {
+      const targetId = parseInt(categoryItem.getAttribute('data-category-id'));
+      if (targetId && targetId !== draggedCategoryId) {
+        liveSwapCategories(draggedCategoryId, targetId);
+        if (navigator.vibrate) navigator.vibrate(20);
       }
     }
   };
 
   const handleCategoryTouchEnd = (e) => {
-    clearTimeout(reorderLongPressTimer.current);
-    reorderLongPressTimer.current = null;
-
-    if (isTouchDraggingInProgress.current) {
-      handleCategoryDrop(null, null); 
+    if (isCategoryTouchDragging.current) {
+      handleCategoryDrop(null, null);
       setDraggedCategoryId(null);
-      isTouchDraggingInProgress.current = false;
+      isCategoryTouchDragging.current = false;
     }
   };
 
@@ -1219,80 +1776,49 @@ const App = () => {
     setHabitsData(updatedHabits);
 
     try {
-      let response;
-      const payload = effectiveQuantity !== null
-        ? { is_done: isMarkingDone, quantity: effectiveQuantity, is_restored: isPastDate && isMarkingDone }
-        : { is_done: isMarkingDone, is_restored: isPastDate && isMarkingDone };
+      const payload = {
+        habit_id: habitId,
+        date: dayDate,
+        is_done: isMarkingDone,
+        is_restored: isPastDate && isMarkingDone,
+        quantity: effectiveQuantity !== null ? effectiveQuantity : undefined
+      };
 
-      const csrf = getCookie('csrftoken');
-      console.log('ToggleHabit: habitId:', habitId, 'dateId:', dateId, 'payload:', payload, 'csrf:', csrf);
+      await storageService.saveStatus(storageMode, payload, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
 
-      if (dateId) {
-        // Toggle existing date entry
-        response = await fetch(`/api/v1/date/${dateId}/`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrf
-          },
-          credentials: 'include',
-          body: JSON.stringify(payload)
-        });
-      } else {
-        // Create new date entry
-        response = await fetch(`/api/v1/dates/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrf
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            habit: habitId,
-            habit_date: dayDate,
-            is_done: true,
-            is_restored: isPastDate,
-            ...(effectiveQuantity !== null && { quantity: effectiveQuantity })
-          })
-        });
-      }
-
-      if (!response.ok) {
-        console.error('ToggleHabit response error:', response.status, response.statusText);
-        throw new Error(`API error ${response.status}`);
-      }
-
-      // Refetch to get correct IDs and sync state
+      // Refetch to sync state
       await fetchHabits();
-
     } catch (error) {
       console.error('Error toggling habit:', error);
-      fetchHabits(); // Sync back to server state
+      fetchHabits(); // Sync back
     }
   };
 
-  const getDefaultModalQuantity = (currentStatus, isRestored, dayDate) => {
-    const todayStr = new Date().toLocaleDateString('en-CA');
-    const isLightGreenTarget = currentStatus ? isRestored : (dayDate < todayStr);
-    return isLightGreenTarget ? 1 : null;
+  const getDefaultModalQuantity = (isRestored) => {
+    // Темно-зеленая (isRestored=false) -> скролл <=1 (null)
+    // Светло-зеленая (isRestored=true) -> скролл 1
+    return isRestored ? 1 : null;
   };
 
   const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
     setQuantityModalData({ habitId, habitName, dayDate, currentStatus, currentQuantity, currentComment, currentPhoto, dateId, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, currentIsRestored: isRestored });
 
-    const initialQuantity = getDefaultModalQuantity(currentStatus, isRestored, dayDate);
+    const initialQuantity = getDefaultModalQuantity(isRestored);
 
     setQuantityValue(initialQuantity);
     setCommentValue(currentComment || '');
-    setPhotoFile(null);
-    setDeletePhoto(false);
     setShowQuantityModal(true);
   };
 
   const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
     const timer = setTimeout(() => {
       openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored);
-    }, 200); // 200ms for long press
+    }, 200);
     setLongPressTimer(timer);
   };
 
@@ -1316,95 +1842,38 @@ const App = () => {
     if (!quantityModalData) return;
 
     const qty = typeof quantityValue === 'number' && quantityValue >= 1 ? quantityValue : null;
-    const { habitId, dayDate, dateId } = quantityModalData;
+    const { habitId, dayDate } = quantityModalData;
 
     try {
-      let response;
-      const csrf = getCookie('csrftoken');
-      console.log('EntrySubmit: data:', { habitId, dayDate, dateId, qty, commentValue }, 'csrf:', csrf);
+      const payload = {
+        habit_id: habitId,
+        date: dayDate,
+        is_done: true,
+        is_restored: isRestored,
+        quantity: qty,
+        comment: commentValue
+      };
 
-      if (photoFile) {
-        const formData = new FormData();
-        formData.append('is_done', 'true');
-        formData.append('is_restored', isRestored ? 'true' : 'false');
-        if (qty !== null) formData.append('quantity', qty);
-        formData.append('comment', commentValue);
-        formData.append('photo', photoFile);
+      await storageService.saveStatus(storageMode, payload, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
 
-        if (dateId) {
-          response = await fetch(`/api/v1/date/${dateId}/`, {
-            method: 'PATCH',
-            headers: { 'X-CSRFToken': csrf },
-            credentials: 'include',
-            body: formData
-          });
-        } else {
-          formData.append('habit', habitId);
-          formData.append('habit_date', dayDate);
-          response = await fetch(`/api/v1/dates/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrf },
-            credentials: 'include',
-            body: formData
-          });
-        }
-      } else {
-        const payload = {
-          is_done: true,
-          is_restored: isRestored,
-          quantity: qty,
-          comment: commentValue,
-          ...(deletePhoto && { photo: null })
-        };
-
-        if (dateId) {
-          response = await fetch(`/api/v1/date/${dateId}/`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': csrf
-            },
-            credentials: 'include',
-            body: JSON.stringify(payload)
-          });
-        } else {
-          payload.habit = habitId;
-          payload.habit_date = dayDate;
-          response = await fetch(`/api/v1/dates/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': csrf
-            },
-            credentials: 'include',
-            body: JSON.stringify(payload)
-          });
-        }
-      }
-
-      if (!response.ok) {
-        console.error('EntrySubmit response error:', response.status, response.statusText);
-        const errData = await response.json().catch(() => ({}));
-        console.error('Error detail:', errData);
-        throw new Error(`API error ${response.status}`);
-      }
       setShowQuantityModal(false);
       setQuantityModalData(null);
       setQuantityValue(null);
       setCommentValue('');
-      setPhotoFile(null);
       await fetchHabits();
     } catch (error) {
       console.error('Error saving data:', error);
       alert(`${t('saveDataError')}: ${error.message}`);
-
     } finally {
       setShowQuantityModal(false);
       setQuantityModalData(null);
       setQuantityValue(null);
       setCommentValue('');
-      setPhotoFile(null);
-      setDeletePhoto(false);
     }
   };
 
@@ -1428,29 +1897,68 @@ const App = () => {
     return null;
   };
 
-  // Sort and filter categories
-  const sortedCategories = React.useMemo(() => {
-    const counts = habitsData.reduce((acc, habit) => {
-      acc[habit.category_name] = (acc[habit.category_name] || 0) + 1;
-      return acc;
-    }, {});
+  const getCategoryDisplayName = (categoryName) => {
+    if (categoryName === 'Все') return t('allCategories');
+    if (categoryName === 'Без категории') return t('noCategory');
+    return categoryName || t('noCategory');
+  };
 
-    const sorted = [...categories].filter(c => c.id !== 'all' && c.name !== 'Все').sort((a, b) => {
-      const countA = counts[a.name] || 0;
-      const countB = counts[b.name] || 0;
-      return countB - countA;
-    });
+  // Get week number of the year (ISO week date)
+  const getWeekNumber = (dateInput) => {
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    if (!(date instanceof Date) || isNaN(date)) return 1;
+    
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  };
+
+  const toggleCategoryCollapse = (categoryName) => {
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [categoryName]: !prev[categoryName]
+    }));
+  };
+
+  // Эмоджи в зависимости от дня недели для кнопки "Сегодня"
+  const getTodayEmoji = () => {
+    const day = new Date().getDay();
+    const emojis = ['😌', '😫', '😐', '🐪', '🙂', '🎉', '😎']; // Вс, Пн, Вт, Ср, Чт, Пт, Сб
+    return emojis[day];
+  };
+
+  // Компонент иконки календаря с текущей датой
+  const CalendarIcon = () => {
+    const today = new Date();
+    const dayNum = today.getDate();
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const month = monthNames[today.getMonth()];
+
+    return (
+      <span className="calendar-icon">
+        <span className="calendar-month">{month}</span>
+        <span className="calendar-day">{dayNum}</span>
+      </span>
+    );
+  };
+
+  // Sort and filter categories by order from database
+  const sortedCategories = React.useMemo(() => {
+    // Sort by order field (from backend), default to 0 if not set
+    const sorted = [...categories]
+      .filter(c => c.id !== 'all' && c.id !== 'none')
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     const hasUncategorized = habitsData.some(h => !h.category_name);
-    const result = [{ id: 'all', name: 'Все' }];
+    const result = [{ id: 'all', name: 'Все', order: -2 }];
     if (hasUncategorized) {
-      result.push({ id: 'none', name: 'Без категории' });
+      result.push({ id: 'none', name: 'Без категории', order: -1 });
     }
 
     return [...result, ...sorted];
   }, [categories, habitsData]);
-
-
 
   // Authentication handlers
   const handleLogin = (userData) => {
@@ -1499,29 +2007,22 @@ const App = () => {
 
 
     try {
-      const csrf = getCookie('csrftoken');
-      console.log('CreateHabit: data:', { name: newHabitName.trim(), category: newHabitCategory }, 'csrf:', csrf);
+      const payload = {
+        name: newHabitName.trim(),
+        category: newHabitCategory === "" ? null : newHabitCategory,
+        target_type: newHabitTargetType,
+        start_date: newHabitStartDate,
+        use_target: newHabitUseTarget,
+        completion_target: newHabitUseTarget ? (newHabitCompletionTarget !== '' ? parseInt(newHabitCompletionTarget, 10) : getDaysInCurrentMonth()) : null,
+        quantity_target: newHabitUseTarget && newHabitQuantityTarget !== '' ? parseInt(newHabitQuantityTarget, 10) : null
+      };
 
-      const response = await fetch('/api/v1/habits/', {
-        method: 'POST',
+      await storageService.saveHabit(storageMode, payload, {
         headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf
+          'X-CSRFToken': getCookie('csrftoken')
         },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: newHabitName.trim(),
-          category: newHabitCategory === "" ? null : newHabitCategory
-        })
+        credentials: 'include'
       });
-
-      if (!response.ok) {
-        console.error('CreateHabit response error:', response.status, response.statusText);
-        const errData = await response.json().catch(() => ({}));
-        console.error('Error detail:', errData);
-        throw new Error(errData.detail || t('habitCreateError'));
-
-      }
 
       // Reset form and close modal
       setNewHabitName('');
@@ -1541,40 +2042,29 @@ const App = () => {
 
 
     try {
-      const csrf = getCookie('csrftoken');
-      console.log('DeleteHabit: id:', habitId, 'csrf:', csrf);
-
-      const response = await fetch(`/api/v1/habits/${habitId}/`, {
-        method: 'DELETE',
+      await storageService.deleteHabit(storageMode, habitId, {
         headers: {
-          'X-CSRFToken': csrf
+          'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include'
       });
 
-      if (response.ok) {
-        await fetchHabits();
-        await fetchArchivedHabits();
-      } else {
-        alert(t('habitDeleteError'));
-
-      }
+      await fetchHabits();
+      await fetchArchivedHabits();
     } catch (error) {
       console.error('Error deleting habit:', error);
+      alert(t('habitDeleteError'));
     }
   };
 
   const handleArchiveHabit = async (habitId) => {
     try {
-      const response = await fetch(`/api/v1/habits/${habitId}/archive/`, {
-        method: 'POST',
+      await storageService.saveHabit(storageMode, { id: habitId, is_archived: true }, {
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
         credentials: 'include'
       });
-      if (response.ok) {
-        await fetchHabits();
-        await fetchArchivedHabits();
-      }
+      await fetchHabits();
+      await fetchArchivedHabits();
     } catch (error) {
       console.error('Error archiving habit:', error);
     }
@@ -1582,15 +2072,12 @@ const App = () => {
 
   const handleUnarchiveHabit = async (habitId) => {
     try {
-      const response = await fetch(`/api/v1/habits/${habitId}/archive/`, {
-        method: 'POST',
+      await storageService.saveHabit(storageMode, { id: habitId, is_archived: false }, {
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
         credentials: 'include'
       });
-      if (response.ok) {
-        await fetchHabits();
-        await fetchArchivedHabits();
-      }
+      await fetchHabits();
+      await fetchArchivedHabits();
     } catch (error) {
       console.error('Error unarchiving habit:', error);
     }
@@ -1637,18 +2124,13 @@ const App = () => {
 
     // We just need to sync with backend now
     setHabitsData(currentList => {
-      const reorderPayload = currentList.map((h, index) => ({ id: h.id, order: index }));
-      const csrf = getCookie('csrftoken');
-      console.log('ReorderHabits: payload:', reorderPayload, 'csrf:', csrf);
-
-      fetch('/api/v1/habits/reorder/', {
-        method: 'POST',
+      const orderedIds = currentList.map(h => h.id);
+      
+      storageService.reorderHabits(storageMode, orderedIds, {
         headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf
+          'X-CSRFToken': getCookie('csrftoken')
         },
-        credentials: 'include',
-        body: JSON.stringify(reorderPayload)
+        credentials: 'include'
       }).catch(error => {
         console.error('Error saving order:', error);
         fetchHabits(); // revert on error
@@ -1662,66 +2144,43 @@ const App = () => {
   };
 
   const handleTouchStart = (e, habitId) => {
-    // Only handle single touch
     if (e.touches.length > 1) return;
-
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
-    isTouchDraggingInProgress.current = false;
-
-    reorderLongPressTimer.current = setTimeout(() => {
-      setDraggedHabitId(habitId);
-      isTouchDraggingInProgress.current = true;
-      if (navigator.vibrate) navigator.vibrate(50);
-    }, 200);
+    setDraggedHabitId(habitId);
+    isHabitTouchDragging.current = true;
+    if (navigator.vibrate) navigator.vibrate(50);
   };
 
   const handleTouchMove = (e) => {
-    if (!reorderLongPressTimer.current && !isTouchDraggingInProgress.current) return;
+    if (!isHabitTouchDragging.current) return;
+    if (e.cancelable) e.preventDefault();
 
     const touch = e.touches[0];
-    const distX = Math.abs(touch.clientX - touchStartPos.current.x);
-    const distY = Math.abs(touch.clientY - touchStartPos.current.y);
 
-    // If moved more than 10px before long press, cancel it
-    if (!isTouchDraggingInProgress.current && (distX > 10 || distY > 10)) {
-      if (reorderLongPressTimer.current) {
-        clearTimeout(reorderLongPressTimer.current);
-        reorderLongPressTimer.current = null;
-      }
-      return;
-    }
+    // Hide dragged element so elementFromPoint can see through it
+    const draggedEl = document.querySelector(`.manage-habit-item[data-habit-id="${draggedHabitId}"]`);
+    if (draggedEl) draggedEl.style.pointerEvents = 'none';
 
-    if (isTouchDraggingInProgress.current) {
-      // Find element under touch
-      // We manually toggle pointer-events on the dragged element to "see through" it
-      const draggedEl = document.querySelector(`.manage-habit-item[data-habit-id="${draggedHabitId}"]`);
-      if (draggedEl) draggedEl.style.pointerEvents = 'none';
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
 
-      const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (draggedEl) draggedEl.style.pointerEvents = '';
 
-      if (draggedEl) draggedEl.style.pointerEvents = '';
-
-      const habitItem = element?.closest('.manage-habit-item');
-
-      if (habitItem) {
-        const targetId = parseInt(habitItem.getAttribute('data-habit-id'));
-        if (targetId && targetId !== draggedHabitId) {
-          liveSwapHabits(draggedHabitId, targetId);
-          if (navigator.vibrate) navigator.vibrate(20);
-        }
+    const habitItem = element?.closest('.manage-habit-item');
+    if (habitItem) {
+      const targetId = parseInt(habitItem.getAttribute('data-habit-id'));
+      if (targetId && targetId !== draggedHabitId) {
+        liveSwapHabits(draggedHabitId, targetId);
+        if (navigator.vibrate) navigator.vibrate(20);
       }
     }
   };
 
   const handleTouchEnd = (e) => {
-    clearTimeout(reorderLongPressTimer.current);
-    reorderLongPressTimer.current = null;
-
-    if (isTouchDraggingInProgress.current) {
-      handleDrop(null, null); // Just sync with backend
+    if (isHabitTouchDragging.current) {
+      handleDrop(null, null);
       setDraggedHabitId(null);
-      isTouchDraggingInProgress.current = false;
+      isHabitTouchDragging.current = false;
     }
   };
 
@@ -1730,37 +2189,48 @@ const App = () => {
     setDragOverHabitId(null);
   };
 
+  const handleMoveHabitToCategory = async (habitId, categoryId) => {
+    try {
+      await storageService.saveHabit(storageMode, { id: habitId, category: categoryId }, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
+      await fetchHabits();
+    } catch (error) {
+      console.error('Error moving habit:', error);
+      alert('Ошибка при перемещении привычки');
+    }
+  };
+
   const handleUpdateHabit = async (e) => {
     e.preventDefault();
     if (!editingHabit) return;
 
     try {
-      const csrf = getCookie('csrftoken');
-      console.log('UpdateHabit: data:', { name: editingHabit.name, category: editingHabit.category }, 'csrf:', csrf);
-
-      const response = await fetch(`/api/v1/habits/${editingHabit.id}/`, {
-        method: 'PATCH',
+      await storageService.saveHabit(storageMode, {
+        id: editingHabit.id,
+        name: editingHabit.name,
+        category: editingHabit.category === "" ? null : editingHabit.category,
+        target_type: editingHabit.target_type,
+        start_date: editingHabit.start_date,
+        use_target: editingHabit.use_target,
+        completion_target: editingHabit.use_target ? (editingHabit.completion_target !== '' && editingHabit.completion_target !== null ? parseInt(editingHabit.completion_target, 10) : getDaysInCurrentMonth()) : null,
+        quantity_target: editingHabit.use_target && editingHabit.quantity_target !== '' && editingHabit.quantity_target !== null ? parseInt(editingHabit.quantity_target, 10) : null
+      }, {
         headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf
+          'X-CSRFToken': getCookie('csrftoken')
         },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: editingHabit.name,
-          category: editingHabit.category === "" ? null : editingHabit.category
-        })
+        credentials: 'include'
       });
 
-      if (response.ok) {
-        setShowEditModal(false);
-        setEditingHabit(null);
-        await fetchHabits();
-      } else {
-        const err = await response.json();
-        alert(err.detail || 'Ошибка при обновлении привычки');
-      }
+      setShowEditModal(false);
+      setEditingHabit(null);
+      await fetchHabits();
     } catch (error) {
       console.error('Error updating habit:', error);
+      alert('Ошибка при обновлении привычки');
     }
   };
 
@@ -1828,47 +2298,57 @@ const App = () => {
     );
   }
 
-  // Show auth forms if not authenticated
-  if (!isAuthenticated) {
-    return showRegister ? (
-      <Register
-        onRegister={handleRegister}
-        onSwitchToLogin={() => setShowRegister(false)}
-        t={t}
-        language={language}
-      />
-    ) : (
-      <Login
-        onLogin={handleLogin}
-        onSwitchToRegister={() => setShowRegister(true)}
-        t={t}
-        language={language}
-      />
+  // Show auth forms if not authenticated AND in cloud mode
+  if (!isAuthenticated && storageMode === 'cloud') {
+    return (
+      <div className="auth-wrapper">
+        <div className="auth-storage-toggle">
+          <button 
+            className="toggle-btn local-link" 
+            onClick={() => {
+              setStorageMode('local');
+              storageService.setStorageMode('local');
+            }}
+          >
+            {t('useLocalStorage') || 'Use Local Storage'}
+          </button>
+        </div>
+        {showRegister ? (
+          <Register
+            onRegister={handleRegister}
+            onSwitchToLogin={() => setShowRegister(false)}
+            t={t}
+            language={language}
+          />
+        ) : (
+          <Login
+            onLogin={handleLogin}
+            onSwitchToRegister={() => setShowRegister(true)}
+            t={t}
+            language={language}
+          />
+        )}
+      </div>
     );
-
   }
 
   const handleGenerateReport = async (habitId, period = 'day') => {
     setIsReportLoading(true);
     setReportPeriod(period);
     try {
-      const response = await fetch(`/api/v1/habits/${habitId}/report/?period=${period}&date=${currentWeekDate}`, {
+      const data = await storageService.getReport(storageMode, habitId, {
+        period,
+        date: currentWeekDate
+      }, {
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include'
       });
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(data);
-      } else {
-        alert(t('errorLoadingReport'));
-      }
-
+      setReportData(data);
     } catch (error) {
       console.error('Error fetching report:', error);
       alert(t('errorLoadingReport'));
-
     } finally {
       setIsReportLoading(false);
     }
@@ -1878,23 +2358,19 @@ const App = () => {
     setIsReportLoading(true);
     setReportPeriod(period);
     try {
-      const response = await fetch(`/api/v1/habits/summary_report/?period=${period}&date=${currentWeekDate}`, {
+      const data = await storageService.getSummaryReport(storageMode, {
+        period,
+        date: currentWeekDate
+      }, {
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include'
       });
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(data);
-      } else {
-        alert(t('errorLoadingReport'));
-      }
-
+      setReportData(data);
     } catch (error) {
       console.error('Error fetching summary report:', error);
       alert(t('errorLoadingReport'));
-
     } finally {
       setIsReportLoading(false);
     }
@@ -1948,7 +2424,7 @@ const App = () => {
               title={t('today')}
               onClick={handleToday}
             >
-              📅 {t('today')}
+              <CalendarIcon /> {t('today')}
             </button>
           )}
 
@@ -1981,12 +2457,21 @@ const App = () => {
           )}
         </div>
 
+        {apiError && (
+          <div className="api-error-banner">
+            <span>{apiError}</span>
+            <button className="api-error-dismiss" onClick={() => setApiError('')}>×</button>
+          </div>
+        )}
 
         {activeTab !== 'Settings' && (
           <div className="date-section">
             <div className="week-navigation">
               <button className="week-nav-btn" onClick={handlePrevWeek}>&lt;</button>
-              <div className="week-range-text">{currentWeekRange()}</div>
+              <div className="week-range-text" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.2'}}>
+                <span style={{fontSize: '0.85em', fontWeight: 'bold'}}>{language === 'ru' ? 'НЕД' : t('week').substring(0, 3).toUpperCase()} {getWeekNumber(currentWeekDate)}</span>
+                <span style={{fontSize: '0.9em', opacity: 0.8}}>{currentWeekRange()}</span>
+              </div>
               <button className="week-nav-btn" onClick={handleNextWeek}>&gt;</button>
             </div>
           </div>
@@ -2000,6 +2485,7 @@ const App = () => {
             setCreateError('');
             setShowAddCategory(false);
             setNewCategoryName('');
+            setNewHabitStartDate(new Date().toISOString().split('T')[0]);
             setShowCreateModal(true);
           }}
         >
@@ -2037,6 +2523,7 @@ const App = () => {
           onTouchEnd={handleSwipeEnd}
           onTouchCancel={handleSwipeEnd}
         >
+
           <div className="week-pages" ref={weekPagesRef}>
             <div className="week-page prev-week">
               {renderWeekPage(prevWeekDate)}
@@ -2067,10 +2554,22 @@ const App = () => {
           sortedCategories={sortedCategories}
           selectedCategory={chartsSelectedCategory}
           onSelectCategory={setChartsSelectedCategory}
+          theme={theme}
+          t={t}
+          language={language}
+          storageMode={storageMode}
+        />
+
+      )}
+
+      {/* Компонент аналитики - для вкладки Аналитика */}
+      {activeTab === 'Analytics' && (
+        <Analytics
+          getCookie={getCookie}
+          theme={theme}
           t={t}
           language={language}
         />
-
       )}
 
       {/* Вкладка Настройка */}
@@ -2096,7 +2595,11 @@ const App = () => {
           </div>
 
           <div className="settings-section profile-settings">
-            <h3 className="section-title">{t('profile')}</h3>
+            <h3 className="section-title" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, profile: !collapsedSettingsSections.profile})}>
+              <span>{t('profile')}</span>
+              <span className={`collapse-icon ${collapsedSettingsSections.profile ? 'collapsed' : ''}`}>▼</span>
+            </h3>
+            {!collapsedSettingsSections.profile && (
             <div className="manage-profile-info">
               <div className="profile-info-row">
                 <span className="info-label">{t('username')}:</span>
@@ -2149,194 +2652,295 @@ const App = () => {
                 ✏️ {t('editProfile')}
               </button>
             </div>
+            )}
           </div>
 
           <div className="settings-section categories-settings">
-            <h3 className="section-title">
-              <span>{t('categories')}</span>
-              <button
-                className="add-category-btn"
-                onClick={() => setShowCreateCategoryModal(true)}
-              >
-                +
-              </button>
+            <h3 className="section-title" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, categories: !collapsedSettingsSections.categories})}>
+              <div className="section-title-left">
+                <span>{t('categories')}</span>
+                <button
+                  className="add-category-btn"
+                  onClick={(e) => { e.stopPropagation(); setShowCreateCategoryModal(true); }}
+                >
+                  +
+                </button>
+              </div>
+              <div className="section-actions">
+                <span className={`collapse-icon ${collapsedSettingsSections.categories ? 'collapsed' : ''}`}>▼</span>
+              </div>
             </h3>
 
-            <div className="manage-categories-list">
-              {categories.filter(c => c.id !== 'all').length === 0 ? (
-                <p className="no-habits-msg">{t('noCategories')}</p>
-
-              ) : (
-                categories.filter(c => c.id !== 'all').map(cat => (
-                  <div 
-                    key={cat.id} 
-                    className={`manage-category-item ${draggedCategoryId === cat.id ? 'dragging' : ''} ${dragOverCategoryId === cat.id && draggedCategoryId !== cat.id ? 'drag-over' : ''}`}
-                    draggable
-                    onDragStart={(e) => handleCategoryDragStart(e, cat.id)}
-                    onDragOver={(e) => handleCategoryDragOver(e, cat.id)}
-                    onDrop={(e) => handleCategoryDrop(e, cat.id)}
-                    onDragEnd={handleCategoryDragEnd}
-                    onTouchStart={(e) => handleCategoryTouchStart(e, cat.id)}
-                    onTouchMove={handleCategoryTouchMove}
-                    onTouchEnd={handleCategoryTouchEnd}
-                    data-category-id={cat.id}
-                  >
-                    <div className="drag-handle" title={t('dragToReorder')}>⠿</div>
-                    {editingCategoryId === cat.id ? (
-                      <div className="category-edit-row">
-                        <input
-                          type="text"
-                          className="category-edit-input"
-                          value={editingCategoryValue}
-                          onChange={(e) => setEditingCategoryValue(e.target.value)}
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleUpdateCategory(cat.id, editingCategoryValue);
-                            if (e.key === 'Escape') setEditingCategoryId(null);
-                          }}
-                        />
-                        <div className="category-edit-actions">
-                          <button
-                            className="manage-btn save-btn"
-                            onClick={() => handleUpdateCategory(cat.id, editingCategoryValue)}
-                            title={t('save')}
-
-                          >
-                            💾
-                          </button>
-                          <button
-                            className="manage-btn cancel-btn"
-                            onClick={() => setEditingCategoryId(null)}
-                            title={t('cancel')}
-
-                          >
-                            ❌
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="manage-category-info">
-                          <div className="manage-category-name">{cat.name}</div>
-                        </div>
-                        <div className="manage-category-actions">
-                          <button
-                            className="manage-btn edit-btn"
-                            onClick={() => {
-                              setEditingCategoryId(cat.id);
-                              setEditingCategoryValue(cat.name);
-                            }}
-                            title={t('rename')}
-
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            className="manage-btn archive-btn"
-                            onClick={() => handleArchiveCategory(cat.id)}
-                            title={t('archiveCategory')}
-
-                          >
-                            📦
-                          </button>
-                          <button
-                            className="manage-btn delete-btn"
-                            onClick={() => handleDeleteCategory(cat.id)}
-                            title={t('delete')}
-
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="archive-section">
-              <button
-                className="archive-toggle-btn"
-                onClick={() => setShowCategoryArchive(!showCategoryArchive)}
-              >
-                <span className="archive-toggle-icon">{showCategoryArchive ? '▲' : '▼'}</span>
-                📁 {t('archive')} ({archivedCategories.length})
-              </button>
-
-              {showCategoryArchive && (
-                <div className="archived-habits-list">
-                  {archivedCategories.length === 0 ? (
-                    <p className="no-habits-msg">{t('categoryArchiveEmpty')}</p>
+            {!collapsedSettingsSections.categories && (
+              <>
+                <div className="manage-categories-list">
+                  {categories.filter(c => c.id !== 'all').length === 0 ? (
+                    <p className="no-habits-msg">{t('noCategories')}</p>
                   ) : (
-                    archivedCategories.map(cat => (
-                      <div key={cat.id} className="archived-habit-item">
-                        <div className="manage-habit-info">
-                          <div className="manage-habit-name">{cat.name}</div>
+                    categories.filter(c => c.id !== 'all').map(cat => (
+                      <div 
+                        key={cat.id} 
+                        className={`manage-category-item ${draggedCategoryId === cat.id ? 'dragging' : ''} ${dragOverCategoryId === cat.id && draggedCategoryId !== cat.id ? 'drag-over' : ''}`}
+                        draggable
+                        onDragStart={(e) => handleCategoryDragStart(e, cat.id)}
+                        onDragOver={(e) => handleCategoryDragOver(e, cat.id)}
+                        onDrop={(e) => handleCategoryDrop(e, cat.id)}
+                        onDragEnd={handleCategoryDragEnd}
+                        data-category-id={cat.id}
+                      >
+                        <div
+                          className="drag-handle"
+                          title={t('dragToReorder')}
+                          onTouchStart={(e) => handleCategoryTouchStart(e, cat.id)}
+                          onTouchMove={handleCategoryTouchMove}
+                          onTouchEnd={handleCategoryTouchEnd}
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="9" cy="5" r="1"></circle>
+                            <circle cx="9" cy="12" r="1"></circle>
+                            <circle cx="9" cy="19" r="1"></circle>
+                            <circle cx="15" cy="5" r="1"></circle>
+                            <circle cx="15" cy="12" r="1"></circle>
+                            <circle cx="15" cy="19" r="1"></circle>
+                          </svg>
                         </div>
-                        <div className="manage-habit-actions">
-                          <button
-                            className="manage-btn unarchive-btn"
-                            onClick={() => handleUnarchiveCategory(cat.id)}
-                            title={t('unarchiveCategory')}
-                          >
-                            📤
-                          </button>
-                          <button
-                            className="manage-btn delete-btn"
-                            onClick={() => handleDeleteCategory(cat.id)}
-                            title={t('deleteForever')}
-                          >
-                            🗑️
-                          </button>
-                        </div>
+                        {editingCategoryId === cat.id ? (
+                          <div className="category-edit-row-container">
+                            <div className="category-edit-row">
+                              <input
+                                type="text"
+                                className="category-edit-input"
+                                value={editingCategoryValue}
+                                onChange={(e) => setEditingCategoryValue(e.target.value)}
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleUpdateCategory(cat.id, editingCategoryValue);
+                                  if (e.key === 'Escape') setEditingCategoryId(null);
+                                }}
+                              />
+                              <div className="category-edit-actions">
+                                <button
+                                  className="manage-btn add-habit-btn"
+                                  onClick={() => {
+                                    setSelectingForCategoryId(cat.id);
+                                    setShowSelectHabitsModal(true);
+                                  }}
+                                  title={t('addHabit')}
+                                >
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                  </svg>
+                                </button>
+                                <button
+                                  className="manage-btn save-btn"
+                                  onClick={() => handleUpdateCategory(cat.id, editingCategoryValue)}
+                                  title={t('save')}
+                                >
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                    <polyline points="7 3 7 8 15 8"></polyline>
+                                  </svg>
+                                </button>
+                                <button
+                                  className="manage-btn cancel-btn"
+                                  onClick={() => setEditingCategoryId(null)}
+                                  title={t('cancel')}
+                                >
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                            { (expandedCategoryId === cat.id || editingCategoryId === cat.id) && (
+                              <div className="category-habits-inline">
+                                {habitsData.filter(h => h.category === cat.id).length === 0 ? (
+                                  <span className="no-habits-inline">{t('noHabitsInCategory')}</span>
+                                ) : (
+                                  habitsData
+                                    .filter(h => h.category === cat.id)
+                                    .map(habit => (
+                                      <span key={habit.id} className="category-habit-tag">
+                                        {habit.name}
+                                      </span>
+                                    ))
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            <div className="manage-category-info">
+                              <div className="manage-category-name">{cat.name}</div>
+                              {expandedCategoryId === cat.id && (
+                                <div className="category-habits-inline">
+                                  {habitsData.filter(h => h.category === cat.id).length === 0 ? (
+                                    <span className="no-habits-inline">{t('noHabitsInCategory')}</span>
+                                  ) : (
+                                    habitsData
+                                      .filter(h => h.category === cat.id)
+                                      .map(habit => (
+                                        <span key={habit.id} className="category-habit-tag">
+                                          {habit.name}
+                                        </span>
+                                      ))
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <div className="manage-category-actions">
+                              <button
+                                className="manage-btn expand-btn"
+                                onClick={() => setExpandedCategoryId(expandedCategoryId === cat.id ? null : cat.id)}
+                                title={t('showHabits')}
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points={expandedCategoryId === cat.id ? "18 15 12 9 6 15" : "6 9 12 15 18 9"}></polyline>
+                                </svg>
+                              </button>
+                              <button
+                                className="manage-btn edit-btn"
+                                onClick={() => {
+                                  setEditingCategoryId(cat.id);
+                                  setEditingCategoryValue(cat.name);
+                                }}
+                                title={t('rename')}
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                              </button>
+                              <button
+                                className="manage-btn archive-btn"
+                                onClick={() => handleArchiveCategory(cat.id)}
+                                title={t('archiveCategory')}
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                                  <rect x="1" y="3" width="22" height="5"></rect>
+                                  <line x1="10" y1="12" x2="14" y2="12"></line>
+                                </svg>
+                              </button>
+                              <button
+                                className="manage-btn delete-btn"
+                                onClick={() => handleDeleteCategory(cat.id)}
+                                title={t('delete')}
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6"></polyline>
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                                </svg>
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))
                   )}
                 </div>
-              )}
-            </div>
+
+                <div className="archive-section">
+                  <button
+                    className="archive-toggle-btn"
+                    onClick={() => setShowCategoryArchive(!showCategoryArchive)}
+                  >
+                    <span className="archive-toggle-icon">{showCategoryArchive ? '▲' : '▼'}</span>
+                    📁 {t('archive')} ({archivedCategories.length})
+                  </button>
+
+                  {showCategoryArchive && (
+                    <div className="archived-habits-list">
+                      {archivedCategories.length === 0 ? (
+                        <p className="no-habits-msg">{t('categoryArchiveEmpty')}</p>
+                      ) : (
+                        archivedCategories.map(cat => (
+                          <div key={cat.id} className="archived-habit-item">
+                            <div className="manage-habit-info">
+                              <div className="manage-habit-name">{cat.name}</div>
+                            </div>
+                            <div className="manage-habit-actions">
+                              <button
+                                className="manage-btn unarchive-btn"
+                                onClick={() => handleUnarchiveCategory(cat.id)}
+                                title={t('unarchiveCategory')}
+                              >
+                                📤
+                              </button>
+                              <button
+                                className="manage-btn delete-btn"
+                                onClick={() => handleDeleteCategory(cat.id)}
+                                title={t('deleteForever')}
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
-          <div className="settings-section">
-            <h3 className="section-title">{t('manageHabits')}</h3>
+          <div className="settings-section habits-settings">
+            <h3 className="section-title" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, habits: !collapsedSettingsSections.habits})}>
+              <div className="section-title-left">
+                <span>{t('manageHabits')}</span>
+                <button
+                  className="add-category-btn"
+                  onClick={(e) => { e.stopPropagation(); setNewHabitCategory(''); setNewHabitName(''); setCreateError(''); setShowAddCategory(false); setNewCategoryName(''); setShowCreateModal(true); }}
+                >
+                  +
+                </button>
+              </div>
+              <div className="section-actions">
+                <span className={`collapse-icon ${collapsedSettingsSections.habits ? 'collapsed' : ''}`}>▼</span>
+              </div>
+            </h3>
 
-            <div className="settings-category-filter">
-              {sortedCategories.map(cat => {
-                const displayName = cat.name === 'Все' ? t('allCategories') :
-                  (cat.name === 'Без категории' ? t('noCategory') : cat.name);
-                return (
-                  <button
-                    key={cat.id}
-                    className={`settings-cat-btn ${settingsSelectedCategory === cat.name ? 'active' : ''}`}
-                    onClick={() => setSettingsSelectedCategory(cat.name)}
-                  >
-                    {displayName}
-                  </button>
-                );
-              })}
-            </div>
+            {!collapsedSettingsSections.habits && (
+              <>
+                <div className="settings-category-filter">
+                  {sortedCategories.map(cat => {
+                    const displayName = cat.name === 'Все' ? t('allCategories') :
+                      (cat.name === 'Без категории' ? t('noCategory') : cat.name);
+                    return (
+                      <button
+                        key={cat.id}
+                        className={`settings-cat-btn ${settingsSelectedCategory === cat.name ? 'active' : ''}`}
+                        onClick={() => setSettingsSelectedCategory(cat.name)}
+                      >
+                        {displayName}
+                      </button>
+                    );
+                  })}
+                </div>
 
-
-            <div className="manage-habits-list">
-              {habitsData
-                .filter(h => !h.is_archived && (
-                  settingsSelectedCategory === 'Все' ||
-                  (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
-                  (h.category_name === settingsSelectedCategory)
-                ))
-                .length === 0 ? (
-                <p className="no-habits-msg">{t('noHabitsInCategory')}</p>
-
-              ) : (
-
-                habitsData
-                  .filter(h => !h.is_archived && (
-                    settingsSelectedCategory === 'Все' ||
-                    (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
-                    (h.category_name === settingsSelectedCategory)
-                  ))
-                  .map(habit => (
+                <div className="manage-habits-list">
+                  {habitsData
+                    .filter(h => !h.is_archived && (
+                      settingsSelectedCategory === 'Все' ||
+                      (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
+                      (h.category_name === settingsSelectedCategory)
+                    ))
+                    .length === 0 ? (
+                    <p className="no-habits-msg">{t('noHabitsInCategory')}</p>
+                  ) : (
+                    habitsData
+                      .filter(h => !h.is_archived && (
+                        settingsSelectedCategory === 'Все' ||
+                        (settingsSelectedCategory === 'Без категории' && !h.category_name) ||
+                        (h.category_name === settingsSelectedCategory)
+                      ))
+                      .map(habit => (
                     <div
                       key={habit.id}
                       className={`manage-habit-item ${draggedHabitId === habit.id ? 'dragging' : ''} ${dragOverHabitId === habit.id && draggedHabitId !== habit.id ? 'drag-over' : ''}`}
@@ -2345,12 +2949,24 @@ const App = () => {
                       onDragOver={(e) => handleDragOver(e, habit.id)}
                       onDrop={(e) => handleDrop(e, habit.id)}
                       onDragEnd={handleDragEnd}
-                      onTouchStart={(e) => handleTouchStart(e, habit.id)}
-                      onTouchMove={handleTouchMove}
-                      onTouchEnd={handleTouchEnd}
                       data-habit-id={habit.id}
                     >
-                      <div className="drag-handle" title={t('dragToReorder')}>⠿</div>
+                      <div
+                        className="drag-handle"
+                        title={t('dragToReorder')}
+                        onTouchStart={(e) => handleTouchStart(e, habit.id)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="9" cy="5" r="1"></circle>
+                          <circle cx="9" cy="12" r="1"></circle>
+                          <circle cx="9" cy="19" r="1"></circle>
+                          <circle cx="15" cy="5" r="1"></circle>
+                          <circle cx="15" cy="12" r="1"></circle>
+                          <circle cx="15" cy="19" r="1"></circle>
+                        </svg>
+                      </div>
 
 
                       <div className="manage-habit-info">
@@ -2368,25 +2984,34 @@ const App = () => {
                             setShowEditModal(true);
                           }}
                           title={t('edit')}
-
                         >
-                          ✏️
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
                         </button>
                         <button
                           className="manage-btn archive-btn"
                           onClick={() => handleArchiveHabit(habit.id)}
                           title={t('archiveHabit')}
-
                         >
-                          📦
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                            <rect x="1" y="3" width="22" height="5"></rect>
+                            <line x1="10" y1="12" x2="14" y2="12"></line>
+                          </svg>
                         </button>
                         <button
                           className="manage-btn delete-btn"
                           onClick={() => handleDeleteHabit(habit.id)}
                           title={t('delete')}
-
                         >
-                          🗑️
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                          </svg>
                         </button>
                       </div>
                     </div>
@@ -2439,6 +3064,197 @@ const App = () => {
                 </div>
               )}
             </div>
+            </>
+            )}
+          </div>
+
+          <div className="settings-section theme-settings">
+            <h3 className="section-title section-title-centered" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, theme: !collapsedSettingsSections.theme})}>
+              <span>{t('theme')}</span>
+              <span className={`collapse-icon ${collapsedSettingsSections.theme ? 'collapsed' : ''}`}>▼</span>
+            </h3>
+            {!collapsedSettingsSections.theme && (
+              <div className="theme-options">
+              <button
+                className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
+                onClick={() => {
+                  setTheme('light');
+                  localStorage.setItem('theme', 'light');
+                }}
+              >
+                ☀️ {t('lightTheme')}
+              </button>
+              <button
+                className={`theme-btn ${theme === 'dark' ? 'active' : ''}`}
+                onClick={() => {
+                  setTheme('dark');
+                  localStorage.setItem('theme', 'dark');
+                }}
+              >
+                🌙 {t('darkTheme')}
+              </button>
+              <button
+                className={`theme-btn ${theme === 'auto' ? 'active' : ''}`}
+                onClick={() => {
+                  setTheme('auto');
+                  localStorage.setItem('theme', 'auto');
+                }}
+              >
+                🌓 {t('autoTheme')}
+              </button>
+            </div>
+            )}
+          </div>
+
+          <div className="settings-section reminder-settings">
+            <h3 className="section-title section-title-centered" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, reminders: !collapsedSettingsSections.reminders})}>
+              <span>🔔 {t('reminders')}</span>
+              <span className={`collapse-icon ${collapsedSettingsSections.reminders ? 'collapsed' : ''}`}>▼</span>
+            </h3>
+            {!collapsedSettingsSections.reminders && (
+              <>
+                <div className="reminder-toggle-row">
+                  <span className="reminder-label">{t('enableReminders')}</span>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={reminderEnabled}
+                      onChange={(e) => handleReminderToggle(e.target.checked)}
+                    />
+                    <span className="toggle-slider"></span>
+                  </label>
+                </div>
+
+                {reminderEnabled && (
+                  <div className="reminder-options">
+                    <div className="reminder-option">
+                      <label className="reminder-option-label">{language === 'ru' ? 'Текст напоминания' : 'Reminder Text'}:</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={reminderText}
+                        onChange={(e) => handleReminderTextChange(e.target.value)}
+                        placeholder={language === 'ru' ? 'Что вам напомнить?' : 'What to remind?'}
+                      />
+                    </div>
+                    <div className="reminder-option">
+                      <label className="reminder-option-label">{t('timesPerDay')}:</label>
+                      <div className="frequency-options">
+                      <button
+                        className={`freq-btn ${reminderTimesPerDay === 1 ? 'active' : ''}`}
+                        onClick={() => handleTimesPerDayChange(1)}
+                      >
+                        1
+                      </button>
+                      <button
+                        className={`freq-btn ${reminderTimesPerDay === 2 ? 'active' : ''}`}
+                        onClick={() => handleTimesPerDayChange(2)}
+                      >
+                        2
+                      </button>
+                      <button
+                        className={`freq-btn ${reminderTimesPerDay === 3 ? 'active' : ''}`}
+                        onClick={() => handleTimesPerDayChange(3)}
+                      >
+                        3
+                      </button>
+                      <button
+                        className={`freq-btn ${reminderTimesPerDay === 'custom' ? 'active' : ''}`}
+                        onClick={() => handleTimesPerDayChange('custom')}
+                      >
+                        {t('custom')}
+                      </button>
+                    </div>
+                  </div>
+
+                  {reminderTimesPerDay === 'custom' && (
+                    <div className="reminder-option">
+                      <label className="reminder-option-label">{t('customTimes')}:</label>
+                      <input
+                        type="number"
+                        className="number-input"
+                        min="1"
+                        max="10"
+                        value={customTimesPerDay}
+                        onChange={(e) => setCustomTimesPerDay(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
+                      />
+                    </div>
+                  )}
+
+                  <div className="reminder-option">
+                    <label className="reminder-option-label">{t('reminderTimes')}:</label>
+                    <div className="reminder-times-list">
+                      {reminderTimes.map((time, index) => (
+                        <div key={index} className="reminder-time-item">
+                          <span className="reminder-time-number">{index + 1}.</span>
+                          <input
+                            type="time"
+                            className="time-input"
+                            value={time}
+                            onChange={(e) => handleReminderTimeChange(index, e.target.value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    className="btn-secondary btn-small test-notification-btn"
+                    onClick={testNotification}
+                  >
+                    🧪 {t('testNotification')}
+                  </button>
+                </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="settings-section storage-settings">
+            <h3 className="section-title section-title-centered" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, storage: !collapsedSettingsSections.storage})}>
+              <span>💾 {t('storageSettings')}</span>
+              <span className={`collapse-icon ${collapsedSettingsSections.storage ? 'collapsed' : ''}`}>▼</span>
+            </h3>
+            {!collapsedSettingsSections.storage && (
+              <div className="storage-mode-options">
+                <div className="storage-mode-notice">
+                  {t('storageModeNotice')}
+                </div>
+                <div className="frequency-options">
+                  <button
+                    className={`freq-btn ${storageMode === 'cloud' ? 'active' : ''}`}
+                    onClick={() => {
+                      setStorageMode('cloud');
+                      storageService.setStorageMode('cloud');
+                      // Trigger refetch
+                      checkAuth();
+                    }}
+                  >
+                    {t('cloudStorage')}
+                  </button>
+                  <button
+                    className={`freq-btn ${storageMode === 'local' ? 'active' : ''}`}
+                    onClick={() => {
+                      setStorageMode('local');
+                      storageService.setStorageMode('local');
+                      // Trigger refetch
+                      checkAuth();
+                    }}
+                  >
+                    {t('localStorage')}
+                  </button>
+                </div>
+                <div className="storage-actions" style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
+                  <button className="btn-secondary btn-small" onClick={handleExportData}>
+                    📤 {t('exportData')}
+                  </button>
+                  <label className="btn-secondary btn-small" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', marginBottom: 0 }}>
+                    📥 {t('importData')}
+                    <input type="file" accept=".json" onChange={handleImportData} style={{ display: 'none' }} />
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2485,13 +3301,13 @@ const App = () => {
                   id="habit-name"
                   type="text"
                   className="form-input"
-                  placeholder={t('habitNamePlaceholder')}
 
                   value={newHabitName}
 
                   onChange={(e) => setNewHabitName(e.target.value)}
                   autoFocus
                 />
+                <small className="form-hint">{t('habitNamePlaceholder')}</small>
               </div>
 
               <div className="form-group">
@@ -2548,6 +3364,74 @@ const App = () => {
                 </div>
               )}
 
+              <div className="form-group">
+                <label className="form-label">{language === 'ru' ? 'Тип цели' : 'Target Type'}</label>
+                <select
+                  className="form-input"
+                  value={newHabitTargetType}
+                  onChange={(e) => setNewHabitTargetType(e.target.value)}
+                >
+                  <option value="at_least">{language === 'ru' ? 'Не менее (светло-зеленая)' : 'At least (light green)'}</option>
+                  <option value="less_or_equal">{language === 'ru' ? 'Не более (зеленая)' : 'Less or equal (green)'}</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">{language === 'ru' ? 'Дата создания' : 'Start Date'}</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={newHabitStartDate}
+                  onChange={(e) => setNewHabitStartDate(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={newHabitUseTarget}
+                    onChange={(e) => setNewHabitUseTarget(e.target.checked)}
+                  />
+                  {language === 'ru' ? 'Использовать цель' : 'Use target'}
+                </label>
+              </div>
+
+              {newHabitUseTarget && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">{language === 'ru' ? 'Зеленая цель (дней в месяц)' : 'Green target (days per month)'}</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={newHabitCompletionTarget !== '' ? newHabitCompletionTarget : getDaysInCurrentMonth()}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const maxDays = getDaysInCurrentMonth();
+                        if (val === '' || parseInt(val) <= maxDays) {
+                          setNewHabitCompletionTarget(val);
+                        } else {
+                          setNewHabitCompletionTarget(maxDays.toString());
+                        }
+                      }}
+                      min="1"
+                      max={getDaysInCurrentMonth()}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{language === 'ru' ? 'Фиолетовая цель (количество в месяц)' : 'Purple target (quantity per month)'}</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={newHabitQuantityTarget}
+                      onChange={(e) => setNewHabitQuantityTarget(e.target.value)}
+                      placeholder={language === 'ru' ? 'Например: 100 страниц' : 'e.g. 100 pages'}
+                      min="1"
+                    />
+                  </div>
+                </>
+              )}
+
               {createError && (
                 <div className="error-message">
                   {createError}
@@ -2602,6 +3486,7 @@ const App = () => {
                   onChange={(e) => setEditingHabit({ ...editingHabit, name: e.target.value })}
                   autoFocus
                 />
+                <small className="form-hint">{t('habitNamePlaceholder')}</small>
               </div>
 
               <div className="form-group">
@@ -2662,6 +3547,74 @@ const App = () => {
                 <div className="error-message">
                   {createError}
                 </div>
+              )}
+
+              <div className="form-group">
+                <label className="form-label">{language === 'ru' ? 'Тип цели' : 'Target Type'}</label>
+                <select
+                  className="form-input"
+                  value={editingHabit.target_type || 'at_least'}
+                  onChange={(e) => setEditingHabit({ ...editingHabit, target_type: e.target.value })}
+                >
+                  <option value="at_least">{language === 'ru' ? 'Не менее (светло-зеленая)' : 'At least (light green)'}</option>
+                  <option value="less_or_equal">{language === 'ru' ? 'Не более (зеленая)' : 'Less or equal (green)'}</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">{language === 'ru' ? 'Дата создания' : 'Start Date'}</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={editingHabit.start_date || ''}
+                  onChange={(e) => setEditingHabit({ ...editingHabit, start_date: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={editingHabit.use_target || false}
+                    onChange={(e) => setEditingHabit({ ...editingHabit, use_target: e.target.checked })}
+                  />
+                  {language === 'ru' ? 'Использовать цель' : 'Use target'}
+                </label>
+              </div>
+
+              {editingHabit.use_target && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">{language === 'ru' ? 'Зеленая цель (дней в месяц)' : 'Green target (days per month)'}</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={editingHabit.completion_target !== null && editingHabit.completion_target !== undefined ? editingHabit.completion_target : getDaysInCurrentMonth()}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const maxDays = getDaysInCurrentMonth();
+                        if (val === '' || parseInt(val) <= maxDays) {
+                          setEditingHabit({ ...editingHabit, completion_target: val });
+                        } else {
+                          setEditingHabit({ ...editingHabit, completion_target: maxDays.toString() });
+                        }
+                      }}
+                      min="1"
+                      max={getDaysInCurrentMonth()}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{language === 'ru' ? 'Фиолетовая цель (количество в месяц)' : 'Purple target (quantity per month)'}</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={editingHabit.quantity_target || ''}
+                      onChange={(e) => setEditingHabit({ ...editingHabit, quantity_target: e.target.value })}
+                      placeholder={language === 'ru' ? 'Например: 100 страниц' : 'e.g. 100 pages'}
+                      min="1"
+                    />
+                  </div>
+                </>
               )}
 
               <div className="form-actions">
@@ -2747,11 +3700,12 @@ const App = () => {
                   id="profile-birthdate"
                   type="date"
                   className="form-input"
+                  max={new Date().toLocaleDateString('en-CA')}
                   value={editProfileData.date_of_birth}
                   onChange={(e) => {
                     const newDate = e.target.value;
-                    setEditProfileData({ 
-                      ...editProfileData, 
+                    setEditProfileData({
+                      ...editProfileData,
                       date_of_birth: newDate,
                       age: calculateAge(newDate) // Auto-calculate age
                     });
@@ -2862,8 +3816,6 @@ const App = () => {
           setQuantityModalData(null);
           setQuantityValue(null);
           setCommentValue('');
-          setPhotoFile(null);
-          setDeletePhoto(false);
         }}>
           <div className="modal-content quantity-modal"
             ref={modalContentRef}
@@ -2883,8 +3835,6 @@ const App = () => {
                     setQuantityModalData(null);
                     setQuantityValue(null);
                     setCommentValue('');
-                    setPhotoFile(null);
-                    setDeletePhoto(false);
                   }}
                 >
                   ×
@@ -2923,7 +3873,7 @@ const App = () => {
                       onChange={(val) => setQuantityValue(val)}
                     />
 
-                    {getDefaultModalQuantity(quantityModalData.currentStatus, quantityModalData.currentIsRestored, quantityModalData.dayDate) !== null && (
+                    {getDefaultModalQuantity(quantityModalData.currentIsRestored) !== null && (
                       <div className="preset-column presets-right">
                         <div className="preset-btn theme-purple weekly">
                           <div className="preset-badge">{liveWeeklyOverflow}</div>
@@ -2965,8 +3915,6 @@ const App = () => {
                     setQuantityModalData(null);
                     setQuantityValue(null);
                     setCommentValue('');
-                    setPhotoFile(null);
-                    setDeletePhoto(false);
                   }}
                 >
                   {t('cancel')}
@@ -3100,32 +4048,6 @@ const App = () => {
                     </tbody>
                   </table>
                 </div>
-              ) : reportData.period === 'day' ? (
-                <>
-                  <div className="report-stats" style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '8px', marginBottom: '20px' }}>
-                    <p><strong>{t('totalEntries')}:</strong> {reportData.entries.length}</p>
-                    <p><strong>{t('totalActions')}:</strong> {reportData.entries.reduce((sum, e) => sum + (e.quantity || 1), 0)}</p>
-                  </div>
-
-
-                  <div className="report-entries" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {reportData.entries.length === 0 ? (
-                      <p>{t('noReportData')}</p>
-                    ) : (
-
-                      reportData.entries.map((entry, idx) => (
-                        <div key={idx} className="report-entry" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px' }}>
-                          <div className="report-entry-header" style={{ borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
-                            <strong>{new Date(entry.date).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US')}</strong>
-                            {(entry.quantity !== null && entry.quantity > 1) && <span style={{ marginLeft: '10px', color: '#666' }}>({t('actionsCount')} {entry.quantity})</span>}
-                          </div>
-
-                          {entry.comment && <p className="report-entry-comment" style={{ fontStyle: 'italic', marginBottom: '10px' }}>{entry.comment}</p>}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </>
               ) : (
                 <div className="summary-report-content">
                   <table className="summary-table" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
@@ -3153,6 +4075,56 @@ const App = () => {
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSelectHabitsModal && (
+        <div className="modal-overlay" onClick={() => setShowSelectHabitsModal(false)}>
+          <div className="modal-content select-habits-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{language === 'ru' ? 'Выбрать из существующих' : 'Select existing habits'}</h2>
+              <button
+                className="modal-close"
+                onClick={() => setShowSelectHabitsModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="select-habits-list">
+              {habitsData
+                .filter((h, index, self) => 
+                  !h.is_archived && 
+                  self.findIndex(t => t.id === h.id) === index
+                )
+                .map(habit => {
+                  const isInCurrent = habit.category === selectingForCategoryId;
+                  return (
+                    <div 
+                      key={habit.id} 
+                      className={`select-habit-item ${isInCurrent ? 'selected' : ''}`}
+                      onClick={() => handleMoveHabitToCategory(habit.id, isInCurrent ? null : selectingForCategoryId)}
+                    >
+                      <div className="select-habit-info">
+                        <div className="select-habit-name">{habit.name}</div>
+                        <div className="select-habit-category">
+                          {habit.category_name || t('noCategory')}
+                        </div>
+                      </div>
+                      <div className="select-habit-checkbox">
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+            <div className="form-actions">
+              <button
+                className="btn-primary"
+                onClick={() => setShowSelectHabitsModal(false)}
+              >
+                {t('save')}
+              </button>
             </div>
           </div>
         </div>

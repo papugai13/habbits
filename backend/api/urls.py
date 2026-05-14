@@ -20,5 +20,9 @@ urlpatterns = [
     path('auth/login/', views.LoginView.as_view(), name='login'),
     path('auth/logout/', views.LogoutView.as_view(), name='logout'),
     path('auth/me/', views.CurrentUserView.as_view(), name='current-user'),
+    # Push notifications and reminders
+    path('v1/reminders/settings/', views.reminder_settings, name='reminder-settings'),
+    path('v1/reminders/subscribe/', views.subscribe_push, name='subscribe-push'),
+    path('v1/reminders/vapid-key/', views.vapid_public_key, name='vapid-key'),
     path('', include(router_v1.urls)),
 ]

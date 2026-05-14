@@ -156,14 +156,49 @@ class Habit(models.Model):
         verbose_name="В архиве",
     )
 
-    created_at = models.DateField(
-        auto_now_add=True,
-        verbose_name="Дата создания",
+    TARGET_TYPE_CHOICES = [
+        ('at_least', 'Не менее (светло-зеленая)'),
+        ('less_or_equal', 'Не более (зеленая)'),
+    ]
+
+    target_type = models.CharField(
+        max_length=20,
+        choices=TARGET_TYPE_CHOICES,
+        default='at_least',
+        verbose_name="Тип цели",
+        help_text="Тип цели привычки: не менее (светло-зеленая) или не более (зеленая)"
+    )
+
+    start_date = models.DateField(
+        verbose_name="Дата начала",
+        help_text="Дата создания привычки (можно изменить)",
+        null=True,
+        blank=True
+    )
+
+    use_target = models.BooleanField(
+        default=False,
+        verbose_name="Использовать цель",
+    )
+    completion_target = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Цель выполнения",
+        help_text="Целевое количество дней выполнения в месяц"
+    )
+    quantity_target = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Цель количества",
+        help_text="Целевое количество действий (например, страниц) в месяц"
     )
 
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = unique_slugify(self, slugify(self.name))
+        if not self.start_date:
+            from django.utils import timezone
+            self.start_date = timezone.now().date()
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
@@ -270,4 +305,26 @@ class Achievement(models.Model):
     class Meta:
         verbose_name = "Ачивка"
         verbose_name_plural = "Ачивки"
+
+class ReminderSettings(models.Model):
+    user = models.OneToOneField(UserAll, on_delete=models.CASCADE, related_name='reminder_settings')
+    enabled = models.BooleanField(default=False)
+    text = models.CharField(max_length=255, default='Не забудьте отметить привычки!', verbose_name="Текст напоминания")
+    # Список времен в формате ["09:00", "18:00"]
+    times = models.JSONField(default=list, verbose_name="Время напоминаний")
+    
+    class Meta:
+        verbose_name = "Настройки напоминаний"
+        verbose_name_plural = "Настройки напоминаний"
+
+class PushSubscription(models.Model):
+    user = models.ForeignKey(UserAll, on_delete=models.CASCADE, related_name='push_subscriptions')
+    endpoint = models.URLField(max_length=500)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Подписка на пуш"
+        verbose_name_plural = "Подписки на пуш"
         

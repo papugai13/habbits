@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from .models import Achievement, Category, Date, UserAll, Habit
+from .models import Achievement, Category, Date, UserAll, Habit, ReminderSettings, PushSubscription
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -26,10 +26,12 @@ class HabitSerializer(serializers.ModelSerializer):
     )
     category_name = serializers.SerializerMethodField()
     category_slug = serializers.SerializerMethodField()
+    start_date = serializers.DateField(required=False, allow_null=True)
+    target_type = serializers.CharField(required=False)
 
     class Meta:
         model = Habit
-        fields = ('id', 'user', 'name', 'category', 'category_name', 'category_slug', 'slug', 'order', 'is_archived')
+        fields = ('id', 'user', 'name', 'category', 'category_name', 'category_slug', 'slug', 'order', 'is_archived', 'start_date', 'target_type', 'use_target', 'completion_target', 'quantity_target')
         read_only_fields = ('id', 'user', 'slug')
 
     def __init__(self, *args, **kwargs):
@@ -64,6 +66,18 @@ class DateSerializer(serializers.ModelSerializer):
 class AchievementSerializer(serializers.ModelSerializer):
     class Meta:
         model = Achievement
+        fields = '__all__'
+
+
+class ReminderSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReminderSettings
+        fields = '__all__'
+
+
+class PushSubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PushSubscription
         fields = '__all__'
 
 
@@ -158,3 +172,14 @@ class LoginSerializer(serializers.Serializer):
         write_only=True,
         style={'input_type': 'password'}
     )
+
+
+class ReminderSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReminderSettings
+        fields = ('enabled', 'text', 'times')
+
+class PushSubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PushSubscription
+        fields = ('endpoint', 'p256dh', 'auth')
