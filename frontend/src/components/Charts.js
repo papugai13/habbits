@@ -21,8 +21,11 @@ const generatePeriodLabel = (period, referenceDate, t, language) => {
 
     if (period === 'day') {
         const dayNum = today.getDate();
-        const dayName = daysFull[language === 'ru' ? 'ru' : 'en'][today.getDay()];
-        return { title: `${dayNum} ${dayName}`, subtitle: '' };
+        const monthKey = months[today.getMonth()];
+        const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const shortDay = t(dayKeys[today.getDay()]).toLowerCase();
+        const monthName = t(monthKey);
+        return { title: `${shortDay}, ${dayNum} ${monthName}`, subtitle: `${today.getFullYear()}` };
     } else if (period === 'week') {
         const dayOfWeek = today.getDay();
         const diff = today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
