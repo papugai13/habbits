@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import Login from './components/Login';
 import Register from './components/Register';
@@ -153,7 +153,9 @@ const App = () => {
   const [quantityModalData, setQuantityModalData] = useState(null);
   const [quantityValue, setQuantityValue] = useState(null);
   const [commentValue, setCommentValue] = useState('');
-  const [longPressTimer, setLongPressTimer] = useState(null);
+  const longPressTimerRef = useRef(null);
+  const isLongPressActiveRef = useRef(false);
+
   const [editingHabit, setEditingHabit] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
@@ -1286,9 +1288,10 @@ const App = () => {
                             <button
                               className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${showDotClass} ${isBeforeCreation ? 'before-creation' : ''}`}
                               onClick={() => {
-                                if (!isDisabled && !longPressTimer) {
+                                if (!isDisabled && !isLongPressActiveRef.current) {
                                   toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
                                 }
+                                isLongPressActiveRef.current = false;
                               }}
                               onMouseDown={() => {
                                 const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
@@ -1752,16 +1755,17 @@ const App = () => {
   };
 
   const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
-    const timer = setTimeout(() => {
+    isLongPressActiveRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressActiveRef.current = true;
       openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored);
-    }, 200);
-    setLongPressTimer(timer);
+    }, 500); // Increased to 500ms for better UX
   };
 
   const handleLongPressEnd = () => {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
     }
   };
 
