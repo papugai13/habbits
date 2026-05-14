@@ -529,6 +529,44 @@ const storageService = {
         period_label: period
       };
     }
+  },
+
+  // --- EXPORT / IMPORT ---
+
+  exportData: () => {
+    const data = {
+      habits: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]'),
+      categories: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES) || '[]'),
+      statuses: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]'),
+      settings: {
+        theme: localStorage.getItem('theme'),
+        language: localStorage.getItem('language'),
+        reminderSettings: localStorage.getItem('reminderSettings')
+      },
+      exportedAt: new Date().toISOString()
+    };
+    return JSON.stringify(data, null, 2);
+  },
+
+  importData: (jsonData) => {
+    try {
+      const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+      
+      if (data.habits) localStorage.setItem(LOCAL_STORAGE_KEYS.HABITS, JSON.stringify(data.habits));
+      if (data.categories) localStorage.setItem(LOCAL_STORAGE_KEYS.CATEGORIES, JSON.stringify(data.categories));
+      if (data.statuses) localStorage.setItem(LOCAL_STORAGE_KEYS.STATUSES, JSON.stringify(data.statuses));
+      
+      if (data.settings) {
+        if (data.settings.theme) localStorage.setItem('theme', data.settings.theme);
+        if (data.settings.language) localStorage.setItem('language', data.settings.language);
+        if (data.settings.reminderSettings) localStorage.setItem('reminderSettings', data.settings.reminderSettings);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Import error:', error);
+      return { success: false, error: error.message };
+    }
   }
 };
 
