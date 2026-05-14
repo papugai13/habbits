@@ -1092,6 +1092,7 @@ class HabitViewSet(viewsets.ModelViewSet):
             statistics.append({
                 'id': habit.id,
                 'name': habit.name,
+                'category_name': habit.category.name if habit.category else 'Без категории',
                 'completed_days': completed_days,
                 'restored_days': restored_days,
                 'extra_quantity': extra_quantity,

@@ -559,6 +559,147 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     );
 };
 
+const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language }) => {
+    const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const isDark = theme === 'dark' || (theme === 'auto' && document.body.classList.contains('dark-theme'));
+
+    useEffect(() => {
+        const fetchAllData = async () => {
+            setLoading(true);
+            
+            if (period === 'week') {
+                const habitMap = new Map();
+                const endDate = new Date(currentWeekDate);
+                const startDate = new Date(endDate);
+                startDate.setDate(startDate.getDate() - 6);
+                
+                const promises = [];
+                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                    const dayStr = d.toISOString().split('T')[0];
+                    promises.push(
+                        fetch(`/api/v1/habits/habit_comparison/?period=day&date=${dayStr}&category=Все`, {
+                            credentials: 'include'
+                        }).then(res => res.json())
+                    );
+                }
+                
+                try {
+                    const results = await Promise.all(promises);
+                    results.forEach(result => {
+                        if (result.habits) {
+                            result.habits.forEach(item => {
+                                if (!habitMap.has(item.id)) {
+                                    habitMap.set(item.id, {
+                                        ...item,
+                                        countCapped: 0,
+                                        countRestored: 0,
+                                        countExtra: 0
+                                    });
+                                }
+                                const habit = habitMap.get(item.id);
+                                habit.countCapped += (item.completed_days || 0);
+                                habit.countRestored += (item.restored_days || 0);
+                                habit.countExtra += (item.extra_quantity || 0);
+                            });
+                        }
+                    });
+                    setData(Array.from(habitMap.values()));
+                } catch (error) {
+                    console.error(`Error fetching category comparison data:`, error);
+                } finally {
+                    setLoading(false);
+                }
+                return;
+            }
+            
+            const apiDate = new Date(currentWeekDate);
+            if (period === 'month') apiDate.setDate(1);
+            else if (period === 'year') apiDate.setMonth(0, 1);
+            apiDate.setHours(0, 0, 0, 0);
+            const dateStr = apiDate.toISOString().split('T')[0];
+            
+            try {
+                const response = await fetch(`/api/v1/habits/habit_comparison/?period=${period}&date=${dateStr}&category=Все`, {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    const json = await response.json();
+                    setData(json.habits.map(h => ({
+                        ...h,
+                        countCapped: h.completed_days,
+                        countRestored: h.restored_days,
+                        countExtra: h.extra_quantity
+                    })));
+                }
+            } catch (error) {
+                console.error(`Error fetching category comparison data:`, error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchAllData();
+    }, [period, currentWeekDate]);
+
+    const categoryStats = useMemo(() => {
+        const stats = {};
+        data.forEach(item => {
+            const cat = item.category_name || t('noCategory');
+            if (!stats[cat]) {
+                stats[cat] = { name: cat, total: 0, extra: 0, habits: 0 };
+            }
+            stats[cat].total += (item.countCapped || 0) + (item.countRestored || 0);
+            stats[cat].extra += (item.countExtra || 0);
+            stats[cat].habits += 1;
+        });
+        return Object.values(stats).sort((a, b) => b.total - a.total);
+    }, [data, t]);
+
+    if (loading || categoryStats.length === 0) return null;
+
+    return (
+        <div className="category-comparison-section">
+            <div className="comparison-header">
+                <h3>{t('categoryComparison')}</h3>
+            </div>
+            <div className="category-table-container">
+                <table className="category-comparison-table">
+                    <thead>
+                        <tr>
+                            <th>{t('category')}</th>
+                            <th>{t('totalDone')}</th>
+                            <th>{t('quantity')}</th>
+                            <th>{t('progress')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {categoryStats.map((stat, idx) => {
+                            const maxTotal = Math.max(...categoryStats.map(s => s.total)) || 1;
+                            const progressWidth = (stat.total / maxTotal) * 100;
+                            return (
+                                <tr key={idx}>
+                                    <td className="cat-name-cell">{stat.name}</td>
+                                    <td className="cat-value-cell">{stat.total}</td>
+                                    <td className="cat-value-cell">{stat.extra}</td>
+                                    <td className="cat-progress-cell">
+                                        <div className="cat-progress-bar-bg">
+                                            <div 
+                                                className="cat-progress-bar-fill" 
+                                                style={{ width: `${progressWidth}%` }}
+                                            ></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
 const Charts = ({ 
     getCookie, 
     habitsData, 
@@ -1001,6 +1142,14 @@ const Charts = ({
                     language={language}
                 />
             )}
+
+            <CategoryComparisonTable
+                period={period}
+                currentWeekDate={chartDate}
+                theme={theme}
+                t={t}
+                language={language}
+            />
         </div>
     );
 };
