@@ -2,7 +2,8 @@ const translations = {
   ru: {
     // Tabs
     journals: 'Треки',
-    charts: 'Графики',
+    charts: 'Отчеты',
+    analytics: 'Аналитика',
     settings: 'Настройки',
 
     // Week days
@@ -229,7 +230,8 @@ const translations = {
   en: {
     // Tabs
     journals: 'Tracks',
-    charts: 'Charts',
+    charts: 'Reports',
+    analytics: 'Analytics',
     settings: 'Settings',
 
     // Week days
