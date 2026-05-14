@@ -14,16 +14,16 @@ const getWeekNumber = (dateInput) => {
 const generatePeriodLabel = (period, referenceDate, t, language) => {
     const today = new Date(referenceDate);
     const months = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
+    const daysFull = {
+        ru: ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'],
+        en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    };
 
     if (period === 'day') {
-        // Today's date
-        const dayName = today.toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { weekday: 'short' });
         const dayNum = today.getDate();
-        const monthName = t(months[today.getMonth()]);
-        
-        return { title: `${dayName}, ${dayNum} ${monthName}`, subtitle: `${today.getFullYear()}` };
+        const dayName = daysFull[language === 'ru' ? 'ru' : 'en'][today.getDay()];
+        return { title: `${dayNum} ${dayName}`, subtitle: '' };
     } else if (period === 'week') {
-        // Week number and date range
         const dayOfWeek = today.getDay();
         const diff = today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
         const monday = new Date(today);
@@ -32,9 +32,9 @@ const generatePeriodLabel = (period, referenceDate, t, language) => {
         sunday.setDate(monday.getDate() + 6);
 
         const formatDate = (date) => {
-            const day = date.getDate();
-            const monthName = t(months[date.getMonth()]);
-            return `${day} ${monthName}`;
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            return `${day}.${month}`;
         };
 
         const weekNum = getWeekNumber(today);
@@ -51,7 +51,7 @@ const generatePeriodLabel = (period, referenceDate, t, language) => {
             subtitle: null 
         };
     } else if (period === 'month') {
-        return { title: `${t(months[today.getMonth()])} ${today.getFullYear()}`, subtitle: '' };
+        return { title: t(months[today.getMonth()]), subtitle: '' };
     } else if (period === 'year') {
         return { title: `${today.getFullYear()}`, subtitle: '' };
     }
@@ -122,7 +122,7 @@ const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData })
     );
 };
 
-const CustomBarLabel = ({ x, y, width, height, value, color, baseSize = 14 }) => {
+const CustomBarLabel = ({ x, y, width, height, value, color, baseSize = 14, suffix = '' }) => {
     if (!value || value <= 0) return null;
 
     // For horizontal bars, width is the bar length, height is the bar thickness
@@ -139,7 +139,7 @@ const CustomBarLabel = ({ x, y, width, height, value, color, baseSize = 14 }) =>
             fontWeight={800}
             style={{ pointerEvents: 'none' }}
         >
-            {value}
+            {value}{suffix}
         </text>
     );
 };
@@ -164,8 +164,8 @@ const CustomBarShape = (props) => {
     return <Rectangle {...props} radius={finalRadius} />;
 };
 
-const PercentageBadge = ({ x, y, width, height, value, badgeW, badgeH, fSize }) => {
-    if (!value || value === '0%') return null;
+const PercentageBadge = ({ x, y, width, height, value, badgeW, badgeH, fSize, period }) => {
+    if (!value || (value === '0%' && period !== 'day')) return null;
     const fs = fSize || 16;
     // For horizontal bars, place to the right of the bar
     const cx = x + width + 15;
@@ -208,248 +208,96 @@ const PercentageBadgeVertical = ({ x, y, width, height, value, badgeW, badgeH, f
     );
 };
 
-const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCategory, theme, t, language }) => {
+const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCategory, theme, t, language, chartData: mainChartData }) => {
     const [data, setData] = useState([]);
-    const [periodLabel, setPeriodLabel] = useState('');
     const [loading, setLoading] = useState(true);
-    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+    const scrollRef = useRef(null);
+    const indicatorRef = useRef(null);
+    const isMobile = window.innerWidth <= 480;
+    const isDark = theme === 'dark';
+
+    const periodLabel = useMemo(() => {
+        if (!currentWeekDate) return { title: '', subtitle: '' };
+        const date = new Date(currentWeekDate);
+        return generatePeriodLabel(period, date, t, language);
+    }, [currentWeekDate, period, language, t]);
 
     useEffect(() => {
-        const handleResize = () => setWindowWidth(window.innerWidth);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    const isMobile = windowWidth < 480;
-    const isTablet = windowWidth < 768;
-    const isDark = theme === 'dark' || (theme === 'auto' && document.body.classList.contains('dark-theme'));
-
-    const shortenName = (name) => {
-        if (name.length > 5) {
-            return name.substring(0, 5) + '..';
-        }
-        return name;
-    };
-
-    useEffect(() => {
-        const fetchComparisonData = async () => {
+        const fetchHabitComparison = async () => {
+            if (!currentWeekDate) return;
             setLoading(true);
-            
-            // For week period, fetch 7 days of data and aggregate on frontend
-            if (period === 'week') {
-                const habitMap = new Map();
-                const endDate = new Date(currentWeekDate);
-                const startDate = new Date(endDate);
-                startDate.setDate(startDate.getDate() - 6);
-                
-                // Fetch each day's data
-                const promises = [];
-                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                    const dayStr = d.toISOString().split('T')[0];
-                    promises.push(
-                        fetch(`/api/v1/habits/habit_comparison/?period=day&date=${dayStr}&category=${selectedCategory || 'Все'}`, {
-                            credentials: 'include'
-                        }).then(res => res.json())
-                    );
-                }
-                
-                try {
-                    const results = await Promise.all(promises);
-                    
-                    // Aggregate all 7 days
-                    results.forEach(result => {
-                        if (result.habits) {
-                            result.habits.forEach(item => {
-                                if (!habitMap.has(item.id)) {
-                                    habitMap.set(item.id, {
-                                        id: item.id,
-                                        name: item.name,
-                                        shortName: shortenName(item.name),
-                                        start_date: item.start_date,
-                                        countCapped: 0,
-                                        countRestored: 0,
-                                        countExtra: 0
-                                    });
-                                }
-                                const habit = habitMap.get(item.id);
-                                habit.countCapped += (item.completed_days || 0);
-                                habit.countRestored += (item.restored_days || 0);
-                                habit.countExtra += (item.extra_quantity || 0);
-                            });
-                        }
-                    });
-                    
-                    const totalDaysInPeriod = 7;
-                    const formatted = Array.from(habitMap.values()).map((item, index) => {
-                        let habitDaysInPeriod = 7;
-                        if (item.start_date) {
-                            const habitStart = new Date(item.start_date);
-                            const periodEnd = new Date(currentWeekDate);
-                            const periodStart = new Date(periodEnd);
-                            periodStart.setDate(periodStart.getDate() - 6);
-                            
-                            if (habitStart > periodStart) {
-                                const diffTime = Math.abs(periodEnd - habitStart);
-                                habitDaysInPeriod = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                                habitDaysInPeriod = Math.min(Math.max(habitDaysInPeriod, 1), 7);
-                            }
-                        }
-
-                        const rawPercent = habitDaysInPeriod > 0 
-                            ? (item.countCapped / habitDaysInPeriod) * 100 
-                            : 0;
-                        const roundedPercent = Math.round(rawPercent);
-                        const finalPercent = (item.countCapped > 0 && roundedPercent === 0) ? 1 : roundedPercent;
-                        const percentageStr = `${finalPercent}%`;
-
-                        return {
-                            index: index,
-                            id: item.id,
-                            name: item.name,
-                            shortName: item.shortName,
-                            countCapped: item.countCapped,
-                            countRestored: item.countRestored,
-                            countExtra: item.countExtra,
-                            percentage: percentageStr
-                        };
-                    });
-                    
-                    setPeriodLabel(generatePeriodLabel(period, currentWeekDate, t, language));
-                    setData(formatted);
-                } catch (error) {
-                    console.error(`Error fetching comparison data:`, error);
-                } finally {
-                    setLoading(false);
-                }
-                return;
-            }
-            
-            // For other periods (day, month, year), use normal API call
-            const apiDate = new Date(currentWeekDate);
-            if (period === 'month') {
-                apiDate.setDate(1);
-                apiDate.setHours(0, 0, 0, 0);
-            } else if (period === 'year') {
-                apiDate.setMonth(0, 1);
-                apiDate.setHours(0, 0, 0, 0);
-            } else {
-                apiDate.setHours(0, 0, 0, 0);
-            }
-            const dateStr = apiDate.toISOString().split('T')[0];
-            
             try {
+                const apiDate = new Date(currentWeekDate);
+                const dateStr = apiDate.toISOString().split('T')[0];
                 const response = await fetch(`/api/v1/habits/habit_comparison/?period=${period}&date=${dateStr}&category=${selectedCategory || 'Все'}`, {
+                    headers: { 'Accept-Language': language },
                     credentials: 'include'
                 });
-                if (response.ok) {
-                    const json = await response.json();
-                    setPeriodLabel(generatePeriodLabel(period, currentWeekDate, t, language));
-                    
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-
-                    const periodStartDate = new Date(dateStr);
-                    if (period === 'month') {
-                        periodStartDate.setDate(1);
-                        periodStartDate.setHours(0, 0, 0, 0);
-                    } else if (period === 'year') {
-                        periodStartDate.setMonth(0, 1);
-                        periodStartDate.setHours(0, 0, 0, 0);
-                    } else if (period === 'day') {
-                        periodStartDate.setHours(0, 0, 0, 0);
-                    }
-
-                    const totalDaysInPeriod = period === 'day'
-                        ? 1
-                        : period === 'month' 
-                            ? new Date(periodStartDate.getFullYear(), periodStartDate.getMonth() + 1, 0).getDate() 
-                            : (periodStartDate.getFullYear() % 4 === 0 ? 366 : 365);
-
-                    const formatted = json.habits.map((item, index) => {
-                        let habitDaysInPeriod = totalDaysInPeriod;
-                        if (item.start_date) {
-                            const habitStart = new Date(item.start_date);
-                            const periodStart = new Date(dateStr);
-                            const periodEnd = new Date(periodStart);
-                            if (period === 'month') {
-                                periodEnd.setMonth(periodEnd.getMonth() + 1);
-                                periodEnd.setDate(0);
-                            } else if (period === 'year') {
-                                periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-                                periodEnd.setDate(0);
-                            } else if (period === 'day') {
-                                // already 1
-                            }
-
-                            if (habitStart > periodStart && habitStart <= periodEnd) {
-                                const diffTime = Math.abs(periodEnd - habitStart);
-                                habitDaysInPeriod = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                                habitDaysInPeriod = Math.min(Math.max(habitDaysInPeriod, 1), totalDaysInPeriod);
-                            } else if (habitStart > periodEnd) {
-                                habitDaysInPeriod = 0;
-                            }
-                        }
-
-                        const countCapped = item.completed_days || 0;
-                        const rawPercent = habitDaysInPeriod > 0 
-                            ? (countCapped / habitDaysInPeriod) * 100 
-                            : 0;
-                        const roundedPercent = Math.round(rawPercent);
-                        const finalPercent = (countCapped > 0 && roundedPercent === 0) ? 1 : roundedPercent;
-                        const percentageStr = `${finalPercent}%`;
-
-                        return {
-                            index: index,
-                            id: item.id,
-                            name: item.name,
-                            shortName: shortenName(item.name),
-                            countCapped: countCapped,
-                            countRestored: item.restored_days || 0,
-                            countExtra: item.extra_quantity,
-                            percentage: percentageStr
-                        };
-                    });
-                    setData(formatted);
-                }
+                const result = await response.json();
+                
+                const mappedData = (result.habits || result.data || []).map(item => ({
+                    ...item,
+                    streakDays: item.streak_days || 0,
+                    streakPercentage: item.streak_percentage || 0,
+                    countExtra: item.extra_quantity || item.count_extra || 0,
+                    count_capped: item.completed_days || 0,
+                    shortName: item.name.length > 12 ? item.name.substring(0, 10) + '..' : item.name
+                }));
+                setData(mappedData);
             } catch (error) {
-                console.error(`Error fetching comparison data:`, error);
+                console.error('Error fetching comparison data:', error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchComparisonData();
-    }, [period, currentWeekDate, selectedCategory, t]);
 
-    const scrollRef = useRef(null);
-    const indicatorRef = useRef(null);
-
-    const handleScroll = (e) => {
-        if (!indicatorRef.current) return;
-        const { scrollLeft, scrollWidth } = e.target;
-        const left = (scrollLeft / scrollWidth) * 100;
-        indicatorRef.current.style.left = `${left}%`;
-    };
+        fetchHabitComparison();
+    }, [period, currentWeekDate, selectedCategory, language]);
 
     const filteredData = useMemo(() => {
         return data.filter(item => {
-            if (viewType === 'quantity') {
-                return (item.countExtra || 0) > 0;
-            }
-            return ((item.countCapped || 0) + (item.countRestored || 0)) > 0;
+            // For quantity mode: only show habits with quantity data
+            if (viewType === 'quantity') return (item.countExtra || 0) > 0;
+            // For habits mode: show ALL habits (even with 0 streak days)
+            return true;
         });
     }, [data, viewType]);
 
-    // Dynamic height based on data count for horizontal bars
-    const chartHeight = useMemo(() => Math.max(200, filteredData.length * 40), [filteredData.length]);
+    const chartHeight = useMemo(() => Math.max(200, filteredData.length * 45), [filteredData.length]);
 
-    // Initialize indicator width
-    useEffect(() => {
-        if (scrollRef.current && indicatorRef.current) {
-            const { scrollWidth, clientWidth } = scrollRef.current;
-            const width = (clientWidth / scrollWidth) * 100;
-            indicatorRef.current.style.width = `${width}%`;
+    const handleScroll = (e) => {
+        if (indicatorRef.current) {
+            const { scrollLeft, scrollWidth, clientWidth } = e.target;
+            const scrollPercent = (scrollLeft / (scrollWidth - clientWidth)) * 100;
+            indicatorRef.current.style.left = `${scrollPercent}%`;
         }
-    }, [filteredData.length]);
+    };
+
+    const maxValue = filteredData.reduce((m, d) => {
+        const value = viewType === 'habits' ? (d.count_capped || 0) : (d.countExtra || 0);
+        return Math.max(m, value);
+    }, 0);
+
+    const effectiveMax = useMemo(() => {
+        return Math.max(1, maxValue);
+    }, [maxValue]);
+
+    const CustomStreakLabel = (props) => {
+        const { x, y, width, value, index } = props;
+        const item = filteredData[index];
+        if (!item || !value || value <= 0) return null;
+
+        // Show count and percentage of dark-green days out of total possible
+        const labelText = value > 0 ? `${value} ${t('daysShort') || 'д.'}` : '';
+
+        if (!labelText) return null;
+
+        return (
+            <text x={x + width + 5} y={y + 16} fill={isDark ? "#E0E0E0" : "#666"} fontSize={11} fontWeight="600">
+                {labelText}
+            </text>
+        );
+    };
 
     if (loading) return (
         <div className="comparison-chart-loading">
@@ -458,101 +306,57 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
         </div>
     );
 
-    if (filteredData.length === 0) return null;
+    if (data.length === 0) return (
+        <div className="habits-comparison-section">
+            <div className="comparison-header"><h3>{t('habitProgress')}</h3></div>
+            <div className="comparison-no-data"><p>📊 {t('noData')}</p></div>
+            <div className="comparison-footer"><div className="comparison-footer-label">{periodLabel.title}</div></div>
+        </div>
+    );
 
     const chartMinWidth = filteredData.length > 5 ? `${Math.max(filteredData.length * (isMobile ? 55 : 75), 100)}px` : '100%';
     const showScroll = filteredData.length > 5;
 
-    const activeKey = viewType === 'habits' ? 'countCapped' : 'countExtra';
-
-    // Calculate the maximum value for the X-axis domain (horizontal bars)
-    const maxValue = filteredData.reduce((m, d) => {
-        const value = viewType === 'habits'
-            ? (d.countCapped || 0) + (d.countRestored || 0)
-            : (d.countExtra || 0);
-        return Math.max(m, value);
-    }, 0);
-
-    // Ensure we have some space for the label
-    const effectiveMax = Math.max(7, Math.ceil(maxValue / 7) * 7 + (maxValue > 5 ? 7 : 0));
-
     return (
         <div className="habits-comparison-section">
-            <div className="comparison-header">
-                <h3>{t('habitProgress')}</h3>
-                <span className="comparison-period">
-                    <span>{periodLabel.title}</span>
-                    {periodLabel.subtitle && <span className="comparison-period-subtitle">{periodLabel.subtitle}</span>}
-                </span>
-            </div>
-
+            <div className="comparison-header"><h3>{t('habitProgress')}</h3></div>
             <div className="comparison-chart-layout horizontal">
-                {/* Scrollable chart area for horizontal bars */}
                 <div className="comparison-scroll-wrapper" onScroll={handleScroll} ref={scrollRef}>
-                    <div className="comparison-chart-inner" style={{ minWidth: chartMinWidth }}>
+                    <div className="comparison-chart-inner">
                         <ResponsiveContainer width="100%" height={chartHeight} style={{ overflow: 'visible' }}>
-                            <BarChart data={filteredData} layout="vertical" margin={{ top: 10, right: 30, left: 10, bottom: 10 }} barSize={isMobile ? 18 : isTablet ? 22 : 26}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={isDark ? "#404040" : "#f0f0f0"} />
-                                <XAxis
-                                    type="number"
-                                    domain={[0, effectiveMax]}
-                                    tickCount={8}
-                                    stroke={isDark ? "#666" : "#999"}
-                                    tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 10 }}
-                                    allowDecimals={false}
+                            <BarChart
+                                layout="vertical"
+                                data={filteredData}
+                                margin={{ top: 5, right: 100, left: 10, bottom: 5 }}
+                                barSize={isMobile ? 22 : 26}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} />
+                                <XAxis type="number" hide domain={[0, effectiveMax]} />
+                                <YAxis 
+                                    dataKey="name" 
+                                    type="category" 
+                                    width={isMobile ? 90 : 130} 
+                                    tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 11 }}
+                                    axisLine={false}
+                                    tickLine={false}
                                 />
-                                <YAxis
-                                    type="number"
-                                    dataKey="index"
-                                    stroke={isDark ? "#666" : "#999"}
-                                    tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 10 }}
-                                    interval={0}
-                                    width={60}
-                                    tickFormatter={(value) => filteredData[value]?.shortName || ''}
-                                    domain={[0, Math.max(filteredData.length - 1, 0)]}
-                                    padding={{ top: 0, bottom: 0 }}
-                                />
-
-                                {viewType === 'habits' ? (
-                                    <>
-                                        <Bar dataKey="countCapped" stackId="a" fill="#059669" radius={[0, 4, 4, 0]} name={t('completed')} isAnimationActive={false}>
-                                            <LabelList
-                                                dataKey="countCapped"
-                                                content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
-                                            />
-                                        </Bar>
-                                        <Bar dataKey="countRestored" stackId="a" fill="#6EE7B7" radius={[0, 4, 4, 0]} name={t('restored')} isAnimationActive={false}>
-                                            <LabelList
-                                                dataKey="countRestored"
-                                                content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
-                                            />
-                                            <LabelList
-                                                dataKey="percentage"
-                                                position="right"
-                                                content={(props) => <PercentageBadge {...props} badgeW={40} badgeH={20} fSize={11} />}
-                                            />
-                                        </Bar>
-                                    </>
-                                ) : (
-                                    <Bar dataKey="countExtra" fill="#8B5CF6" radius={[0, 4, 4, 0]} name={t('quantity')} isAnimationActive={false}>
-                                        <LabelList
-                                            dataKey="countExtra"
-                                            content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={12} />}
-                                        />
-                                    </Bar>
-                                )}
+                                <Bar 
+                                    dataKey={viewType === 'habits' ? 'count_capped' : 'countExtra'} 
+                                    fill={viewType === 'habits' ? "#059669" : "#8B5CF6"} 
+                                    radius={[0, 4, 4, 0]}
+                                    isAnimationActive={false}
+                                >
+                                    <LabelList dataKey={viewType === 'habits' ? 'count_capped' : 'countExtra'} content={(props) => <CustomStreakLabel {...props} />} />
+                                </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
             </div>
-
+            <div className="comparison-footer"><div className="comparison-footer-label">{periodLabel.title}</div></div>
             {showScroll && (
                 <div className="scroll-indicator-container">
-                    <div
-                        className="scroll-indicator-bar"
-                        ref={indicatorRef}
-                    ></div>
+                    <div className="scroll-indicator-bar" ref={indicatorRef}></div>
                 </div>
             )}
         </div>
@@ -800,7 +604,6 @@ const Charts = ({
                 
                 const formattedData = json.data.map((item, index) => {
                     const isFuture = item.date > todayStr;
-                    const isToday = item.date === todayStr;
                     const habitCount = item.habit_count || 0;
                     const maxPossible = habitCount * item.days_in_period;
                     const completed = item.completed_days || 0;
@@ -831,31 +634,40 @@ const Charts = ({
                     const isCurrentYear = period === 'year' && 
                         parsedDate.getFullYear() === today.getFullYear();
 
-                    return {
+                    const commonData = {
                         index: index,
                         label: item.label || item.date,
                         date: item.date,
                         fullDate: item.date,
-                        dayMonth: weekDay,
-                        dayNumber: dayNumber,
-                        countTotal: item.completed_count,
-                        countCapped: item.completed_days,
-                        countRestored: item.restored_days || 0,
-                        countExtra: item.extra_quantity,
-                        percentage: percentageStr,
-                        isToday: isToday,
+                        isToday: item.date === todayStr,
                         isCurrentWeek: isCurrentWeek,
                         isCurrentMonth: isCurrentMonth,
                         isCurrentYear: isCurrentYear
+                    };
+
+                    const countCapped = item.completed_days || 0;
+                    const streakCount = item.streak_count || 0;
+                    const nonStreakCapped = Math.max(0, countCapped - streakCount);
+                    return {
+                        ...commonData,
+                        dayMonth: weekDay,
+                        dayNumber: dayNumber,
+                        countTotal: item.completed_count,
+                        countCapped: countCapped,
+                        nonStreakCapped: nonStreakCapped,
+                        countRestored: item.restored_days || 0,
+                        countExtra: item.extra_quantity,
+                        streakCount: streakCount,
+                        percentage: percentageStr
                     };
                 });
                 // Добавим фиктивные точки если данных мало
                 let paddedData = formattedData;
                 if (formattedData.length === 1) {
                     paddedData = [
-                        { ...formattedData[0], index: -1, countCapped: 0, countRestored: 0, countExtra: 0, label: '', dayMonth: '', dayNumber: '' },
+                        { ...formattedData[0], index: -1, countCapped: 0, countRestored: 0, countExtra: 0, streakCount: 0, label: '', dayMonth: '', dayNumber: '' },
                         { ...formattedData[0], index: 0 },
-                        { ...formattedData[0], index: 1, countCapped: 0, countRestored: 0, countExtra: 0, label: '', dayMonth: '', dayNumber: '' }
+                        { ...formattedData[0], index: 1, countCapped: 0, countRestored: 0, countExtra: 0, streakCount: 0, label: '', dayMonth: '', dayNumber: '' }
                     ];
                 }
                 setChartData(paddedData);
@@ -1059,7 +871,6 @@ const Charts = ({
                                                         content={(props) => {
                                                             const { x, y, value, index, width } = props;
                                                             if (!value || x == null || y == null) return null;
-                                                            // Position at fixed top of chart instead of above each bar
                                                             const chartTop = 8;
                                                             const cx = x + width / 2;
                                                             return (
@@ -1082,7 +893,6 @@ const Charts = ({
                                             dataKey="countExtra"
                                             fill="#8B5CF6"
                                             radius={[8, 8, 0, 0]}
-                                            animationDuration={500}
                                             isAnimationActive={false}
                                             name={t('quantity')}
                                             shape={<CustomBarShape />}
@@ -1098,7 +908,6 @@ const Charts = ({
                                                     content={(props) => {
                                                         const { x, y, value, index, width } = props;
                                                         if (!value || x == null || y == null) return null;
-                                                        // Position at fixed top of chart instead of above each bar
                                                         const chartTop = 8;
                                                         const cx = x + width / 2;
                                                         return (
@@ -1131,7 +940,7 @@ const Charts = ({
                 </div>
             )}
 
-            {viewType === 'quantity' && (
+            {(viewType === 'habits' || viewType === 'quantity') && (
                 <HabitsComparisonChart
                     period={period}
                     viewType={viewType}
@@ -1140,6 +949,7 @@ const Charts = ({
                     theme={theme}
                     t={t}
                     language={language}
+                    chartData={chartData}
                 />
             )}
 
