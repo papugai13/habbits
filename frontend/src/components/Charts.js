@@ -235,11 +235,12 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                 });
                 const result = await response.json();
                 
-                const mappedData = (result.data || []).map(item => ({
+                const mappedData = (result.habits || result.data || []).map(item => ({
                     ...item,
                     streakDays: item.streak_days || 0,
                     streakPercentage: item.streak_percentage || 0,
-                    countExtra: item.count_extra || 0,
+                    countExtra: item.extra_quantity || item.count_extra || 0,
+                    count_capped: item.completed_days || 0,
                     shortName: item.name.length > 12 ? item.name.substring(0, 10) + '..' : item.name
                 }));
                 setData(mappedData);
@@ -255,8 +256,10 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
 
     const filteredData = useMemo(() => {
         return data.filter(item => {
+            // For quantity mode: only show habits with quantity data
             if (viewType === 'quantity') return (item.countExtra || 0) > 0;
-            return ((item.count_capped || 0) + (item.streakDays || 0)) > 0;
+            // For habits mode: show ALL habits (even with 0 streak days)
+            return true;
         });
     }, [data, viewType]);
 
@@ -271,25 +274,21 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     };
 
     const maxValue = filteredData.reduce((m, d) => {
-        const value = viewType === 'habits' ? (d.streakDays || 0) : (d.countExtra || 0);
+        const value = viewType === 'habits' ? (d.count_capped || 0) : (d.countExtra || 0);
         return Math.max(m, value);
     }, 0);
 
     const effectiveMax = useMemo(() => {
-        if (period === 'day') return 1;
-        if (period === 'week') return 7;
-        return Math.max(7, Math.ceil(maxValue / 7) * 7 + (maxValue > 5 ? 7 : 0));
-    }, [maxValue, period]);
+        return Math.max(1, maxValue);
+    }, [maxValue]);
 
     const CustomStreakLabel = (props) => {
         const { x, y, width, value, index } = props;
         const item = filteredData[index];
-        if (!item) return null;
+        if (!item || !value || value <= 0) return null;
 
-        const percentage = item.streakPercentage || 0;
-        const labelText = period === 'day' 
-            ? (value > 0 ? "100%" : "") 
-            : `${value} ${t('daysShort') || 'д.'} (${Math.round(percentage)}%)`;
+        // Show count and percentage of dark-green days out of total possible
+        const labelText = value > 0 ? `${value} ${t('daysShort') || 'д.'}` : '';
 
         if (!labelText) return null;
 
@@ -307,7 +306,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
         </div>
     );
 
-    if (filteredData.length === 0) return (
+    if (data.length === 0) return (
         <div className="habits-comparison-section">
             <div className="comparison-header"><h3>{t('habitProgress')}</h3></div>
             <div className="comparison-no-data"><p>📊 {t('noData')}</p></div>
@@ -342,12 +341,12 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                                     tickLine={false}
                                 />
                                 <Bar 
-                                    dataKey={viewType === 'habits' ? "streakDays" : "countExtra"} 
+                                    dataKey={viewType === 'habits' ? 'count_capped' : 'countExtra'} 
                                     fill={viewType === 'habits' ? "#059669" : "#8B5CF6"} 
                                     radius={[0, 4, 4, 0]}
                                     isAnimationActive={false}
                                 >
-                                    <LabelList dataKey={viewType === 'habits' ? "streakDays" : "countExtra"} content={(props) => <CustomStreakLabel {...props} />} />
+                                    <LabelList dataKey={viewType === 'habits' ? 'count_capped' : 'countExtra'} content={(props) => <CustomStreakLabel {...props} />} />
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
@@ -506,6 +505,7 @@ const Charts = ({
                     };
 
                     const countCapped = item.completed_days || 0;
+                    const streakCount = item.streak_count || 0;
                     const nonStreakCapped = Math.max(0, countCapped - streakCount);
                     return {
                         ...commonData,

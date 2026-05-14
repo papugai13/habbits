@@ -733,7 +733,12 @@ class HabitViewSet(viewsets.ModelViewSet):
         if lookback_start > start_date - timedelta(days=7):
             lookback_start = start_date - timedelta(days=7)
             
-        dates = Date.objects.filter(user=habit.user, habit=habit, habit_date__range=[lookback_start, end_date], is_done=True).values_list('habit_date', flat=True)
+        dates = Date.objects.filter(
+            user=habit.user, habit=habit,
+            habit_date__range=[lookback_start, end_date],
+            is_done=True,
+            is_restored=False  # Only dark-green days count for streaks
+        ).values_list('habit_date', flat=True)
         done_dates = set(dates)
         
         streak_active = False
@@ -1187,6 +1192,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                 'restored_days': restored_days,
                 'extra_quantity': extra_quantity,
                 'streak_days': streak_days,
+                'streak_percentage': streak_percentage,
                 'done_history': done_history_str,
                 'start_date': habit.start_date.isoformat() if habit.start_date else None,
             })
