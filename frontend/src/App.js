@@ -5,6 +5,7 @@ import Register from './components/Register';
 import Charts from './components/Charts';
 import DrumPicker from './components/DrumPicker';
 import translations from './translations';
+import storageService from './storageService';
 
 
 const getMondayString = (dateInput = new Date()) => {
@@ -52,6 +53,9 @@ const App = () => {
     if (typeof window === 'undefined') return 'auto';
     return localStorage.getItem('theme') || 'auto';
   });
+  const [storageMode, setStorageMode] = useState(() => {
+    return storageService.getStorageMode();
+  });
 
   const [habitsData, setHabitsData] = useState([]);
 
@@ -98,7 +102,8 @@ const App = () => {
     categories: false,
     habits: false,
     theme: false,
-    reminders: false
+    reminders: false,
+    storage: false
   });
 
   // Reminder settings state
@@ -241,48 +246,40 @@ const App = () => {
 
 
 
-  // Fetch categories from API
+  // Fetch categories from storage
   const fetchCategories = React.useCallback(async () => {
     try {
       setApiError('');
-      const response = await fetch('/api/v1/categories/', {
+      const data = await storageService.getCategories(storageMode, {
         credentials: 'include'
       });
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data);
+      setCategories(data);
 
-        const hasSelectedCategory = data.some(category => category.id.toString() === newHabitCategory);
-        if (data.length > 0) {
-          if (newHabitCategory !== "" && (!newHabitCategory || !hasSelectedCategory)) {
-            setNewHabitCategory(data[0].id.toString());
-          }
-        } else if (newHabitCategory) {
-          setNewHabitCategory('');
+      const hasSelectedCategory = data.some(category => category.id.toString() === newHabitCategory);
+      if (data.length > 0) {
+        if (newHabitCategory !== "" && (!newHabitCategory || !hasSelectedCategory)) {
+          setNewHabitCategory(data[0].id.toString());
         }
+      } else if (newHabitCategory) {
+        setNewHabitCategory('');
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
-  }, [newHabitCategory]);
+  }, [storageMode, newHabitCategory]);
 
   const fetchArchivedCategories = React.useCallback(async () => {
     try {
       setApiError('');
-      const response = await fetch('/api/v1/categories/archived/', {
+      const data = await storageService.getArchivedCategories(storageMode, {
         credentials: 'include'
       });
-      if (response.ok) {
-        const data = await response.json();
-        setArchivedCategories(data);
-      } else {
-        setApiError(`Error loading archived categories: ${response.status}`);
-      }
+      setArchivedCategories(data);
     } catch (error) {
       console.error('Error fetching archived categories:', error);
       setApiError('Error fetching archived categories');
     }
-  }, []);
+  }, [storageMode]);
 
   const fetchWeekHabits = async (targetDate) => {
     const dateToFetch = targetDate;
@@ -290,15 +287,11 @@ const App = () => {
 
     try {
       setApiError('');
-      const response = await fetch(`/api/v1/habits/weekly_status/?date=${dateToFetch}`, {
+      const data = await storageService.getWeeklyStatus(storageMode, dateToFetch, {
         credentials: 'include'
       });
-      if (response.ok) {
-        const data = await response.json();
-        weekDataCacheRef.current[dateToFetch] = data;
-        return data;
-      }
-      setApiError(`Error loading weekly habits: ${response.status}`);
+      weekDataCacheRef.current[dateToFetch] = data;
+      return data;
     } catch (error) {
       console.error('Error fetching habits for week', dateToFetch, error);
       setApiError('Error fetching weekly habits');
@@ -356,19 +349,14 @@ const App = () => {
   // Fetch archived habits
   const fetchArchivedHabits = React.useCallback(async () => {
     try {
-      const response = await fetch('/api/v1/habits/archived/', {
+      const data = await storageService.getArchivedHabits(storageMode, {
         credentials: 'include'
       });
-      if (response.ok) {
-        const data = await response.json();
-        setArchivedHabits(data);
-      } else {
-        console.error(`Error loading archived habits: ${response.status}`);
-      }
+      setArchivedHabits(data);
     } catch (error) {
       console.error('Error fetching archived habits:', error);
     }
-  }, []);
+  }, [storageMode]);
 
   // Check authentication status
   const checkAuth = React.useCallback(async () => {
@@ -381,18 +369,22 @@ const App = () => {
         const userData = await response.json();
         setUser(userData);
         setIsAuthenticated(true);
-        // Fetch data after authentication confirmed
-        fetchHabits();
-        fetchArchivedHabits();
-        fetchCategories();
-        fetchArchivedCategories();
       } else {
         setIsAuthenticated(false);
-        setApiError(`Auth check failed: ${response.status}`);
       }
+      
+      // Always fetch data from the current storage mode
+      fetchHabits();
+      fetchArchivedHabits();
+      fetchCategories();
+      fetchArchivedCategories();
     } catch (error) {
       console.error('Auth check error:', error);
-      setApiError('Error checking authentication');
+      // Still load data even if auth fails (especially for local mode)
+      fetchHabits();
+      fetchArchivedHabits();
+      fetchCategories();
+      fetchArchivedCategories();
       setIsAuthenticated(false);
     } finally {
       setAuthLoading(false);
@@ -1478,135 +1470,103 @@ const App = () => {
 
 
     try {
-      const response = await fetch('/api/v1/categories/', {
-        method: 'POST',
+      const newCat = await storageService.saveCategory(storageMode, { name: newCategoryName.trim() }, {
         headers: {
-          'Content-Type': 'application/json',
           'X-CSRFToken': getCookie('csrftoken')
         },
-        credentials: 'include',
-        body: JSON.stringify({ name: newCategoryName.trim() })
+        credentials: 'include'
       });
 
-      if (response.ok) {
-        const newCat = await response.json();
-        setNewCategoryName('');
-        setShowAddCategory(false);
-        setShowCreateCategoryModal(false);
-        await fetchCategories();
-        if (showEditModal && editingHabit) {
-          setEditingHabit({ ...editingHabit, category: newCat.id.toString() });
-        } else {
-          setNewHabitCategory(newCat.id.toString());
-        }
+      setNewCategoryName('');
+      setShowAddCategory(false);
+      setShowCreateCategoryModal(false);
+      await fetchCategories();
+      if (showEditModal && editingHabit) {
+        setEditingHabit({ ...editingHabit, category: newCat.id.toString() });
       } else {
-        const err = await response.json();
-        const errorMessage = err.name ? err.name[0] : (err.detail || t('categoryCreateError'));
-
-        setCreateError(errorMessage);
+        setNewHabitCategory(newCat.id.toString());
       }
     } catch (error) {
       console.error('Error creating category:', error);
+      setCreateError(t('categoryCreateError'));
     }
   };
 
   const handleUpdateCategory = async (id, newName) => {
     if (!newName.trim()) return;
     try {
-      const response = await fetch(`/api/v1/categories/${id}/`, {
-        method: 'PATCH',
+      await storageService.saveCategory(storageMode, { id, name: newName.trim() }, {
         headers: {
-          'Content-Type': 'application/json',
           'X-CSRFToken': getCookie('csrftoken')
         },
-        credentials: 'include',
-        body: JSON.stringify({ name: newName.trim() })
+        credentials: 'include'
       });
 
-      if (response.ok) {
-        setEditingCategoryId(null);
-        await fetchCategories();
-        await fetchHabits(); // Refresh habits to pick up name changes if cached
-      } else {
-        const err = await response.json();
-        alert(err.name ? err.name[0] : t('categoryUpdateError'));
-
-      }
+      setEditingCategoryId(null);
+      await fetchCategories();
+      await fetchHabits(); // Refresh habits to pick up name changes if cached
     } catch (error) {
       console.error('Error updating category:', error);
+      alert(t('categoryUpdateError'));
     }
   };
 
   const handleDeleteCategory = async (id) => {
     if (!window.confirm(t('categoryDeleteConfirm'))) {
-
       return;
     }
     try {
-      const response = await fetch(`/api/v1/categories/${id}/`, {
-        method: 'DELETE',
+      await storageService.deleteCategory(storageMode, id, {
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include'
       });
 
-      if (response.ok) {
-        await fetchCategories();
-        await fetchArchivedCategories();
-        await fetchHabits(); // Habits category will be updated to null
-      } else {
-        alert(t('categoryDeleteError'));
-
-      }
+      await fetchCategories();
+      await fetchArchivedCategories();
+      await fetchHabits(); // Habits category will be updated to null
     } catch (error) {
       console.error('Error deleting category:', error);
+      alert(t('categoryDeleteError'));
     }
   };
 
   const handleArchiveCategory = async (id) => {
     try {
-      const response = await fetch(`/api/v1/categories/${id}/archive/`, {
-        method: 'POST',
+      await storageService.archiveCategory(storageMode, id, {
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include'
       });
 
-      if (response.ok) {
-        await fetchCategories();
-        await fetchArchivedCategories();
-        await fetchHabits();
-        await fetchArchivedHabits();
-      } else {
-        alert(t('categoryArchiveError'));
-      }
+      await fetchCategories();
+      await fetchArchivedCategories();
+      await fetchHabits();
+      await fetchArchivedHabits();
     } catch (error) {
       console.error('Error archiving category:', error);
+      alert(t('categoryArchiveError'));
     }
   };
 
   const handleUnarchiveCategory = async (id) => {
     try {
-      const response = await fetch(`/api/v1/categories/${id}/archive/`, {
-        method: 'POST',
+      await storageService.archiveCategory(storageMode, id, {
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include'
       });
 
-      if (response.ok) {
-        await fetchCategories();
-        await fetchArchivedCategories();
-        await fetchHabits();
-        await fetchArchivedHabits();
-      } else {
-        alert(t('categoryArchiveError'));
-      }
+      await fetchCategories();
+      await fetchArchivedCategories();
+      await fetchHabits();
+      await fetchArchivedHabits();
     } catch (error) {
       console.error('Error unarchiving category:', error);
+      alert(t('categoryArchiveError'));
     }
   };
 
@@ -1649,19 +1609,15 @@ const App = () => {
     if (e) e.preventDefault();
     
     setCategories(currentList => {
-      const reorderPayload = currentList
+      const orderedIds = currentList
         .filter(c => c.id !== 'all' && c.id !== 'none')
-        .map((c, index) => ({ id: c.id, order: index }));
+        .map(c => c.id);
         
-      const csrf = getCookie('csrftoken');
-      fetch('/api/v1/categories/reorder/', {
-        method: 'POST',
+      storageService.reorderCategories(storageMode, orderedIds, {
         headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf
+          'X-CSRFToken': getCookie('csrftoken')
         },
-        credentials: 'include',
-        body: JSON.stringify(reorderPayload)
+        credentials: 'include'
       }).catch(error => {
         console.error('Error saving category order:', error);
         fetchCategories(); // revert on error
@@ -1754,55 +1710,26 @@ const App = () => {
     setHabitsData(updatedHabits);
 
     try {
-      let response;
-      const payload = effectiveQuantity !== null
-        ? { is_done: isMarkingDone, quantity: effectiveQuantity, is_restored: isPastDate && isMarkingDone }
-        : { is_done: isMarkingDone, is_restored: isPastDate && isMarkingDone };
+      const payload = {
+        habit_id: habitId,
+        date: dayDate,
+        is_done: isMarkingDone,
+        is_restored: isPastDate && isMarkingDone,
+        quantity: effectiveQuantity !== null ? effectiveQuantity : undefined
+      };
 
-      const csrf = getCookie('csrftoken');
-      console.log('ToggleHabit: habitId:', habitId, 'dateId:', dateId, 'payload:', payload, 'csrf:', csrf);
+      await storageService.saveStatus(storageMode, payload, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
 
-      if (dateId) {
-        // Toggle existing date entry
-        response = await fetch(`/api/v1/date/${dateId}/`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrf
-          },
-          credentials: 'include',
-          body: JSON.stringify(payload)
-        });
-      } else {
-        // Create new date entry
-        response = await fetch(`/api/v1/dates/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrf
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            habit: habitId,
-            habit_date: dayDate,
-            is_done: true,
-            is_restored: isPastDate,
-            ...(effectiveQuantity !== null && { quantity: effectiveQuantity })
-          })
-        });
-      }
-
-      if (!response.ok) {
-        console.error('ToggleHabit response error:', response.status, response.statusText);
-        throw new Error(`API error ${response.status}`);
-      }
-
-      // Refetch to get correct IDs and sync state
+      // Refetch to sync state
       await fetchHabits();
-
     } catch (error) {
       console.error('Error toggling habit:', error);
-      fetchHabits(); // Sync back to server state
+      fetchHabits(); // Sync back
     }
   };
 
@@ -1849,46 +1776,25 @@ const App = () => {
     if (!quantityModalData) return;
 
     const qty = typeof quantityValue === 'number' && quantityValue >= 1 ? quantityValue : null;
-    const { habitId, dayDate, dateId } = quantityModalData;
+    const { habitId, dayDate } = quantityModalData;
 
     try {
-      let response;
-      const csrf = getCookie('csrftoken');
-      
       const payload = {
+        habit_id: habitId,
+        date: dayDate,
         is_done: true,
         is_restored: isRestored,
         quantity: qty,
         comment: commentValue
       };
 
-      if (dateId) {
-        response = await fetch(`/api/v1/date/${dateId}/`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrf
-          },
-          credentials: 'include',
-          body: JSON.stringify(payload)
-        });
-      } else {
-        payload.habit = habitId;
-        payload.habit_date = dayDate;
-        response = await fetch(`/api/v1/dates/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrf
-          },
-          credentials: 'include',
-          body: JSON.stringify(payload)
-        });
-      }
+      await storageService.saveStatus(storageMode, payload, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'include'
+      });
 
-      if (!response.ok) {
-        throw new Error(`API error ${response.status}`);
-      }
       setShowQuantityModal(false);
       setQuantityModalData(null);
       setQuantityValue(null);
@@ -2035,34 +1941,22 @@ const App = () => {
 
 
     try {
-      const csrf = getCookie('csrftoken');
-      console.log('CreateHabit: data:', { name: newHabitName.trim(), category: newHabitCategory }, 'csrf:', csrf);
+      const payload = {
+        name: newHabitName.trim(),
+        category: newHabitCategory === "" ? null : newHabitCategory,
+        target_type: newHabitTargetType,
+        start_date: newHabitStartDate,
+        use_target: newHabitUseTarget,
+        completion_target: newHabitUseTarget ? (newHabitCompletionTarget !== '' ? parseInt(newHabitCompletionTarget, 10) : getDaysInCurrentMonth()) : null,
+        quantity_target: newHabitUseTarget && newHabitQuantityTarget !== '' ? parseInt(newHabitQuantityTarget, 10) : null
+      };
 
-      const response = await fetch('/api/v1/habits/', {
-        method: 'POST',
+      await storageService.saveHabit(storageMode, payload, {
         headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf
+          'X-CSRFToken': getCookie('csrftoken')
         },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: newHabitName.trim(),
-          category: newHabitCategory === "" ? null : parseInt(newHabitCategory, 10),
-          target_type: newHabitTargetType,
-          start_date: newHabitStartDate,
-          use_target: newHabitUseTarget,
-          completion_target: newHabitUseTarget ? (newHabitCompletionTarget !== '' ? parseInt(newHabitCompletionTarget, 10) : getDaysInCurrentMonth()) : null,
-          quantity_target: newHabitUseTarget && newHabitQuantityTarget !== '' ? parseInt(newHabitQuantityTarget, 10) : null
-        })
+        credentials: 'include'
       });
-
-      if (!response.ok) {
-        console.error('CreateHabit response error:', response.status, response.statusText);
-        const errData = await response.json().catch(() => ({}));
-        console.error('Error detail:', errData);
-        throw new Error(errData.detail || t('habitCreateError'));
-
-      }
 
       // Reset form and close modal
       setNewHabitName('');
@@ -2082,40 +1976,29 @@ const App = () => {
 
 
     try {
-      const csrf = getCookie('csrftoken');
-      console.log('DeleteHabit: id:', habitId, 'csrf:', csrf);
-
-      const response = await fetch(`/api/v1/habits/${habitId}/`, {
-        method: 'DELETE',
+      await storageService.deleteHabit(storageMode, habitId, {
         headers: {
-          'X-CSRFToken': csrf
+          'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include'
       });
 
-      if (response.ok) {
-        await fetchHabits();
-        await fetchArchivedHabits();
-      } else {
-        alert(t('habitDeleteError'));
-
-      }
+      await fetchHabits();
+      await fetchArchivedHabits();
     } catch (error) {
       console.error('Error deleting habit:', error);
+      alert(t('habitDeleteError'));
     }
   };
 
   const handleArchiveHabit = async (habitId) => {
     try {
-      const response = await fetch(`/api/v1/habits/${habitId}/archive/`, {
-        method: 'POST',
+      await storageService.saveHabit(storageMode, { id: habitId, is_archived: true }, {
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
         credentials: 'include'
       });
-      if (response.ok) {
-        await fetchHabits();
-        await fetchArchivedHabits();
-      }
+      await fetchHabits();
+      await fetchArchivedHabits();
     } catch (error) {
       console.error('Error archiving habit:', error);
     }
@@ -2123,15 +2006,12 @@ const App = () => {
 
   const handleUnarchiveHabit = async (habitId) => {
     try {
-      const response = await fetch(`/api/v1/habits/${habitId}/archive/`, {
-        method: 'POST',
+      await storageService.saveHabit(storageMode, { id: habitId, is_archived: false }, {
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
         credentials: 'include'
       });
-      if (response.ok) {
-        await fetchHabits();
-        await fetchArchivedHabits();
-      }
+      await fetchHabits();
+      await fetchArchivedHabits();
     } catch (error) {
       console.error('Error unarchiving habit:', error);
     }
@@ -2178,18 +2058,13 @@ const App = () => {
 
     // We just need to sync with backend now
     setHabitsData(currentList => {
-      const reorderPayload = currentList.map((h, index) => ({ id: h.id, order: index }));
-      const csrf = getCookie('csrftoken');
-      console.log('ReorderHabits: payload:', reorderPayload, 'csrf:', csrf);
-
-      fetch('/api/v1/habits/reorder/', {
-        method: 'POST',
+      const orderedIds = currentList.map(h => h.id);
+      
+      storageService.reorderHabits(storageMode, orderedIds, {
         headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf
+          'X-CSRFToken': getCookie('csrftoken')
         },
-        credentials: 'include',
-        body: JSON.stringify(reorderPayload)
+        credentials: 'include'
       }).catch(error => {
         console.error('Error saving order:', error);
         fetchHabits(); // revert on error
@@ -2250,24 +2125,16 @@ const App = () => {
 
   const handleMoveHabitToCategory = async (habitId, categoryId) => {
     try {
-      const csrf = getCookie('csrftoken');
-      const response = await fetch(`/api/v1/habits/${habitId}/`, {
-        method: 'PATCH',
+      await storageService.saveHabit(storageMode, { id: habitId, category: categoryId }, {
         headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf
+          'X-CSRFToken': getCookie('csrftoken')
         },
-        credentials: 'include',
-        body: JSON.stringify({ category: categoryId })
+        credentials: 'include'
       });
-      if (response.ok) {
-        await fetchHabits();
-      } else {
-        const err = await response.json();
-        alert(err.detail || 'Ошибка при перемещении привычки');
-      }
+      await fetchHabits();
     } catch (error) {
       console.error('Error moving habit:', error);
+      alert('Ошибка при перемещении привычки');
     }
   };
 
@@ -2276,37 +2143,28 @@ const App = () => {
     if (!editingHabit) return;
 
     try {
-      const csrf = getCookie('csrftoken');
-      console.log('UpdateHabit: data:', { name: editingHabit.name, category: editingHabit.category }, 'csrf:', csrf);
-
-      const response = await fetch(`/api/v1/habits/${editingHabit.id}/`, {
-        method: 'PATCH',
+      await storageService.saveHabit(storageMode, {
+        id: editingHabit.id,
+        name: editingHabit.name,
+        category: editingHabit.category === "" ? null : editingHabit.category,
+        target_type: editingHabit.target_type,
+        start_date: editingHabit.start_date,
+        use_target: editingHabit.use_target,
+        completion_target: editingHabit.use_target ? (editingHabit.completion_target !== '' && editingHabit.completion_target !== null ? parseInt(editingHabit.completion_target, 10) : getDaysInCurrentMonth()) : null,
+        quantity_target: editingHabit.use_target && editingHabit.quantity_target !== '' && editingHabit.quantity_target !== null ? parseInt(editingHabit.quantity_target, 10) : null
+      }, {
         headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf
+          'X-CSRFToken': getCookie('csrftoken')
         },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: editingHabit.name,
-          category: editingHabit.category === "" ? null : editingHabit.category,
-          target_type: editingHabit.target_type,
-          start_date: editingHabit.start_date,
-          use_target: editingHabit.use_target,
-          completion_target: editingHabit.use_target ? (editingHabit.completion_target !== '' && editingHabit.completion_target !== null ? parseInt(editingHabit.completion_target, 10) : getDaysInCurrentMonth()) : null,
-          quantity_target: editingHabit.use_target && editingHabit.quantity_target !== '' && editingHabit.quantity_target !== null ? parseInt(editingHabit.quantity_target, 10) : null
-        })
+        credentials: 'include'
       });
 
-      if (response.ok) {
-        setShowEditModal(false);
-        setEditingHabit(null);
-        await fetchHabits();
-      } else {
-        const err = await response.json();
-        alert(err.detail || 'Ошибка при обновлении привычки');
-      }
+      setShowEditModal(false);
+      setEditingHabit(null);
+      await fetchHabits();
     } catch (error) {
       console.error('Error updating habit:', error);
+      alert('Ошибка при обновлении привычки');
     }
   };
 
@@ -2398,23 +2256,19 @@ const App = () => {
     setIsReportLoading(true);
     setReportPeriod(period);
     try {
-      const response = await fetch(`/api/v1/habits/${habitId}/report/?period=${period}&date=${currentWeekDate}`, {
+      const data = await storageService.getReport(storageMode, habitId, {
+        period,
+        date: currentWeekDate
+      }, {
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include'
       });
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(data);
-      } else {
-        alert(t('errorLoadingReport'));
-      }
-
+      setReportData(data);
     } catch (error) {
       console.error('Error fetching report:', error);
       alert(t('errorLoadingReport'));
-
     } finally {
       setIsReportLoading(false);
     }
@@ -2424,23 +2278,19 @@ const App = () => {
     setIsReportLoading(true);
     setReportPeriod(period);
     try {
-      const response = await fetch(`/api/v1/habits/summary_report/?period=${period}&date=${currentWeekDate}`, {
+      const data = await storageService.getSummaryReport(storageMode, {
+        period,
+        date: currentWeekDate
+      }, {
         headers: {
           'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include'
       });
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(data);
-      } else {
-        alert(t('errorLoadingReport'));
-      }
-
+      setReportData(data);
     } catch (error) {
       console.error('Error fetching summary report:', error);
       alert(t('errorLoadingReport'));
-
     } finally {
       setIsReportLoading(false);
     }
@@ -2627,6 +2477,7 @@ const App = () => {
           theme={theme}
           t={t}
           language={language}
+          storageMode={storageMode}
         />
 
       )}
@@ -3266,6 +3117,44 @@ const App = () => {
                 </div>
                 )}
               </>
+            )}
+          </div>
+
+          <div className="settings-section storage-settings">
+            <h3 className="section-title section-title-centered" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, storage: !collapsedSettingsSections.storage})}>
+              <span>💾 {t('storageSettings')}</span>
+              <span className={`collapse-icon ${collapsedSettingsSections.storage ? 'collapsed' : ''}`}>▼</span>
+            </h3>
+            {!collapsedSettingsSections.storage && (
+              <div className="storage-mode-options">
+                <div className="storage-mode-notice">
+                  {t('storageModeNotice')}
+                </div>
+                <div className="frequency-options">
+                  <button
+                    className={`freq-btn ${storageMode === 'cloud' ? 'active' : ''}`}
+                    onClick={() => {
+                      setStorageMode('cloud');
+                      storageService.setStorageMode('cloud');
+                      // Trigger refetch
+                      checkAuth();
+                    }}
+                  >
+                    {t('cloudStorage')}
+                  </button>
+                  <button
+                    className={`freq-btn ${storageMode === 'local' ? 'active' : ''}`}
+                    onClick={() => {
+                      setStorageMode('local');
+                      storageService.setStorageMode('local');
+                      // Trigger refetch
+                      checkAuth();
+                    }}
+                  >
+                    {t('localStorage')}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
