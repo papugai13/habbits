@@ -3,6 +3,7 @@ import './App.css';
 import Login from './components/Login';
 import Register from './components/Register';
 import Charts from './components/Charts';
+import Analytics from './components/Analytics';
 import DrumPicker from './components/DrumPicker';
 import translations from './translations';
 
@@ -236,6 +237,7 @@ const App = () => {
   const bottomTabs = [
     { id: 'Habits', label: t('journals'), icon: '✔️', disabled: false },
     { id: 'Charts', label: t('charts'), icon: '📊', disabled: false },
+    { id: 'Analytics', label: t('analytics'), icon: '📈', disabled: false },
     { id: 'Settings', label: t('settings'), icon: '⚙️', disabled: false },
   ];
 
@@ -2629,6 +2631,16 @@ const App = () => {
           language={language}
         />
 
+      )}
+
+      {/* Компонент аналитики - для вкладки Аналитика */}
+      {activeTab === 'Analytics' && (
+        <Analytics
+          getCookie={getCookie}
+          theme={theme}
+          t={t}
+          language={language}
+        />
       )}
 
       {/* Вкладка Настройка */}

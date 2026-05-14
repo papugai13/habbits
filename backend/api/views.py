@@ -997,6 +997,167 @@ class HabitViewSet(viewsets.ModelViewSet):
 
 
     @action(detail=False, methods=['get'])
+    def analytics_chart(self, request):
+        try:
+            user_profile, _ = UserAll.objects.get_or_create(
+                auth_user=request.user,
+                defaults={'name': request.user.username, 'age': ''}
+            )
+            
+            # Filter by specific habit if provided
+            habit_id = request.query_params.get('habit_id')
+            habits = Habit.objects.filter(user=user_profile, is_archived=False)
+            if habit_id and habit_id != 'all' and habit_id:
+                try:
+                    habits = habits.filter(id=int(habit_id))
+                except (ValueError, TypeError):
+                    pass
+
+            # Get the earliest start_date among selected habits
+            start_date_of_chart = habits.aggregate(Min('start_date'))['start_date__min']
+            
+            today = date.today()
+            # If no habits or no start dates, use a default range
+            if not start_date_of_chart:
+                start_date_of_chart = today - timedelta(days=30)
+            
+            # Chart ends at the end of the current week
+            end_of_chart = today + timedelta(days=(6 - today.weekday()))
+            
+            # Align start to the first Monday of that week
+            days_since_monday = start_date_of_chart.weekday()
+            week_start = start_date_of_chart - timedelta(days=days_since_monday)
+            
+            weeks_data = []
+            MONTHS_RU = {
+                1: 'Январь', 2: 'Февраль', 3: 'Март', 4: 'Апрель',
+                5: 'Май', 6: 'Июнь', 7: 'Июль', 8: 'Август',
+                9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
+            }
+            
+            # Safeguard against too many weeks (e.g. if start_date was incorrectly set to year 1900)
+            if (end_of_chart - week_start).days > 1000:
+                week_start = end_of_chart - timedelta(days=365)
+            
+            week_index = 1
+            while week_start <= end_of_chart:
+                week_end = week_start + timedelta(days=6)
+                # Use Thursday to determine the month of the week (ISO 8601 style)
+                thursday = week_start + timedelta(days=3)
+                
+                week_dates = Date.objects.filter(
+                    user=user_profile,
+                    habit__in=habits,
+                    habit_date__range=[week_start, week_end],
+                    is_done=True,
+                    is_restored=False
+                )
+                
+                total_completions = week_dates.count()
+                
+                # Calculate total possible days in this week for active habits
+                total_possible_days = 0
+                for habit in habits:
+                    if habit.start_date and habit.start_date <= week_end:
+                        # If the habit started THIS week, adjust the total days
+                        if habit.start_date >= week_start:
+                            actual_start = habit.start_date
+                            actual_end = week_end
+                            total_possible_days += (actual_end - actual_start).days + 1
+                        else:
+                            # Not the first week, use 7 days
+                            total_possible_days += 7
+                
+                # If the week is completely in the future (shouldn't happen with the loop condition, but safe)
+                if total_possible_days <= 0:
+                    total_possible_days = 0
+                
+                active_habits_count = habits.filter(start_date__lte=week_end).count()
+                
+                avg_days = 0
+                display_days_done = total_completions
+                display_total_days = total_possible_days
+                
+                if active_habits_count > 0:
+                    avg_days = round(total_completions / active_habits_count, 1)
+                    if active_habits_count > 1:
+                        display_days_done = round(total_completions / active_habits_count, 1)
+                        display_total_days = round(total_possible_days / active_habits_count, 1)
+                    else:
+                        # Ensure integers when single habit is selected
+                        display_days_done = int(total_completions)
+                        display_total_days = int(total_possible_days)
+                
+                weeks_data.append({
+                    "week_label": f"н{week_start.isocalendar()[1]}",
+                    "month": thursday.month,
+                    "month_name": MONTHS_RU[thursday.month],
+                    "value": min(avg_days, 7),
+                    "days_done": display_days_done,
+                    "total_days": display_total_days,
+                    "week_start": week_start.isoformat(),
+                    "week_end": week_end.isoformat(),
+                })
+                
+                week_start += timedelta(days=7)
+                week_index += 1
+                
+            # Calculate month stats for all months present in weeks_data
+            months_data = {}
+            unique_months = [] # list of (year, month)
+            for w in weeks_data:
+                # Parse year/month from week_start
+                dt = date.fromisoformat(w['week_start']) + timedelta(days=3) # Thursday
+                key = (dt.year, dt.month)
+                if key not in unique_months:
+                    unique_months.append(key)
+            
+            prev_percentage = None
+            for i, (y, m) in enumerate(unique_months):
+                m_start = date(y, m, 1)
+                if m == 12:
+                    m_end = date(y, 12, 31)
+                else:
+                    m_end = date(y, m + 1, 1) - timedelta(days=1)
+                
+                days_in_month = (m_end - m_start).days + 1
+                active_habits = habits.filter(start_date__lte=m_end).count()
+                
+                month_dates = Date.objects.filter(
+                    user=user_profile,
+                    habit__in=habits,
+                    habit_date__range=[m_start, m_end],
+                    is_done=True,
+                    is_restored=False
+                )
+                
+                max_possible = active_habits * days_in_month
+                percentage = 0
+                if max_possible > 0:
+                    percentage = round((month_dates.count() / max_possible) * 100)
+                
+                trend = None
+                if prev_percentage is not None:
+                    trend = percentage - prev_percentage
+                
+                # We use 'm' as the key because the frontend expects data.months[currentMonth]
+                months_data[m] = {
+                    "percentage": percentage,
+                    "trend": trend
+                }
+                prev_percentage = percentage
+
+            return Response({
+                "weeks": weeks_data,
+                "months": months_data
+            })
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'])
     def habit_comparison(self, request):
         """
         Returns aggregated stats for each habit over the specified period.
