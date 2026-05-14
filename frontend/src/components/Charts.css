@@ -214,6 +214,11 @@
     color: #7c4dff;
 }
 
+.view-btn.streaks:not(.active) {
+    background: rgba(16, 185, 129, 0.05);
+    color: #10b981;
+}
+
 .view-btn:hover,
 .period-btn:hover {
     background: rgba(0, 0, 0, 0.05);
@@ -235,6 +240,11 @@
 
 .view-btn.active.quantity {
     background: #8B5CF6;
+    color: #fff;
+}
+
+.view-btn.active.streaks {
+    background: #10B981;
     color: #fff;
 }
 
@@ -630,8 +640,40 @@
     transition: min-width 0.3s ease;
 }
 
+.comparison-footer {
+    margin-top: 25px;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.comparison-footer-label {
+    background: #f8f8f8;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #059669;
+    border: 1px solid rgba(5, 150, 105, 0.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    text-transform: capitalize;
+}
+
+.dark-theme .comparison-footer-label {
+    background: #404040;
+    color: #6EE7B7;
+    border: 1px solid rgba(110, 231, 183, 0.1);
+}
+
 .comparison-chart-wrapper {
     margin: 0 -10px;
+}
+
+.comparison-no-data {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+    font-size: 14px;
 }
 
 .comparison-chart-loading {
@@ -868,3 +910,116 @@
     }
 }
 
+
+/* Habits Completion Grid Styles */
+.habits-grid-container {
+    margin-top: 15px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 12px;
+    padding: 10px;
+}
+
+.dark-theme .habits-grid-container {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.habits-grid-wrapper {
+    overflow-x: auto;
+    padding-bottom: 10px;
+    scrollbar-width: thin;
+}
+
+.habits-completion-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.habit-name-col {
+    width: 120px;
+}
+
+.habit-name-cell {
+    padding: 8px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #666;
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
+.dark-theme .habit-name-cell {
+    color: #E0E0E0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.day-cell-header {
+    height: 40px;
+    vertical-align: middle;
+}
+
+.grid-tick-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+.day-cell {
+    padding: 6px 0;
+    text-align: center;
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+}
+
+.dark-theme .day-cell {
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.completion-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin: 0 auto;
+    background: rgba(0,0,0,0.03);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.dark-theme .completion-dot {
+    background: rgba(255,255,255,0.05);
+}
+
+.completion-dot.done {
+    background: #059669;
+}
+
+.dot-inner {
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(0,0,0,0.2);
+}
+
+@media (max-width: 480px) {
+    .habit-name-col {
+        width: 80px;
+    }
+    .habit-name-cell {
+        font-size: 10px;
+        padding: 6px 5px;
+    }
+    .completion-dot {
+        width: 18px;
+        height: 18px;
+    }
+    .dot-inner {
+        width: 6px;
+        height: 6px;
+    }
+}

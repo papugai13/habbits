@@ -191,6 +191,10 @@ const translations = {
     totalCompletions: 'Всего выполнений:',
     totalEntries: 'Всего записей',
     totalActions: 'Общая сумма действий:',
+    streaks: 'Ударно',
+    darkGreen: 'Темно-зеленые',
+    streakDays: 'Дней в ударном режиме',
+    loading: 'Загрузка...',
 
     habit: 'Привычка',
     summary: 'Сумма',
@@ -405,6 +409,9 @@ const translations = {
     totalCompletions: 'Total completions:',
     totalEntries: 'Total entries',
     totalActions: 'Total actions:',
+    streaks: 'Streaks',
+    darkGreen: 'Dark Green',
+    streakDays: 'Days in streak',
 
     habit: 'Habit',
     summary: 'Summary',
