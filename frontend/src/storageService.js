@@ -533,19 +533,67 @@ const storageService = {
 
   // --- EXPORT / IMPORT ---
 
-  exportData: () => {
-    const data = {
-      habits: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]'),
-      categories: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES) || '[]'),
-      statuses: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]'),
-      settings: {
-        theme: localStorage.getItem('theme'),
-        language: localStorage.getItem('language'),
-        reminderSettings: localStorage.getItem('reminderSettings')
-      },
-      exportedAt: new Date().toISOString()
-    };
-    return JSON.stringify(data, null, 2);
+  exportData: async (mode) => {
+    if (mode === 'cloud') {
+      try {
+        const options = { credentials: 'include' };
+        
+        // Fetch all needed data from the API
+        const [habitsRes, archivedHabitsRes, categoriesRes, archivedCategoriesRes, datesRes] = await Promise.all([
+          fetch('/api/v1/habits/', options),
+          fetch('/api/v1/habits/archived/', options),
+          fetch('/api/v1/categories/', options),
+          fetch('/api/v1/categories/archived/', options),
+          fetch('/api/v1/dates/', options)
+        ]);
+
+        const habits = await habitsRes.json();
+        const archivedHabits = await archivedHabitsRes.json();
+        const categories = await categoriesRes.json();
+        const archivedCategories = await archivedCategoriesRes.json();
+        const dates = await datesRes.json();
+
+        // Format dates to match local storage statuses structure
+        const statuses = Array.isArray(dates) ? dates.map(d => ({
+          id: d.id,
+          habit: d.habit,
+          date: d.habit_date,
+          is_done: d.is_done,
+          is_restored: d.is_restored,
+          quantity: d.quantity,
+          comment: d.comment
+        })) : [];
+
+        const data = {
+          habits: [...(Array.isArray(habits) ? habits : []), ...(Array.isArray(archivedHabits) ? archivedHabits : [])],
+          categories: [...(Array.isArray(categories) ? categories : []), ...(Array.isArray(archivedCategories) ? archivedCategories : [])],
+          statuses: statuses,
+          settings: {
+            theme: localStorage.getItem('theme'),
+            language: localStorage.getItem('language'),
+            reminderSettings: localStorage.getItem('reminderSettings')
+          },
+          exportedAt: new Date().toISOString()
+        };
+        return JSON.stringify(data, null, 2);
+      } catch (error) {
+        console.error('Failed to export cloud data:', error);
+        throw error;
+      }
+    } else {
+      const data = {
+        habits: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]'),
+        categories: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES) || '[]'),
+        statuses: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]'),
+        settings: {
+          theme: localStorage.getItem('theme'),
+          language: localStorage.getItem('language'),
+          reminderSettings: localStorage.getItem('reminderSettings')
+        },
+        exportedAt: new Date().toISOString()
+      };
+      return JSON.stringify(data, null, 2);
+    }
   },
 
   importData: (jsonData) => {

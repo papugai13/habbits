@@ -642,17 +642,24 @@ const App = () => {
     }
   };
 
-  const handleExportData = () => {
-    const data = storageService.exportData();
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `habbits_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const handleExportData = async () => {
+    try {
+      const data = await storageService.exportData(storageMode);
+      // Use octet-stream to force download instead of opening in browser as text
+      const blob = new Blob([data], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `habbits_backup_${new Date().toISOString().split('T')[0]}.json`);
+      link.setAttribute('target', '_blank'); // Helps on iOS Safari
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('Ошибка при экспорте данных');
+    }
   };
 
   const handleImportData = (event) => {
