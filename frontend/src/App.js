@@ -77,8 +77,6 @@ const App = () => {
   const [newHabitUseTarget, setNewHabitUseTarget] = useState(false);
   const [newHabitCompletionTarget, setNewHabitCompletionTarget] = useState('');
   const [newHabitQuantityTarget, setNewHabitQuantityTarget] = useState('');
-  const [editHabitStartDate, setEditHabitStartDate] = useState('');
-  const [editHabitTargetType, setEditHabitTargetType] = useState('at_least');
   const [createError, setCreateError] = useState('');
   // Categories state
   const [categories, setCategories] = useState([{ id: 'all', name: 'Все' }]);
@@ -89,7 +87,6 @@ const App = () => {
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
   const [expandedCategoryId, setExpandedCategoryId] = useState(null);
   const [archivedCategories, setArchivedCategories] = useState([]);
-  const [weekLoading, setWeekLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [showCategoryArchive, setShowCategoryArchive] = useState(false);
   const [settingsSelectedCategory, setSettingsSelectedCategory] = useState('Все');
@@ -138,10 +135,6 @@ const App = () => {
     }
     return ['09:00'];
   });
-  const [notificationPermission, setNotificationPermission] = useState(() => {
-    if (typeof window === 'undefined') return 'default';
-    return Notification.permission;
-  });
   const [reminderText, setReminderText] = useState(() => {
     if (typeof window === 'undefined') return 'Не забудьте отметить привычки!';
     const settings = localStorage.getItem('reminderSettings');
@@ -166,7 +159,6 @@ const App = () => {
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const lightboxTouchStartY = React.useRef(null);
   const [lightboxTranslateY, setLightboxTranslateY] = useState(0);
-  const reorderLongPressTimer = React.useRef(null);
   const touchStartPos = React.useRef({ x: 0, y: 0 });
   const isHabitTouchDragging = React.useRef(false);
   const isCategoryTouchDragging = React.useRef(false);
@@ -289,7 +281,7 @@ const App = () => {
     }
   }, [storageMode]);
 
-  const fetchWeekHabits = async (targetDate) => {
+  const fetchWeekHabits = React.useCallback(async (targetDate) => {
     const dateToFetch = targetDate;
     if (!dateToFetch) return null;
 
@@ -309,7 +301,7 @@ const App = () => {
       setApiError('Error fetching weekly habits');
     }
     return null;
-  };
+  }, [storageMode]);
 
   const loadWeekData = React.useCallback(async (targetDate) => {
     if (!targetDate) return;
@@ -320,10 +312,8 @@ const App = () => {
       return;
     }
 
-    setWeekLoading(true);
     console.log(`[App] Loading week data for ${targetDate} (${storageMode})`);
     const data = await fetchWeekHabits(targetDate);
-    setWeekLoading(false);
     if (data) {
       console.log(`[App] Loaded ${data.length} habits for ${targetDate}`);
       setHabitsData(data);
@@ -334,7 +324,7 @@ const App = () => {
       console.warn(`[App] Failed to load habits for ${targetDate}`);
       setHabitsData([]);
     }
-  }, [storageMode]); // Added storageMode dependency
+  }, [fetchWeekHabits, storageMode]);
 
   const prefetchWeekIfNeeded = async (weekDate) => {
     if (!weekDate) return;
@@ -361,7 +351,7 @@ const App = () => {
     if (!weekDataCacheRef.current[nextStr]) {
       fetchWeekHabits(nextStr);
     }
-  }, []);
+  }, [fetchWeekHabits]);
 
   const fetchHabits = React.useCallback(async (targetDate) => {
     const dateKey = targetDate || currentWeekDate;
@@ -416,7 +406,7 @@ const App = () => {
     } finally {
       setAuthLoading(false);
     }
-  }, [fetchHabits, fetchArchivedHabits, fetchCategories, fetchArchivedCategories, storageMode]); // Added storageMode dependency
+  }, [fetchHabits, fetchArchivedHabits, fetchCategories, fetchArchivedCategories]);
 
   // Check authentication status on mount
   useEffect(() => {
@@ -464,7 +454,7 @@ const App = () => {
     weekDataCacheRef.current = {};
     // Trigger re-fetch
     checkAuth();
-  }, [storageMode]); // Re-fetch everything when storage mode changes
+  }, [storageMode, checkAuth]); // Re-fetch everything when storage mode changes
 
   // Register Service Worker and handle notifications
   useEffect(() => {
@@ -605,7 +595,6 @@ const App = () => {
     let permission = Notification.permission;
     if (permission === 'default') {
       permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
     }
     
     if (permission === 'granted') {
@@ -711,26 +700,29 @@ const App = () => {
   useEffect(() => {
     if (reminderTimesPerDay === 'custom') {
       const newCount = customTimesPerDay;
-      const currentCount = reminderTimes.length;
       
-      if (newCount > currentCount) {
-        const newTimes = [...reminderTimes];
-        const lastTime = reminderTimes[currentCount - 1] || '09:00';
-        const [hours, minutes] = lastTime.split(':').map(Number);
-        const lastDate = new Date();
-        lastDate.setHours(hours, minutes, 0, 0);
-        
-        for (let i = currentCount; i < newCount; i++) {
-          const nextDate = new Date(lastDate);
-          nextDate.setHours(nextDate.getHours() + 1);
-          const nextTime = nextDate.toTimeString().slice(0, 5);
-          newTimes.push(nextTime);
-          lastDate.setHours(lastDate.getHours() + 1);
+      setReminderTimes((prevTimes) => {
+        const currentCount = prevTimes.length;
+        if (newCount > currentCount) {
+          const newTimes = [...prevTimes];
+          const lastTime = prevTimes[currentCount - 1] || '09:00';
+          const [hours, minutes] = lastTime.split(':').map(Number);
+          const lastDate = new Date();
+          lastDate.setHours(hours, minutes, 0, 0);
+          
+          for (let i = currentCount; i < newCount; i++) {
+            const nextDate = new Date(lastDate);
+            nextDate.setHours(nextDate.getHours() + 1);
+            const nextTime = nextDate.toTimeString().slice(0, 5);
+            newTimes.push(nextTime);
+            lastDate.setHours(lastDate.getHours() + 1);
+          }
+          return newTimes;
+        } else if (newCount < currentCount) {
+          return prevTimes.slice(0, newCount);
         }
-        setReminderTimes(newTimes);
-      } else if (newCount < currentCount) {
-        setReminderTimes(reminderTimes.slice(0, newCount));
-      }
+        return prevTimes;
+      });
     }
   }, [customTimesPerDay, reminderTimesPerDay]);
 
@@ -1179,10 +1171,6 @@ const App = () => {
           const isCollapsed = !!collapsedCategories[categoryKey];
 
           // Count habits with at least one completion (not restored) this week
-          const completedHabitsCount = habits.reduce((count, habit) => {
-            const hasCompletion = habit.statuses?.some(s => s && s.is_done && !s.is_restored);
-            return hasCompletion ? count + 1 : count;
-          }, 0);
 
           // Count habits completed today (not restored)
           const todayCompletedCount = habits.reduce((count, habit) => {
@@ -1282,8 +1270,8 @@ const App = () => {
                     }
                   }
                   
-                  // If streak is active, show dots on all empty boxes (past, present, or future)
-                  if (activeStreak && !isDone) {
+                  // If streak is active, show dots on empty boxes for today or future days only
+                  if (activeStreak && !isDone && slotDateStr >= todayStr) {
                     dots[index] = 'has-dot-1';
                   }
                 });
@@ -1347,7 +1335,6 @@ const App = () => {
                           const isFuture = slotDateStr > todayStr;
                           const isMissed = isPast && !isDone;
                           const hasComment = status && status.comment;
-                          const hasPhoto = status && status.photo;
                           const isBeforeCreation = habit.start_date && slotDateStr < habit.start_date;
                           const isDisabled = isFuture;
                           const showDotClass = dots[index];
@@ -1929,12 +1916,7 @@ const App = () => {
     }));
   };
 
-  // Эмоджи в зависимости от дня недели для кнопки "Сегодня"
-  const getTodayEmoji = () => {
-    const day = new Date().getDay();
-    const emojis = ['😌', '😫', '😐', '🐪', '🙂', '🎉', '😎']; // Вс, Пн, Вт, Ср, Чт, Пт, Сб
-    return emojis[day];
-  };
+
 
   // Компонент иконки календаря с текущей датой
   const CalendarIcon = () => {
@@ -2315,6 +2297,7 @@ const App = () => {
             onClick={() => {
               setStorageMode('local');
               storageService.setStorageMode('local');
+              checkAuth();
             }}
           >
             {t('useLocalStorage') || 'Use Local Storage'}
@@ -2576,6 +2559,7 @@ const App = () => {
           theme={theme}
           t={t}
           language={language}
+          storageMode={storageMode}
         />
       )}
 

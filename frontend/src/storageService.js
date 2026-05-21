@@ -28,6 +28,13 @@ const toLocalDateString = (dateInput) => {
   return `${year}-${month}-${day}`;
 };
 
+// Helper for JSON fetch with error handling
+const fetchJson = async (url, opts) => {
+  const resp = await fetch(url, opts);
+  if (!resp.ok) throw new Error(`Fetch ${url} failed: ${resp.status}`);
+  return resp.json();
+};
+
 const storageService = {
   getStorageMode: () => {
     return localStorage.getItem(LOCAL_STORAGE_KEYS.STORAGE_MODE) || 'cloud';
@@ -41,30 +48,32 @@ const storageService = {
 
   getHabits: async (mode, options = {}) => {
     if (mode === 'cloud') {
-      const response = await fetch('/api/v1/habits/', options);
-      if (!response.ok) throw new Error('Failed to fetch habits');
-      return response.json();
-    } else {
-      const habits = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]');
-      const statuses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]');
-      
-      // Basic simulation of the backend response structure
-      return habits.filter(h => !h.is_archived).map(h => ({
-        ...h,
-        statuses: statuses.filter(s => s.habit === h.id)
-      }));
+      try {
+        return await fetchJson('/api/v1/habits/', options);
+      } catch (e) {
+        console.warn('Cloud getHabits failed, falling back to local:', e);
+      }
     }
+    const habits = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]');
+    const statuses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]');
+    
+    // Basic simulation of the backend response structure
+    return habits.filter(h => !h.is_archived).map(h => ({
+      ...h,
+      statuses: statuses.filter(s => s.habit === h.id)
+    }));
   },
 
   getArchivedHabits: async (mode, options = {}) => {
     if (mode === 'cloud') {
-      const response = await fetch('/api/v1/habits/archived/', options);
-      if (!response.ok) throw new Error('Failed to fetch archived habits');
-      return response.json();
-    } else {
-      const habits = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]');
-      return habits.filter(h => h.is_archived);
+      try {
+        return await fetchJson('/api/v1/habits/archived/', options);
+      } catch (e) {
+        console.warn('Cloud getArchivedHabits failed, falling back to local:', e);
+      }
     }
+    const habits = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]');
+    return habits.filter(h => h.is_archived);
   },
 
   saveHabit: async (mode, habitData, options = {}) => {
@@ -154,24 +163,26 @@ const storageService = {
 
   getCategories: async (mode, options = {}) => {
     if (mode === 'cloud') {
-      const response = await fetch('/api/v1/categories/', options);
-      if (!response.ok) throw new Error('Failed to fetch categories');
-      return response.json();
-    } else {
-      const categories = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES) || '[]');
-      return categories.filter(c => !c.is_archived);
+      try {
+        return await fetchJson('/api/v1/categories/', options);
+      } catch (e) {
+        console.warn('Cloud getCategories failed, falling back to local:', e);
+      }
     }
+    const categories = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES) || '[]');
+    return categories.filter(c => !c.is_archived);
   },
 
   getArchivedCategories: async (mode, options = {}) => {
     if (mode === 'cloud') {
-      const response = await fetch('/api/v1/categories/archived/', options);
-      if (!response.ok) throw new Error('Failed to fetch archived categories');
-      return response.json();
-    } else {
-      const categories = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES) || '[]');
-      return categories.filter(c => c.is_archived);
+      try {
+        return await fetchJson('/api/v1/categories/archived/', options);
+      } catch (e) {
+        console.warn('Cloud getArchivedCategories failed, falling back to local:', e);
+      }
     }
+    const categories = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES) || '[]');
+    return categories.filter(c => c.is_archived);
   },
 
   saveCategory: async (mode, categoryData, options = {}) => {
@@ -280,51 +291,66 @@ const storageService = {
 
   getWeeklyStatus: async (mode, date, options = {}) => {
     if (mode === 'cloud') {
-      const response = await fetch(`/api/v1/habits/weekly_status/?date=${date}`, options);
-      if (!response.ok) throw new Error('Failed to fetch weekly status');
-      return response.json();
-    } else {
-      let habits = [];
-      let statuses = [];
-      let categories = [];
-      
       try {
-        habits = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]');
-        if (!Array.isArray(habits)) habits = [];
-        
-        statuses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]');
-        if (!Array.isArray(statuses)) statuses = [];
-        
-        categories = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES) || '[]');
-        if (!Array.isArray(categories)) categories = [];
+        return await fetchJson(`/api/v1/habits/weekly_status/?date=${date}`, options);
       } catch (e) {
-        console.error("Error parsing local storage data", e);
+        console.warn('Cloud getWeeklyStatus failed, falling back to local:', e);
       }
-      
-      const start = new Date(date);
-      const end = new Date(start);
-      end.setDate(start.getDate() + 6);
-      const startStr = toLocalDateString(start);
-      const endStr = toLocalDateString(end);
-
-      // Simulation of weekly status endpoint
-      return habits.filter(h => !h.is_archived).map(h => {
-        const catObj = categories.find(c => c.id === h.category || String(c.id) === String(h.category));
-        
-        // Filter statuses for this habit within the selected week range
-        const habitStatuses = statuses.filter(s => {
-          const habitIdMatch = String(s.habit) === String(h.id);
-          const dateMatch = s.date >= startStr && s.date <= endStr;
-          return habitIdMatch && dateMatch;
-        });
-
-        return {
-          ...h,
-          category_name: catObj ? catObj.name : null,
-          statuses: habitStatuses
-        };
-      });
     }
+    // Local fallback simulation
+    let habits = [];
+    let statuses = [];
+    let categories = [];
+    try {
+      habits = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]');
+      if (!Array.isArray(habits)) habits = [];
+      statuses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]');
+      if (!Array.isArray(statuses)) statuses = [];
+      categories = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES) || '[]');
+      if (!Array.isArray(categories)) categories = [];
+    } catch (e) {
+      console.error('Error parsing local storage data', e);
+    }
+    const start = new Date(date);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const startStr = toLocalDateString(start);
+    const endStr = toLocalDateString(end);
+
+    // Calculate previous week's Fri, Sat, Sun for active streak carry-over
+    const prevSun = new Date(start);
+    prevSun.setDate(start.getDate() - 1);
+    const prevSat = new Date(start);
+    prevSat.setDate(start.getDate() - 2);
+    const prevFri = new Date(start);
+    prevFri.setDate(start.getDate() - 3);
+
+    const prevSunStr = toLocalDateString(prevSun);
+    const prevSatStr = toLocalDateString(prevSat);
+    const prevFriStr = toLocalDateString(prevFri);
+
+    // Simulation of weekly status endpoint
+    return habits.filter(h => !h.is_archived).map(h => {
+      const catObj = categories.find(c => c.id === h.category || String(c.id) === String(h.category));
+      const habitStatuses = statuses.filter(s => {
+        const habitIdMatch = String(s.habit) === String(h.id);
+        const dateMatch = s.date >= startStr && s.date <= endStr;
+        return habitIdMatch && dateMatch;
+      });
+
+      const prevSunDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevSunStr && s.is_done);
+      const prevSatDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevSatStr && s.is_done);
+      const prevFriDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevFriStr && s.is_done);
+
+      return {
+        ...h,
+        category_name: catObj ? catObj.name : null,
+        statuses: habitStatuses,
+        prev_week_sun_done: prevSunDone,
+        prev_week_sat_done: prevSatDone,
+        prev_week_fri_done: prevFriDone
+      };
+    });
   },
 
   saveStatus: async (mode, statusData, options = {}) => {
@@ -471,7 +497,7 @@ const storageService = {
   },
 
   getDailyStatistics: async (mode, params, options = {}) => {
-    const { period, date, category } = params;
+    const { period, date } = params;
     if (mode === 'cloud') {
       const query = new URLSearchParams(params).toString();
       const response = await fetch(`/api/v1/habits/daily_statistics/?${query}`, options);
@@ -527,6 +553,183 @@ const storageService = {
       return {
         data: stats,
         period_label: period
+      };
+    }
+  },
+
+  getAnalyticsChart: async (mode, habitId, options = {}) => {
+    if (mode === 'cloud') {
+      const response = await fetch(`/api/v1/habits/analytics_chart/?habit_id=${habitId}`, options);
+      if (!response.ok) throw new Error('Failed to fetch analytics chart');
+      return response.json();
+    } else {
+      // Local analytics chart simulation
+      const habits = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]');
+      const statuses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]');
+      
+      let filteredHabits = habits.filter(h => !h.is_archived);
+      if (habitId && habitId !== 'all') {
+        filteredHabits = filteredHabits.filter(h => String(h.id) === String(habitId));
+      }
+      
+      // Get the earliest start_date among selected habits
+      let startDateStr = null;
+      filteredHabits.forEach(h => {
+        if (h.start_date && (!startDateStr || h.start_date < startDateStr)) {
+          startDateStr = h.start_date;
+        }
+      });
+      
+      let startDateOfChart = startDateStr ? new Date(startDateStr) : new Date();
+      if (!startDateStr) {
+        startDateOfChart.setDate(startDateOfChart.getDate() - 30);
+      }
+      
+      const today = new Date();
+      // Chart ends at the end of the current week (Sunday)
+      const dayOfWeek = today.getDay();
+      const endOfChart = new Date(today);
+      endOfChart.setDate(today.getDate() + (dayOfWeek === 0 ? 0 : 7 - dayOfWeek));
+      
+      // Align start to the first Monday of that week
+      const startDayOfWeek = startDateOfChart.getDay();
+      const daysSinceMonday = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+      const weekStart = new Date(startDateOfChart);
+      weekStart.setDate(startDateOfChart.getDate() - daysSinceMonday);
+      
+      // Safeguard against too many weeks
+      if ((endOfChart - weekStart) / (1000 * 60 * 60 * 24) > 365) {
+        weekStart.setTime(endOfChart.getTime() - 365 * 24 * 60 * 60 * 1000);
+      }
+      
+      const weeksData = [];
+      const MONTHS_RU = {
+        1: 'Январь', 2: 'Февраль', 3: 'Март', 4: 'Апрель',
+        5: 'Май', 6: 'Июнь', 7: 'Июль', 8: 'Август',
+        9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
+      };
+      
+      const getISOWeekNumber = (date) => {
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      };
+      
+      let currentWeek = new Date(weekStart);
+      while (currentWeek <= endOfChart) {
+        const weekEnd = new Date(currentWeek);
+        weekEnd.setDate(currentWeek.getDate() + 6);
+        
+        const thursday = new Date(currentWeek);
+        thursday.setDate(currentWeek.getDate() + 3);
+        
+        const currentStr = toLocalDateString(currentWeek);
+        const endStr = toLocalDateString(weekEnd);
+        
+        const weekStatuses = statuses.filter(s => {
+          const habitMatch = filteredHabits.some(h => String(h.id) === String(s.habit));
+          const dateMatch = s.date >= currentStr && s.date <= endStr;
+          return habitMatch && dateMatch && s.is_done && !s.is_restored;
+        });
+        
+        const totalCompletions = weekStatuses.length;
+        
+        let totalPossibleDays = 0;
+        filteredHabits.forEach(habit => {
+          if (habit.start_date) {
+            const hStartStr = habit.start_date;
+            if (hStartStr <= endStr) {
+              if (hStartStr >= currentStr) {
+                const actualStart = new Date(hStartStr);
+                totalPossibleDays += Math.max(0, Math.round((weekEnd - actualStart) / (1000 * 60 * 60 * 24)) + 1);
+              } else {
+                totalPossibleDays += 7;
+              }
+            }
+          } else {
+            totalPossibleDays += 7;
+          }
+        });
+        
+        const activeHabitsCount = filteredHabits.filter(habit => !habit.start_date || habit.start_date <= endStr).length;
+        
+        let avgDays = 0;
+        let displayDaysDone = totalCompletions;
+        let displayTotalDays = totalPossibleDays;
+        
+        if (activeHabitsCount > 0) {
+          avgDays = Number((totalCompletions / activeHabitsCount).toFixed(1));
+          if (activeHabitsCount > 1) {
+            displayDaysDone = Number((totalCompletions / activeHabitsCount).toFixed(1));
+            displayTotalDays = Number((totalPossibleDays / activeHabitsCount).toFixed(1));
+          } else {
+            displayDaysDone = totalCompletions;
+            displayTotalDays = totalPossibleDays;
+          }
+        }
+        
+        weeksData.push({
+          week_label: `н${getISOWeekNumber(currentWeek)}`,
+          month: thursday.getMonth() + 1,
+          month_name: MONTHS_RU[thursday.month + 1],
+          value: Math.min(avgDays, 7),
+          days_done: displayDaysDone,
+          total_days: displayTotalDays,
+          week_start: currentStr,
+          week_end: endStr
+        });
+        
+        currentWeek.setDate(currentWeek.getDate() + 7);
+      }
+      
+      // Calculate month stats
+      const monthsData = {};
+      const uniqueMonths = [];
+      weeksData.forEach(w => {
+        const dt = new Date(w.week_start);
+        dt.setDate(dt.getDate() + 3); // Thursday
+        const key = { year: dt.getFullYear(), month: dt.getMonth() + 1 };
+        if (!uniqueMonths.some(m => m.year === key.year && m.month === key.month)) {
+          uniqueMonths.push(key);
+        }
+      });
+      
+      let prevPercentage = null;
+      uniqueMonths.forEach(m => {
+        const mStartStr = `${m.year}-${String(m.month).padStart(2, '0')}-01`;
+        const lastDay = new Date(m.year, m.month, 0).getDate();
+        const mEndStr = `${m.year}-${String(m.month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        
+        const activeHabits = filteredHabits.filter(h => !h.start_date || h.start_date <= mEndStr).length;
+        const monthStatuses = statuses.filter(s => {
+          const habitMatch = filteredHabits.some(h => String(h.id) === String(s.habit));
+          const dateMatch = s.date >= mStartStr && s.date <= mEndStr;
+          return habitMatch && dateMatch && s.is_done && !s.is_restored;
+        });
+        
+        const maxPossible = activeHabits * lastDay;
+        let percentage = 0;
+        if (maxPossible > 0) {
+          percentage = Math.round((monthStatuses.length / maxPossible) * 100);
+        }
+        
+        let trend = null;
+        if (prevPercentage !== null) {
+          trend = percentage - prevPercentage;
+        }
+        
+        monthsData[m.month] = {
+          percentage,
+          trend
+        };
+        prevPercentage = percentage;
+      });
+      
+      return {
+        weeks: weeksData,
+        months: monthsData
       };
     }
   },

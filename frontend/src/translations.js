@@ -85,6 +85,17 @@ const translations = {
     importData: 'Импорт данных (Restore)',
     importSuccess: 'Данные успешно импортированы! Страница будет перезагружена.',
     importError: 'Ошибка при импорте данных. Проверьте формат файла.',
+    welcomeTitle: 'Добро пожаловать в Habits',
+    welcomeSubtitle: 'Выберите, где вы хотите хранить свои привычки',
+    useLocalStorageOnboarding: 'Использовать устройство (Локально)',
+    useCloudStorageOnboarding: 'Использовать облако (Синхронизация)',
+    localStorageDesc: 'Абсолютная приватность. Данные хранятся только на этом устройстве, регистрация и интернет не нужны.',
+    cloudStorageDesc: 'Синхронизация между устройствами, надежное резервное копирование и доступ из любого места.',
+    continueWithCloud: 'Войти / Зарегистрироваться',
+    continueWithLocal: 'Начать локально',
+    backToStorageSelect: '← Выбрать другой способ хранения',
+    storageExplanation: 'Вы всегда можете изменить этот выбор в настройках приложения.',
+    useLocalStorage: 'Использовать локальное хранилище',
 
     // Habit creation/editing
     createHabit: 'Создать привычку',
@@ -208,7 +219,6 @@ const translations = {
     streaks: 'Ударно',
     darkGreen: 'Темно-зеленые',
     streakDays: 'Дней в ударном режиме',
-    loading: 'Загрузка...',
 
     habit: 'Привычка',
     summary: 'Сумма',
@@ -317,6 +327,17 @@ const translations = {
     importData: 'Import Data (Restore)',
     importSuccess: 'Data imported successfully! The page will be reloaded.',
     importError: 'Error importing data. Please check the file format.',
+    welcomeTitle: 'Welcome to Habits',
+    welcomeSubtitle: 'Choose where you want to store your habits',
+    useLocalStorageOnboarding: 'Use Device (Locally)',
+    useCloudStorageOnboarding: 'Use Cloud (Sync)',
+    localStorageDesc: 'Absolute privacy. Data is stored only on this device, no registration or internet required.',
+    cloudStorageDesc: 'Sync between devices, reliable cloud backups, and access from anywhere.',
+    continueWithCloud: 'Login / Register',
+    continueWithLocal: 'Start Locally',
+    backToStorageSelect: '← Choose other storage method',
+    storageExplanation: 'You can always change this choice in the app settings.',
+    useLocalStorage: 'Use Local Storage',
 
     // Habit creation/editing
     createHabit: 'Create Habit',

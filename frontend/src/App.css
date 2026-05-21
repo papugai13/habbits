@@ -4728,30 +4728,232 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: #f8f9fa;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
 }
 
-.auth-storage-toggle {
-  margin-bottom: 20px;
+/* Onboarding Welcome Screen Styles */
+.onboarding-wrapper {
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%) !important;
+  color: #ffffff;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-y: auto;
+}
+
+.onboarding-container {
+  max-width: 900px;
   width: 100%;
-  max-width: 400px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  animation: fadeInOnboard 0.8s ease-out;
+}
+
+.onboarding-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.onboarding-title {
+  font-size: 2.8rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #38bdf8 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+  letter-spacing: -0.04em;
+}
+
+.onboarding-subtitle {
+  font-size: 1.15rem;
+  color: #94a3b8;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+.onboarding-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.onboarding-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.onboarding-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(102, 126, 234, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.cloud-card:hover {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 35px rgba(56, 189, 248, 0.2);
+}
+
+.local-card:hover {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 35px rgba(167, 139, 250, 0.2);
+}
+
+.onboarding-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.onboarding-card:hover::before {
+  opacity: 1;
+}
+
+.card-icon {
+  font-size: 4rem;
+  margin-bottom: 24px;
+  transition: transform 0.4s ease;
+  filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.2));
+}
+
+.onboarding-card:hover .card-icon {
+  transform: scale(1.15) rotate(5deg);
+}
+
+.card-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 14px;
+}
+
+.card-desc {
+  font-size: 0.95rem;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin-bottom: 32px;
+  flex-grow: 1;
+  max-width: 320px;
+}
+
+.card-btn {
+  width: 100%;
+  padding: 14px 28px;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary-gradient {
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  color: #ffffff;
+}
+
+.btn-primary-gradient:hover {
+  background: linear-gradient(135deg, #38bdf8 0%, #3b82f6 100%);
+  box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+}
+
+.btn-secondary-gradient {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: #ffffff;
+}
+
+.btn-secondary-gradient:hover {
+  background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+  box-shadow: 0 6px 20px rgba(167, 139, 250, 0.4);
+}
+
+.onboarding-footer {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #64748b;
+  margin-top: 10px;
+}
+
+/* Auth storage toggle container */
+.auth-storage-toggle {
+  margin-bottom: 24px;
+  width: 100%;
+  max-width: 450px;
   display: flex;
   justify-content: flex-end;
+  animation: slideDownOnboard 0.3s ease-out;
 }
 
 .local-link {
-  background: none;
-  border: none;
-  color: #007bff;
-  text-decoration: underline;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
   cursor: pointer;
   font-size: 0.9rem;
-  padding: 5px 10px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .local-link:hover {
-  background-color: rgba(0, 123, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes fadeInOnboard {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDownOnboard {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .onboarding-title {
+    font-size: 2.2rem;
+  }
+  .onboarding-cards {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .onboarding-card {
+    padding: 30px 20px;
+  }
+  .onboarding-container {
+    padding: 20px 10px;
+    gap: 30px;
+  }
 }

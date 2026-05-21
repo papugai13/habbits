@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine } from 'recharts';
 import './Analytics.css';
+import storageService from '../storageService';
 
-const Analytics = ({ getCookie, theme, t, language }) => {
+const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
     const [data, setData] = useState({ weeks: [], months: {} });
     const [habits, setHabits] = useState([]);
     const [selectedHabitId, setSelectedHabitId] = useState('all');
@@ -42,22 +43,19 @@ const Analytics = ({ getCookie, theme, t, language }) => {
     useEffect(() => {
         const fetchHabits = async () => {
             try {
-                const response = await fetch('/api/v1/habits/', {
+                const result = await storageService.getHabits(storageMode, {
                     credentials: 'include',
                 });
-                if (response.ok) {
-                    const result = await response.json();
-                    setHabits(result);
-                    if (result.length > 0 && selectedHabitId === 'all') {
-                        setSelectedHabitId(result[0].id);
-                    }
+                setHabits(result);
+                if (result.length > 0 && selectedHabitId === 'all') {
+                    setSelectedHabitId(result[0].id);
                 }
             } catch (error) {
                 console.error("Error fetching habits:", error);
             }
         };
         fetchHabits();
-    }, []);
+    }, [selectedHabitId, storageMode]);
 
     useEffect(() => {
         if (!selectedHabitId || selectedHabitId === 'all') return;
@@ -65,20 +63,17 @@ const Analytics = ({ getCookie, theme, t, language }) => {
         const fetchAnalytics = async () => {
             setLoading(true);
             try {
-                const response = await fetch(`/api/v1/habits/analytics_chart/?habit_id=${selectedHabitId}`, {
+                const result = await storageService.getAnalyticsChart(storageMode, selectedHabitId, {
                     credentials: 'include',
                 });
-                if (response.ok) {
-                    const result = await response.json();
-                    setData(result);
-                    
-                    // Scroll to the end (current week) after rendering
-                    setTimeout(() => {
-                        if (chartWrapperRef.current) {
-                            chartWrapperRef.current.scrollLeft = chartWrapperRef.current.scrollWidth;
-                        }
-                    }, 100);
-                }
+                setData(result);
+                
+                // Scroll to the end (current week) after rendering
+                setTimeout(() => {
+                    if (chartWrapperRef.current) {
+                        chartWrapperRef.current.scrollLeft = chartWrapperRef.current.scrollWidth;
+                    }
+                }, 100);
             } catch (error) {
                 console.error("Error fetching analytics:", error);
             } finally {
@@ -86,7 +81,7 @@ const Analytics = ({ getCookie, theme, t, language }) => {
             }
         };
         fetchAnalytics();
-    }, [selectedHabitId]);
+    }, [selectedHabitId, storageMode]);
 
     const weekWidth = 50;
     const paddingLeft = 40;
