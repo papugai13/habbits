@@ -81,6 +81,10 @@ const translations = {
     cloudStorage: 'Облако (сервер)',
     localStorage: 'Устройство (локально)',
     storageModeNotice: 'При переключении режима данные не синхронизируются автоматически.',
+    exportData: 'Экспорт данных (Backup)',
+    importData: 'Импорт данных (Restore)',
+    importSuccess: 'Данные успешно импортированы! Страница будет перезагружена.',
+    importError: 'Ошибка при импорте данных. Проверьте формат файла.',
 
     // Habit creation/editing
     createHabit: 'Создать привычку',
@@ -309,6 +313,10 @@ const translations = {
     cloudStorage: 'Cloud (server)',
     localStorage: 'Device (local)',
     storageModeNotice: 'Data is not automatically synced when switching modes.',
+    exportData: 'Export Data (Backup)',
+    importData: 'Import Data (Restore)',
+    importSuccess: 'Data imported successfully! The page will be reloaded.',
+    importError: 'Error importing data. Please check the file format.',
 
     // Habit creation/editing
     createHabit: 'Create Habit',

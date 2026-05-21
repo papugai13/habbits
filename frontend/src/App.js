@@ -255,6 +255,9 @@ const App = () => {
     try {
       setApiError('');
       const data = await storageService.getCategories(storageMode, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
         credentials: 'include'
       });
       setCategories(data);
@@ -276,6 +279,9 @@ const App = () => {
     try {
       setApiError('');
       const data = await storageService.getArchivedCategories(storageMode, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
         credentials: 'include'
       });
       setArchivedCategories(data);
@@ -292,9 +298,13 @@ const App = () => {
     try {
       setApiError('');
       const data = await storageService.getWeeklyStatus(storageMode, dateToFetch, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
         credentials: 'include'
       });
-      weekDataCacheRef.current[dateToFetch] = data;
+      const cacheKey = `${storageMode}_${dateToFetch}`;
+      weekDataCacheRef.current[cacheKey] = data;
       return data;
     } catch (error) {
       console.error('Error fetching habits for week', dateToFetch, error);
@@ -305,22 +315,33 @@ const App = () => {
 
   const loadWeekData = React.useCallback(async (targetDate) => {
     if (!targetDate) return;
-    const cached = weekDataCacheRef.current[targetDate];
+    const cacheKey = `${storageMode}_${targetDate}`;
+    const cached = weekDataCacheRef.current[cacheKey];
     if (cached) {
       setHabitsData(cached);
       return;
     }
 
     setWeekLoading(true);
+    console.log(`[App] Loading week data for ${targetDate} (${storageMode})`);
     const data = await fetchWeekHabits(targetDate);
     setWeekLoading(false);
     if (data) {
+      console.log(`[App] Loaded ${data.length} habits for ${targetDate}`);
       setHabitsData(data);
+      // Cache the result
+      const cacheKey = `${storageMode}_${targetDate}`;
+      weekDataCacheRef.current[cacheKey] = data;
+    } else {
+      console.warn(`[App] Failed to load habits for ${targetDate}`);
+      setHabitsData([]);
     }
-  }, []);
+  }, [storageMode]); // Added storageMode dependency
 
   const prefetchWeekIfNeeded = async (weekDate) => {
-    if (!weekDate || weekDataCacheRef.current[weekDate]) return;
+    if (!weekDate) return;
+    const cacheKey = `${storageMode}_${weekDate}`;
+    if (weekDataCacheRef.current[cacheKey]) return;
     await fetchWeekHabits(weekDate);
   };
 
@@ -346,14 +367,18 @@ const App = () => {
 
   const fetchHabits = React.useCallback(async (targetDate) => {
     const dateKey = targetDate || currentWeekDate;
-    delete weekDataCacheRef.current[dateKey];
+    const cacheKey = `${storageMode}_${dateKey}`;
+    delete weekDataCacheRef.current[cacheKey];
     return loadWeekData(dateKey);
-  }, [currentWeekDate, loadWeekData]);
+  }, [currentWeekDate, loadWeekData, storageMode]); // Added storageMode dependency
 
   // Fetch archived habits
   const fetchArchivedHabits = React.useCallback(async () => {
     try {
       const data = await storageService.getArchivedHabits(storageMode, {
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
         credentials: 'include'
       });
       setArchivedHabits(data);
@@ -393,7 +418,7 @@ const App = () => {
     } finally {
       setAuthLoading(false);
     }
-  }, [fetchHabits, fetchArchivedHabits, fetchCategories, fetchArchivedCategories]);
+  }, [fetchHabits, fetchArchivedHabits, fetchCategories, fetchArchivedCategories, storageMode]); // Added storageMode dependency
 
   // Check authentication status on mount
   useEffect(() => {
@@ -402,11 +427,11 @@ const App = () => {
 
   // Fetch habits when currentWeekDate changes
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated || storageMode === 'local') {
       loadWeekData(currentWeekDate);
       prefetchAdjacentWeeks(currentWeekDate);
     }
-  }, [currentWeekDate, isAuthenticated, loadWeekData, prefetchAdjacentWeeks]);
+  }, [currentWeekDate, isAuthenticated, loadWeekData, prefetchAdjacentWeeks, storageMode]);
 
   // Apply theme
   useEffect(() => {
@@ -434,6 +459,14 @@ const App = () => {
     if (typeof window === 'undefined') return;
     localStorage.setItem('habbits_collapsedCategories', JSON.stringify(collapsedCategories));
   }, [collapsedCategories]);
+
+  // Handle storage mode changes
+  useEffect(() => {
+    // Clear cache when mode changes
+    weekDataCacheRef.current = {};
+    // Trigger re-fetch
+    checkAuth();
+  }, [storageMode]); // Re-fetch everything when storage mode changes
 
   // Register Service Worker and handle notifications
   useEffect(() => {
@@ -609,6 +642,43 @@ const App = () => {
         }
       });
     }
+  };
+
+  const handleExportData = async () => {
+    try {
+      const data = await storageService.exportData(storageMode);
+      // Use octet-stream to force download instead of opening in browser as text
+      const blob = new Blob([data], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `habbits_backup_${new Date().toISOString().split('T')[0]}.json`);
+      link.setAttribute('target', '_blank'); // Helps on iOS Safari
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('Ошибка при экспорте данных');
+    }
+  };
+
+  const handleImportData = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = storageService.importData(e.target.result);
+      if (result.success) {
+        alert(t('importSuccess'));
+        window.location.reload();
+      } else {
+        alert(t('importError'));
+      }
+    };
+    reader.readAsText(file);
   };
 
   // Update reminder times when timesPerDay changes
@@ -1006,7 +1076,8 @@ const App = () => {
     if (weekDate === currentWeekDate) {
       return habitsData;
     }
-    return weekDataCacheRef.current[weekDate] || habitsData;
+    const cacheKey = `${storageMode}_${weekDate}`;
+    return weekDataCacheRef.current[cacheKey] || [];
   };
 
   const renderWeekPage = (weekDate, highlightWeekToday = false) => {
@@ -2238,24 +2309,38 @@ const App = () => {
     );
   }
 
-  // Show auth forms if not authenticated
-  if (!isAuthenticated) {
-    return showRegister ? (
-      <Register
-        onRegister={handleRegister}
-        onSwitchToLogin={() => setShowRegister(false)}
-        t={t}
-        language={language}
-      />
-    ) : (
-      <Login
-        onLogin={handleLogin}
-        onSwitchToRegister={() => setShowRegister(true)}
-        t={t}
-        language={language}
-      />
+  // Show auth forms if not authenticated AND in cloud mode
+  if (!isAuthenticated && storageMode === 'cloud') {
+    return (
+      <div className="auth-wrapper">
+        <div className="auth-storage-toggle">
+          <button 
+            className="toggle-btn local-link" 
+            onClick={() => {
+              setStorageMode('local');
+              storageService.setStorageMode('local');
+            }}
+          >
+            {t('useLocalStorage') || 'Use Local Storage'}
+          </button>
+        </div>
+        {showRegister ? (
+          <Register
+            onRegister={handleRegister}
+            onSwitchToLogin={() => setShowRegister(false)}
+            t={t}
+            language={language}
+          />
+        ) : (
+          <Login
+            onLogin={handleLogin}
+            onSwitchToRegister={() => setShowRegister(true)}
+            t={t}
+            language={language}
+          />
+        )}
+      </div>
     );
-
   }
 
   const handleGenerateReport = async (habitId, period = 'day') => {
@@ -3169,6 +3254,15 @@ const App = () => {
                   >
                     {t('localStorage')}
                   </button>
+                </div>
+                <div className="storage-actions" style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
+                  <button className="btn-secondary btn-small" onClick={handleExportData}>
+                    📤 {t('exportData')}
+                  </button>
+                  <label className="btn-secondary btn-small" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', marginBottom: 0 }}>
+                    📥 {t('importData')}
+                    <input type="file" accept=".json" onChange={handleImportData} style={{ display: 'none' }} />
+                  </label>
                 </div>
               </div>
             )}
