@@ -1010,7 +1010,9 @@ const App = () => {
       currentPhoto: photo
     });
 
-    const initialQuantity = getDefaultModalQuantity(habit.id);
+    const initialQuantity = isDone
+      ? quantity
+      : getScrollDefaultQuantity(habit.id, newDateStr, isRestored);
 
     setQuantityValue(initialQuantity);
     setCommentValue(comment || '');
@@ -1802,10 +1804,68 @@ const App = () => {
     return isRestored ? 1 : null;
   };
 
+  const getPreviousDayDateStr = (dateStr) => {
+    const parts = dateStr.split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    
+    const d = new Date(year, month, day);
+    d.setDate(d.getDate() - 1);
+    
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const getHabitStatusForDate = (habitId, dateStr) => {
+    // 1. First, search in current week's habitsData
+    const currentHabit = habitsData.find(h => h.id === habitId);
+    if (currentHabit) {
+      const status = currentHabit.statuses?.find(s => s && s.date === dateStr);
+      if (status) return status;
+    }
+
+    // 2. Search in cached weeks
+    const cache = weekDataCacheRef.current;
+    for (const key in cache) {
+      const habitsList = cache[key];
+      if (Array.isArray(habitsList)) {
+        const habit = habitsList.find(h => h.id === habitId);
+        if (habit) {
+          const status = habit.statuses?.find(s => s && s.date === dateStr);
+          if (status) return status;
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const getScrollDefaultQuantity = (habitId, dayDate, isRestored) => {
+    const prevDayStr = getPreviousDayDateStr(dayDate);
+    const prevStatus = getHabitStatusForDate(habitId, prevDayStr);
+
+    if (prevStatus) {
+      if (prevStatus.is_done) {
+        const qty = prevStatus.quantity;
+        if (qty !== null && qty !== undefined && qty > 1) {
+          return 1;
+        }
+      }
+      return null;
+    }
+
+    return isRestored ? 1 : null;
+  };
+
   const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
     setQuantityModalData({ habitId, habitName, dayDate, currentStatus, currentQuantity, currentComment, currentPhoto, dateId, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, currentIsRestored: isRestored });
 
-    const initialQuantity = getDefaultModalQuantity(isRestored);
+    const initialQuantity = currentStatus
+      ? currentQuantity
+      : getScrollDefaultQuantity(habitId, dayDate, isRestored);
 
     setQuantityValue(initialQuantity);
     setCommentValue(currentComment || '');
