@@ -4722,36 +4722,31 @@ body {
   border-color: #10B981;
 }
 
-.auth-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background-color: #f8f9fa;
-  padding: 20px;
+/* Bottom Navigation SVG styles & refinements */
+.nav-icon svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  transition: all 0.2s ease;
+  stroke: #888888;
 }
 
-.auth-storage-toggle {
-  margin-bottom: 20px;
-  width: 100%;
-  max-width: 400px;
-  display: flex;
-  justify-content: flex-end;
+.nav-item.active .nav-icon svg {
+  stroke: #ffffff !important;
 }
 
-.local-link {
-  background: none;
-  border: none;
-  color: #007bff;
-  text-decoration: underline;
-  cursor: pointer;
-  font-size: 0.9rem;
-  padding: 5px 10px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+.nav-item:hover:not(.disabled) .nav-icon svg {
+  stroke: #059669;
 }
 
-.local-link:hover {
-  background-color: rgba(0, 123, 255, 0.05);
+.dark-theme .nav-icon svg {
+  stroke: #9ca3af;
+}
+
+.dark-theme .nav-item.active .nav-icon svg {
+  stroke: #ffffff !important;
+}
+
+.dark-theme .nav-item:hover:not(.disabled) .nav-icon svg {
+  stroke: #34d399;
 }

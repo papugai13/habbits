@@ -48,60 +48,58 @@ const Login = ({ onLogin, onSwitchToRegister, t }) => {
     };
 
     return (
-        <div className="auth-container">
-            <div className="auth-card">
-                <h1 className="auth-title">{t('loginTitle')}</h1>
-                <p className="auth-subtitle">{t('loginSubtitle')}</p>
+        <div className="auth-card">
+            <h1 className="auth-title">{t('loginTitle')}</h1>
+            <p className="auth-subtitle">{t('loginSubtitle')}</p>
 
-                {error && <div className="auth-error">{error}</div>}
+            {error && <div className="auth-error">{error}</div>}
 
-                <form onSubmit={handleSubmit} className="auth-form">
-                    <div className="form-group">
-                        <label htmlFor="username">{t('username')}</label>
-                        <input
-                            type="text"
-                            id="username"
-                            name="username"
-                            value={formData.username}
-                            onChange={handleChange}
-                            required
-                            autoFocus
-                            disabled={loading}
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label htmlFor="password">{t('password')}</label>
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            required
-                            disabled={loading}
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        className="auth-button"
+            <form onSubmit={handleSubmit} className="auth-form">
+                <div className="form-group">
+                    <label htmlFor="username">{t('username')}</label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        required
+                        autoFocus
                         disabled={loading}
-                    >
-                        {loading ? t('loggingIn') : t('loginButton')}
-                    </button>
-                </form>
-
-                <div className="auth-switch">
-                    {t('dontHaveAccount')}{' '}
-                    <button
-                        onClick={onSwitchToRegister}
-                        className="auth-link"
-                        disabled={loading}
-                    >
-                        {t('registerButton')}
-                    </button>
+                    />
                 </div>
+
+                <div className="form-group">
+                    <label htmlFor="password">{t('password')}</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                        disabled={loading}
+                    />
+                </div>
+
+                <button
+                    type="submit"
+                    className="auth-button"
+                    disabled={loading}
+                >
+                    {loading ? t('loggingIn') : t('loginButton')}
+                </button>
+            </form>
+
+            <div className="auth-switch">
+                {t('dontHaveAccount')}{' '}
+                <button
+                    onClick={onSwitchToRegister}
+                    className="auth-link"
+                    disabled={loading}
+                >
+                    {t('registerButton')}
+                </button>
             </div>
         </div>
     );
