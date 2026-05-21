@@ -692,7 +692,7 @@ const Charts = ({
         } finally {
             setLoading(false);
         }
-    }, [period, chartDate, selectedCategory, t]);
+    }, [period, chartDate, selectedCategory, t, language, storageMode]);
 
     useEffect(() => {
         fetchStatistics();
