@@ -54,9 +54,7 @@ const App = () => {
     if (typeof window === 'undefined') return 'auto';
     return localStorage.getItem('theme') || 'auto';
   });
-  const [storageMode, setStorageMode] = useState(() => {
-    return storageService.getStorageMode();
-  });
+  const [storageMode] = useState('cloud');
 
   const [habitsData, setHabitsData] = useState([]);
 
@@ -633,42 +631,7 @@ const App = () => {
     }
   };
 
-  const handleExportData = async () => {
-    try {
-      const data = await storageService.exportData(storageMode);
-      // Use octet-stream to force download instead of opening in browser as text
-      const blob = new Blob([data], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `habbits_backup_${new Date().toISOString().split('T')[0]}.json`);
-      link.setAttribute('target', '_blank'); // Helps on iOS Safari
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 100);
-    } catch (error) {
-      console.error('Error exporting data:', error);
-      alert('Ошибка при экспорте данных');
-    }
-  };
 
-  const handleImportData = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = storageService.importData(e.target.result);
-      if (result.success) {
-        alert(t('importSuccess'));
-        window.location.reload();
-      } else {
-        alert(t('importError'));
-      }
-    };
-    reader.readAsText(file);
-  };
 
   // Update reminder times when timesPerDay changes
   const handleTimesPerDayChange = (value) => {
@@ -2355,18 +2318,6 @@ const App = () => {
   if (!isAuthenticated && storageMode === 'cloud') {
     return (
       <div className="auth-wrapper">
-        <div className="auth-storage-toggle">
-          <button 
-            className="toggle-btn local-link" 
-            onClick={() => {
-              setStorageMode('local');
-              storageService.setStorageMode('local');
-              checkAuth();
-            }}
-          >
-            {t('useLocalStorage') || 'Use Local Storage'}
-          </button>
-        </div>
         {showRegister ? (
           <Register
             onRegister={handleRegister}
@@ -3265,52 +3216,7 @@ const App = () => {
             )}
           </div>
 
-          <div className="settings-section storage-settings">
-            <h3 className="section-title section-title-centered" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, storage: !collapsedSettingsSections.storage})}>
-              <span>💾 {t('storageSettings')}</span>
-              <span className={`collapse-icon ${collapsedSettingsSections.storage ? 'collapsed' : ''}`}>▼</span>
-            </h3>
-            {!collapsedSettingsSections.storage && (
-              <div className="storage-mode-options">
-                <div className="storage-mode-notice">
-                  {t('storageModeNotice')}
-                </div>
-                <div className="frequency-options">
-                  <button
-                    className={`freq-btn ${storageMode === 'cloud' ? 'active' : ''}`}
-                    onClick={() => {
-                      setStorageMode('cloud');
-                      storageService.setStorageMode('cloud');
-                      // Trigger refetch
-                      checkAuth();
-                    }}
-                  >
-                    {t('cloudStorage')}
-                  </button>
-                  <button
-                    className={`freq-btn ${storageMode === 'local' ? 'active' : ''}`}
-                    onClick={() => {
-                      setStorageMode('local');
-                      storageService.setStorageMode('local');
-                      // Trigger refetch
-                      checkAuth();
-                    }}
-                  >
-                    {t('localStorage')}
-                  </button>
-                </div>
-                <div className="storage-actions" style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-                  <button className="btn-secondary btn-small" onClick={handleExportData}>
-                    📤 {t('exportData')}
-                  </button>
-                  <label className="btn-secondary btn-small" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', marginBottom: 0 }}>
-                    📥 {t('importData')}
-                    <input type="file" accept=".json" onChange={handleImportData} style={{ display: 'none' }} />
-                  </label>
-                </div>
-              </div>
-            )}
-          </div>
+
         </div>
       )}
 
