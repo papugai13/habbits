@@ -4722,14 +4722,33 @@ body {
   border-color: #10B981;
 }
 
-.auth-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+/* Bottom Navigation SVG styles & refinements */
+.nav-icon svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  transition: all 0.2s ease;
+  stroke: #888888;
+}
+
+.nav-item.active .nav-icon svg {
+  stroke: #ffffff !important;
+}
+
+.nav-item:hover:not(.disabled) .nav-icon svg {
+  stroke: #059669;
+}
+
+.dark-theme .nav-icon svg {
+  stroke: #9ca3af;
+}
+
+.dark-theme .nav-item.active .nav-icon svg {
+  stroke: #ffffff !important;
+}
+
+.dark-theme .nav-item:hover:not(.disabled) .nav-icon svg {
+  stroke: #34d399;
 }
 
 /* Onboarding Welcome Screen Styles */
@@ -4898,37 +4917,6 @@ body {
   font-size: 0.9rem;
   color: #64748b;
   margin-top: 10px;
-}
-
-/* Auth storage toggle container */
-.auth-storage-toggle {
-  margin-bottom: 24px;
-  width: 100%;
-  max-width: 450px;
-  display: flex;
-  justify-content: flex-end;
-  animation: slideDownOnboard 0.3s ease-out;
-}
-
-.local-link {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 20px;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.local-link:hover {
-  background-color: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-1.5px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 @keyframes fadeInOnboard {
