@@ -1188,7 +1188,6 @@ const App = () => {
                 let currentStreak = 0;
                 let consecutiveMissed = 0;
                 let activeStreak = false;
-                const dMinus3 = habit.prev_week_fri_done;
                 const dMinus2 = habit.prev_week_sat_done;
                 const dMinus1 = habit.prev_week_sun_done;
 
@@ -1197,15 +1196,14 @@ const App = () => {
                   activeStreak = true;
                   currentStreak = 2;
                   consecutiveMissed = 0;
-                } else if (dMinus2 && dMinus3 && !dMinus1) {
-                  activeStreak = true;
-                  currentStreak = 2; // Was 2+, now 1 miss
-                  consecutiveMissed = 1;
                 } else if (dMinus1) {
                   currentStreak = 1;
                   consecutiveMissed = 0;
+                  activeStreak = false;
                 } else {
+                  currentStreak = 0;
                   consecutiveMissed = (dMinus2 ? 1 : 2);
+                  activeStreak = false;
                 }
 
                 // Precalculate dots for the current week
@@ -1219,10 +1217,11 @@ const App = () => {
                   const slotDateStr = slotDate.toLocaleDateString('en-CA');
                   
                   const status = statuses.find(s => s && s.date === slotDateStr);
-                  const isDone = status ? status.is_done : false;
+                  const isDoneForStreak = status ? (status.is_done && !status.is_restored) : false;
+                  const isDoneAtAll = status ? status.is_done : false;
                   const isFuture = slotDateStr > todayStr;
 
-                  if (isDone) {
+                  if (isDoneForStreak) {
                     currentStreak++;
                     consecutiveMissed = 0;
                     if (currentStreak >= 2) activeStreak = true;
@@ -1231,14 +1230,14 @@ const App = () => {
                     // Only count misses if the day is not in the future
                     if (!isFuture) {
                       consecutiveMissed++;
-                      if (consecutiveMissed >= 2) {
+                      if (consecutiveMissed >= 1) {
                         activeStreak = false;
                       }
                     }
                   }
                   
                   // If streak is active, show dots on empty boxes for today or future days only
-                  if (activeStreak && !isDone && slotDateStr >= todayStr) {
+                  if (activeStreak && !isDoneAtAll && slotDateStr >= todayStr) {
                     dots[index] = 'has-dot-1';
                   }
                 });

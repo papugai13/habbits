@@ -338,9 +338,9 @@ const storageService = {
         return habitIdMatch && dateMatch;
       });
 
-      const prevSunDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevSunStr && s.is_done);
-      const prevSatDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevSatStr && s.is_done);
-      const prevFriDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevFriStr && s.is_done);
+      const prevSunDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevSunStr && s.is_done && !s.is_restored);
+      const prevSatDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevSatStr && s.is_done && !s.is_restored);
+      const prevFriDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevFriStr && s.is_done && !s.is_restored);
 
       return {
         ...h,
