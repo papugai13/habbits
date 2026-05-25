@@ -1207,6 +1207,7 @@ const App = () => {
                 }
 
                 // Precalculate dots for the current week
+                let streakActiveForDots = (dMinus1 && dMinus2);
                 const dots = new Array(7).fill('');
                 WEEK_DAYS.forEach((_, index) => {
                   const baseDate = new Date(currentWeekDate);
@@ -1223,11 +1224,16 @@ const App = () => {
                   if (isDone) {
                     currentStreak++;
                     consecutiveMissed = 0;
-                    if (currentStreak >= 2) activeStreak = true;
+                    if (currentStreak >= 2) {
+                      activeStreak = true;
+                      streakActiveForDots = true;
+                    }
                   } else {
                     currentStreak = 0;
-                    // Only count misses if the day is not in the future
-                    if (!isFuture) {
+                    // A miss is any day in the past or today that is not completed
+                    const isPastOrTodayMiss = slotDateStr <= todayStr;
+                    if (isPastOrTodayMiss) {
+                      streakActiveForDots = false;
                       consecutiveMissed++;
                       if (consecutiveMissed >= 2) {
                         activeStreak = false;
@@ -1235,8 +1241,8 @@ const App = () => {
                     }
                   }
                   
-                  // If streak is active, show dots on empty boxes for today or future days only
-                  if (activeStreak && !isDone && slotDateStr >= todayStr) {
+                  // Dots appear on empty boxes for today or future days only
+                  if (streakActiveForDots && !isDone && slotDateStr >= todayStr) {
                     dots[index] = 'has-dot-1';
                   }
                 });
@@ -1804,18 +1810,69 @@ const App = () => {
     return null;
   };
 
-  const getScrollDefaultQuantity = (habitId, dayDate, isRestored) => {
-    const prevDayStr = getPreviousDayDateStr(dayDate);
-    const prevStatus = getHabitStatusForDate(habitId, prevDayStr);
+  const getLastRecordedStatus = (habitId, beforeDateStr) => {
+    let allStatuses = [];
 
-    if (prevStatus) {
-      if (prevStatus.is_done) {
-        const qty = prevStatus.quantity;
-        if (qty !== null && qty !== undefined && qty > 1) {
-          return 1;
+    // 1. From habitsData
+    const currentHabit = habitsData.find(h => h.id === habitId);
+    if (currentHabit && Array.isArray(currentHabit.statuses)) {
+      allStatuses.push(...currentHabit.statuses);
+    }
+
+    // 2. From cached weeks
+    const cache = weekDataCacheRef.current;
+    for (const key in cache) {
+      const habitsList = cache[key];
+      if (Array.isArray(habitsList)) {
+        const habit = habitsList.find(h => h.id === habitId);
+        if (habit && Array.isArray(habit.statuses)) {
+          allStatuses.push(...habit.statuses);
         }
       }
+    }
+
+    // Filter unique by date to avoid duplicates from overlapping cache keys
+    const uniqueDoneStatuses = [];
+    const seenDates = new Set();
+    
+    for (const status of allStatuses) {
+      if (status && status.is_done && status.date) {
+        if (!seenDates.has(status.date)) {
+          seenDates.add(status.date);
+          uniqueDoneStatuses.push(status);
+        }
+      }
+    }
+
+    if (uniqueDoneStatuses.length === 0) {
       return null;
+    }
+
+    // Sort descending by date to get the most recent ones first
+    uniqueDoneStatuses.sort((a, b) => b.date.localeCompare(a.date));
+
+    // Try to find the most recent one BEFORE the clicked date
+    const priorStatus = uniqueDoneStatuses.find(status => status.date < beforeDateStr);
+    if (priorStatus) {
+      return priorStatus;
+    }
+
+    // If no prior status, return the absolute last recorded status in history (most recent overall)
+    return uniqueDoneStatuses[0];
+  };
+
+  const getScrollDefaultQuantity = (habitId, dayDate, isRestored) => {
+    const lastStatus = getLastRecordedStatus(habitId, dayDate);
+
+    if (lastStatus) {
+      // "если последняя записанная клетка привычки меньше 1 то дефолт состояние меньше 1"
+      // "а если 1 то 1"
+      const isLastRestoredOrHasQty = lastStatus.is_restored || (lastStatus.quantity !== null && lastStatus.quantity !== undefined && lastStatus.quantity >= 1);
+      if (isLastRestoredOrHasQty) {
+        return 1;
+      } else {
+        return null;
+      }
     }
 
     return isRestored ? 1 : null;
@@ -2322,6 +2379,8 @@ const App = () => {
             onSwitchToLogin={() => setShowRegister(false)}
             t={t}
             language={language}
+            theme={theme}
+            setTheme={setTheme}
           />
         ) : (
           <Login
@@ -2329,6 +2388,8 @@ const App = () => {
             onSwitchToRegister={() => setShowRegister(true)}
             t={t}
             language={language}
+            theme={theme}
+            setTheme={setTheme}
           />
         )}
       </div>
