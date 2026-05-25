@@ -442,3 +442,24 @@ body.dark-theme .mini-spinner {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* Dark Theme Custom Overrides for Text Visibility */
+body.dark-theme .analytics-header h2 {
+    color: #f8fafc; /* Slate 50 */
+}
+
+body.dark-theme .habit-label {
+    color: #e2e8f0; /* Slate 200 */
+}
+
+body.dark-theme .analytics-month-name {
+    color: #f1f5f9; /* Slate 100 */
+}
+
+body.dark-theme .analytics-month-stats .percent {
+    color: #cbd5e1; /* Slate 300 */
+}
+
+body.dark-theme .analytics-loading {
+    color: #94a3b8; /* Slate 400 */
+}
