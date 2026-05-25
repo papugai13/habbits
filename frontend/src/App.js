@@ -1241,7 +1241,7 @@ const App = () => {
                   }
                   
                   // Dots appear on empty boxes for today or future days only
-                  if (streakActiveForDots && !isDone && slotDateStr >= todayStr) {
+                  if (streakActiveForDots && !isDoneAtAll && slotDateStr >= todayStr) {
                     dots[index] = 'has-dot-1';
                   }
                 });
