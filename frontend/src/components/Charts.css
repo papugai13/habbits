@@ -1128,6 +1128,24 @@
     background: #404040;
 }
 
+/* Dark Theme Text Visibility Polish */
+.dark-theme .category-comparison-table th {
+    color: #94a3b8; /* Slate 400 instead of #666 */
+}
+
+.dark-theme .current-period-subtitle,
+.dark-theme .comparison-period-subtitle {
+    color: #94a3b8; /* Slate 400 instead of #666 */
+}
+
+.dark-theme .report-card-category {
+    color: #94a3b8; /* Slate 400 instead of #888 */
+}
+
+.dark-theme .comparison-no-data {
+    color: #94a3b8; /* Slate 400 instead of #999 */
+}
+
 @media (max-width: 768px) {
     .category-comparison-section {
         padding: 15px;

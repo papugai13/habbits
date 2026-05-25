@@ -429,7 +429,9 @@ const App = () => {
         const hour = new Date().getHours();
         currentTheme = (hour >= 6 && hour < 18) ? 'light' : 'dark';
       }
-      document.body.className = currentTheme === 'dark' ? 'dark-theme' : '';
+      const isDark = currentTheme === 'dark';
+      document.body.className = isDark ? 'dark-theme' : '';
+      document.documentElement.className = isDark ? 'dark-theme' : '';
     };
     applyTheme();
     if (theme === 'auto') {
