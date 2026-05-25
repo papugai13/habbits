@@ -4,7 +4,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
     width: 100%;
     background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
     padding: 30px 16px;
@@ -143,6 +144,7 @@
 }
 
 .form-group input {
+    width: 100%;
     padding: 12px 16px;
     border: 1.5px solid #e2e8f0;
     border-radius: 12px;
@@ -311,4 +313,174 @@
         padding: 12px 20px;
         font-size: 15px;
     }
+}
+
+/* Beautiful Segmented Theme Switcher */
+.auth-theme-toggle {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(226, 232, 240, 0.6);
+    border-radius: 9999px;
+    padding: 3px;
+    width: fit-content;
+    margin: 0 auto 24px auto;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark-theme .auth-theme-toggle {
+    background-color: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Sliding Indicator Background Pill */
+.auth-theme-indicator {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 38px;
+    height: 38px;
+    border-radius: 9999px;
+    background-color: #059669; /* Emerald 600 */
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+    transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1;
+}
+
+.dark-theme .auth-theme-indicator {
+    background-color: #34d399; /* Emerald 400 */
+    box-shadow: 0 2px 10px rgba(52, 211, 153, 0.4);
+}
+
+/* Positions for each option */
+.auth-theme-indicator.light {
+    transform: translateX(0);
+}
+
+.auth-theme-indicator.dark {
+    transform: translateX(38px);
+}
+
+.auth-theme-indicator.auto {
+    transform: translateX(76px);
+}
+
+.auth-theme-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: 9999px;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    cursor: pointer;
+    color: #64748b;
+    transition: color 0.25s ease;
+    position: relative;
+    z-index: 2; /* Position buttons above indicator */
+    outline: none;
+}
+
+.auth-theme-btn:focus-visible {
+    box-shadow: 0 0 0 2px #059669;
+}
+
+.dark-theme .auth-theme-btn:focus-visible {
+    box-shadow: 0 0 0 2px #34d399;
+}
+
+.auth-theme-btn:hover {
+    color: #1e293b;
+}
+
+.dark-theme .auth-theme-btn:hover {
+    color: #f8fafc;
+}
+
+.auth-theme-btn.active {
+    color: #ffffff !important;
+}
+
+.dark-theme .auth-theme-btn.active {
+    color: #061a14 !important;
+}
+
+.auth-theme-btn svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.auth-theme-btn.active svg {
+    transform: scale(1.15) rotate(8deg);
+}
+
+/* Password Visibility Toggle */
+.password-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.password-wrapper input {
+    padding-right: 48px; /* Give room for the eye button */
+    width: 100%;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 6px;
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.password-toggle-btn:hover {
+    color: #1e293b;
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark-theme .password-toggle-btn:hover {
+    color: #f8fafc;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.password-toggle-btn:focus-visible {
+    box-shadow: 0 0 0 2px #059669;
+}
+
+.dark-theme .password-toggle-btn:focus-visible {
+    box-shadow: 0 0 0 2px #34d399;
+}
+
+.password-toggle-btn svg {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.25s ease;
+}
+
+.password-toggle-btn:hover svg {
+    transform: scale(1.12);
+    color: #059669; /* Emerald 600 */
+}
+
+.dark-theme .password-toggle-btn:hover svg {
+    color: #34d399; /* Emerald 400 */
+}
+
+.password-toggle-btn:active svg {
+    transform: scale(0.85) rotate(-10deg);
 }
