@@ -1183,6 +1183,8 @@ const App = () => {
                 const weeklyCount = getHabitCount(habit);
                 const weeklyAward = getWeeklyAward(weeklyCount);
                 const statuses = habit.statuses || [];
+                const lastStatus = getLastRecordedStatus(habit.id, '9999-12-31');
+                const isLastQuantityLess1 = !lastStatus || lastStatus.quantity === null || lastStatus.quantity === undefined || lastStatus.quantity < 1;
 
                 // Determine incoming streak state from previous week
                 let currentStreak = 0;
@@ -1372,13 +1374,15 @@ const App = () => {
                               {habit.use_target ? (habit.completion_target || 0) : ''}
                             </div>
                           </div>
-                          <div className="habit-count-row">
-                            <div className="habit-count-overflow weekly">{habit.weekly_overflow || 0}</div>
-                            <div className="habit-count-overflow monthly">{habit.monthly_overflow || 0}</div>
-                            <div className={`habit-count-overflow target purple-target ${!habit.use_target ? 'invisible' : ''}`}>
-                              {habit.use_target ? (habit.quantity_target || 0) : ''}
+                          {!isLastQuantityLess1 && (
+                            <div className="habit-count-row">
+                              <div className="habit-count-overflow weekly">{habit.weekly_overflow || 0}</div>
+                              <div className="habit-count-overflow monthly">{habit.monthly_overflow || 0}</div>
+                              <div className={`habit-count-overflow target purple-target ${!habit.use_target ? 'invisible' : ''}`}>
+                                {habit.use_target ? (habit.quantity_target || 0) : ''}
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1868,7 +1872,7 @@ const App = () => {
     if (lastStatus) {
       // "если последняя записанная клетка привычки меньше 1 то дефолт состояние меньше 1"
       // "а если 1 то 1"
-      const isLastRestoredOrHasQty = lastStatus.is_restored || (lastStatus.quantity !== null && lastStatus.quantity !== undefined && lastStatus.quantity >= 1);
+      const isLastRestoredOrHasQty = (lastStatus.quantity !== null && lastStatus.quantity !== undefined && lastStatus.quantity >= 1);
       if (isLastRestoredOrHasQty) {
         return 1;
       } else {
@@ -3420,16 +3424,21 @@ const App = () => {
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={newHabitUseTarget}
-                    onChange={(e) => setNewHabitUseTarget(e.target.checked)}
-                  />
+              <label className="custom-checkbox-container">
+                <input
+                  type="checkbox"
+                  checked={newHabitUseTarget}
+                  onChange={(e) => setNewHabitUseTarget(e.target.checked)}
+                />
+                <span className="checkbox-box">
+                  <svg className="checkbox-tick" viewBox="0 0 24 24" fill="none">
+                    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+                <span className="checkbox-label-text">
                   {language === 'ru' ? 'Использовать цель' : 'Use target'}
-                </label>
-              </div>
+                </span>
+              </label>
 
               {newHabitUseTarget && (
                 <>
@@ -3605,16 +3614,21 @@ const App = () => {
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={editingHabit.use_target || false}
-                    onChange={(e) => setEditingHabit({ ...editingHabit, use_target: e.target.checked })}
-                  />
+              <label className="custom-checkbox-container">
+                <input
+                  type="checkbox"
+                  checked={editingHabit.use_target || false}
+                  onChange={(e) => setEditingHabit({ ...editingHabit, use_target: e.target.checked })}
+                />
+                <span className="checkbox-box">
+                  <svg className="checkbox-tick" viewBox="0 0 24 24" fill="none">
+                    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+                <span className="checkbox-label-text">
                   {language === 'ru' ? 'Использовать цель' : 'Use target'}
-                </label>
-              </div>
+                </span>
+              </label>
 
               {editingHabit.use_target && (
                 <>
@@ -3712,14 +3726,28 @@ const App = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="profile-photo">{t('profilePhoto')}</label>
-                <input
-                  id="profile-photo"
-                  type="file"
-                  className="form-input"
-                  accept="image/*"
-                  onChange={(e) => setEditProfileData({ ...editProfileData, profile_photo: e.target.files[0] })}
-                />
+                <label className="form-label">{t('profilePhoto')}</label>
+                <div className="file-upload-wrapper">
+                  <label htmlFor="profile-photo" className="custom-file-upload">
+                    <svg className="upload-icon" viewBox="0 0 24 24" fill="none">
+                      <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span className="upload-text">
+                      {editProfileData.profile_photo ? (
+                        `${t('fileSelected')}: ${editProfileData.profile_photo.name}`
+                      ) : (
+                        t('chooseFile')
+                      )}
+                    </span>
+                  </label>
+                  <input
+                    id="profile-photo"
+                    type="file"
+                    className="file-input-hidden"
+                    accept="image/*"
+                    onChange={(e) => setEditProfileData({ ...editProfileData, profile_photo: e.target.files[0] })}
+                  />
+                </div>
                 {user?.profile_photo && (
                   <div className="current-photo">
                     <p>{t('currentPhoto')}:</p>
@@ -3907,7 +3935,7 @@ const App = () => {
                       onChange={(val) => setQuantityValue(val)}
                     />
 
-                    {getDefaultModalQuantity(quantityModalData.currentIsRestored) !== null && (
+                    {quantityValue !== null && quantityValue !== undefined && quantityValue >= 1 && (
                       <div className="preset-column presets-right">
                         <div className="preset-btn theme-purple weekly">
                           <div className="preset-badge">{liveWeeklyOverflow}</div>
