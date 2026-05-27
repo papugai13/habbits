@@ -5026,3 +5026,217 @@ html.dark-theme, body.dark-theme {
     gap: 30px;
   }
 }
+
+/* ==========================================
+   Premium Custom Checkbox Styles (Emerald/Glass)
+   ========================================== */
+
+.custom-checkbox-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 8px;
+}
+
+.dark-theme .custom-checkbox-container {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.custom-checkbox-container:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: #059669;
+}
+
+.dark-theme .custom-checkbox-container:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #34D399;
+}
+
+/* Hide native input but keep keyboard focus */
+.custom-checkbox-container input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+/* Custom checkbox box */
+.checkbox-box {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #CBD5E1;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.dark-theme .checkbox-box {
+  border-color: #475569;
+  background-color: #1E293B;
+}
+
+/* Label text */
+.checkbox-label-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  transition: color 0.3s ease;
+}
+
+.dark-theme .checkbox-label-text {
+  color: #E2E8F0;
+}
+
+/* Tick SVG */
+.checkbox-tick {
+  width: 14px;
+  height: 14px;
+  color: white;
+  transform: scale(0);
+  opacity: 0;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* elastic bounce */
+}
+
+/* Checked State */
+.custom-checkbox-container input:checked + .checkbox-box {
+  background-color: #059669;
+  border-color: #059669;
+  box-shadow: 0 0 8px rgba(5, 150, 105, 0.3);
+}
+
+.dark-theme .custom-checkbox-container input:checked + .checkbox-box {
+  background-color: #34D399;
+  border-color: #34D399;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.4);
+}
+
+.custom-checkbox-container input:checked + .checkbox-box .checkbox-tick {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* Focus state for accessibility */
+.custom-checkbox-container input:focus-visible + .checkbox-box {
+  outline: 2px solid #059669;
+  outline-offset: 2px;
+}
+
+.dark-theme .custom-checkbox-container input:focus-visible + .checkbox-box {
+  outline: 2px solid #34D399;
+  outline-offset: 2px;
+}
+
+/* ==========================================
+   Premium Custom File Upload (Profile Photo)
+   ========================================== */
+
+.file-upload-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* Hide native file input but keep accessible */
+.file-input-hidden {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+  z-index: -1;
+}
+
+/* Custom styled upload label button */
+.custom-file-upload {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.02);
+  border: 2px dashed rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dark-theme .custom-file-upload {
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+}
+
+.custom-file-upload:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: #059669;
+  color: #059669;
+}
+
+.dark-theme .custom-file-upload:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #34D399;
+  color: #34D399;
+}
+
+.upload-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: #4B5563;
+  transition: color 0.3s ease;
+}
+
+.dark-theme .upload-icon {
+  color: #9CA3AF;
+}
+
+.custom-file-upload:hover .upload-icon {
+  color: #059669;
+}
+
+.dark-theme .custom-file-upload:hover .upload-icon {
+  color: #34D399;
+}
+
+.upload-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4B5563;
+  word-break: break-all;
+  transition: color 0.3s ease;
+}
+
+.dark-theme .upload-text {
+  color: #9CA3AF;
+}
+
+.custom-file-upload:hover .upload-text {
+  color: #059669;
+}
+
+.dark-theme .custom-file-upload:hover .upload-text {
+  color: #34D399;
+}
+
+/* Accessibility Focus Indicator */
+.file-input-hidden:focus-visible + .custom-file-upload {
+  outline: 2px solid #059669;
+  outline-offset: 2px;
+}
+
+.dark-theme .file-input-hidden:focus-visible + .custom-file-upload {
+  outline: 2px solid #34D399;
+  outline-offset: 2px;
+}
