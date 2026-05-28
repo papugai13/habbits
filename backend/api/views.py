@@ -1200,24 +1200,35 @@ class HabitViewSet(viewsets.ModelViewSet):
                 
                 total_completions = week_dates.count()
                 
-                # Calculate total possible days in this week for active habits
+                # Calculate active habits and total possible days in this week
                 total_possible_days = 0
+                active_habits_count = 0
                 for habit in habits:
-                    if habit.start_date and habit.start_date <= week_end:
-                        # If the habit started THIS week, adjust the total days
-                        if habit.start_date >= week_start:
-                            actual_start = habit.start_date
-                            actual_end = week_end
-                            total_possible_days += (actual_end - actual_start).days + 1
+                    earliest_done = Date.objects.filter(
+                        user=user_profile,
+                        habit=habit,
+                        habit_date__range=[week_start, week_end],
+                        is_done=True,
+                        is_restored=False
+                    ).aggregate(Min('habit_date'))['habit_date__min']
+
+                    if (habit.start_date and habit.start_date <= week_end) or earliest_done:
+                        active_habits_count += 1
+                        effective_start = habit.start_date if habit.start_date else earliest_done
+                        if earliest_done:
+                            effective_start = min(effective_start, earliest_done)
+
+                        actual_end = min(week_end, today)
+                        if effective_start >= week_start:
+                            if effective_start <= actual_end:
+                                total_possible_days += (actual_end - effective_start).days + 1
+                            else:
+                                total_possible_days += 0
                         else:
-                            # Not the first week, use 7 days
-                            total_possible_days += 7
+                            total_possible_days += (actual_end - week_start).days + 1
                 
-                # If the week is completely in the future (shouldn't happen with the loop condition, but safe)
                 if total_possible_days <= 0:
                     total_possible_days = 0
-                
-                active_habits_count = habits.filter(start_date__lte=week_end).count()
                 
                 avg_days = 0
                 display_days_done = total_completions
