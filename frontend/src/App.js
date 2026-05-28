@@ -1122,7 +1122,7 @@ const App = () => {
             })}
           </div>
           <div className="days-placeholder-end header-counts-container">
-            <div className={`header-count-badge weekly ${currentWeekDate === getMondayString() ? 'current-week' : ''}`}>{language === 'ru' ? 'НЕД' : t('week').substring(0, 3).toUpperCase()} {getWeekNumber(currentWeekDate)}</div>
+            <div className={`header-count-badge weekly ${currentWeekDate === getMondayString() ? 'current-week' : ''}`}>{language === 'ru' ? 'НЕД' : t('week').toUpperCase()} {getWeekNumber(currentWeekDate)}</div>
             <div className="header-count-badge monthly">{language === 'ru' ? 'МЕС' : t('month').substring(0, 3).toUpperCase()}</div>
             <div className="header-count-badge target">{language === 'ru' ? 'ЦЕЛЬ' : 'TGT'}</div>
           </div>
@@ -2540,7 +2540,7 @@ const App = () => {
             <div className="week-navigation">
               <button className="week-nav-btn" onClick={handlePrevWeek}>&lt;</button>
               <div className="week-range-text" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.2'}}>
-                <span style={{fontSize: '0.85em', fontWeight: 'bold'}}>{language === 'ru' ? 'НЕД' : t('week').substring(0, 3).toUpperCase()} {getWeekNumber(currentWeekDate)}</span>
+                <span style={{fontSize: '0.85em', fontWeight: 'bold'}}>{language === 'ru' ? 'НЕД' : t('week').toUpperCase()} {getWeekNumber(currentWeekDate)}</span>
                 <span style={{fontSize: '0.9em', opacity: 0.8}}>{currentWeekRange()}</span>
               </div>
               <button className="week-nav-btn" onClick={handleNextWeek}>&gt;</button>
@@ -2653,16 +2653,17 @@ const App = () => {
               {t('settings')}
             </h2>
             <button
-              className="lang-toggle-btn"
+              className={`lang-toggle-btn lang-${language}`}
               onClick={() => {
                 const newLang = language === 'ru' ? 'en' : 'ru';
                 setLanguage(newLang);
                 localStorage.setItem('language', newLang);
               }}
+              aria-label={language === 'ru' ? 'Switch to English' : 'Переключить на русский'}
             >
-              <span className={`lang-option ${language === 'ru' ? 'active' : ''}`}>Rus</span>
-              <span className="lang-separator">/</span>
-              <span className={`lang-option ${language === 'en' ? 'active' : ''}`}>Eng</span>
+              <div className="lang-slider"></div>
+              <span className="lang-option ru">RU</span>
+              <span className="lang-option en">EN</span>
             </button>
 
 

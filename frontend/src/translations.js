@@ -241,7 +241,8 @@ const translations = {
     progress: 'Прогресс',
     viewPhoto: 'Просмотр фото',
     collapse: 'Свернуть',
-    expand: 'Развернуть'
+    expand: 'Развернуть',
+    total: 'итого:'
   },
   en: {
     // Tabs
@@ -485,7 +486,8 @@ const translations = {
     progress: 'Progress',
     viewPhoto: 'View photo',
     collapse: 'Collapse',
-    expand: 'Expand'
+    expand: 'Expand',
+    total: 'total:'
   }
 };
 
