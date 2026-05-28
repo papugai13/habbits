@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine } from 'recharts';
 import './Analytics.css';
 import storageService from '../storageService';
+import MonthDropdown from './MonthDropdown';
 
 const MONTH_KEYS = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
 
@@ -150,9 +151,9 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
             const endDate = new Date(week.week_end);
             const dateRange = `${startDate.getDate()}-${endDate.getDate()}`;
             
-            const daysDone = week.days_done || 0;
             const totalDays = week.total_days || 7;
-            const percentage = totalDays > 0 ? Math.round((daysDone / totalDays) * 100) : 0;
+            const daysDone = Math.min(week.days_done || 0, totalDays);
+            const percentage = totalDays > 0 ? Math.min(Math.round((daysDone / totalDays) * 100), 100) : 0;
             
             let trend = null;
             if (prevWeekPercentage !== null) {
@@ -327,17 +328,14 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                         <div key={idx} className="analytics-table-wrapper">
                             <div className="analytics-table-header-select">
                                 <span className="habit-label">{selectedHabitName}</span>
-                                <select 
-                                    className="month-mini-select"
+                                <MonthDropdown 
                                     value={mKey}
-                                    onChange={(e) => idx === 1 ? setSelectedMonth1(e.target.value) : setSelectedMonth2(e.target.value)}
-                                >
-                                    {tableData.map(m => (
-                                        <option key={m.month_key} value={m.month_key}>
-                                            {t(MONTH_KEYS[m.month - 1])} {m.year}
-                                        </option>
-                                    ))}
-                                </select>
+                                    options={tableData.map(m => ({
+                                        ...m,
+                                        label: `${t(MONTH_KEYS[m.month - 1])} ${m.year}`
+                                    }))}
+                                    onChange={(val) => idx === 1 ? setSelectedMonth1(val) : setSelectedMonth2(val)}
+                                />
                             </div>
                             <table className="analytics-table">
                                 <tbody>

@@ -1,0 +1,185 @@
+.month-dropdown-container {
+    position: relative;
+    display: inline-block;
+}
+
+.month-dropdown-trigger {
+    border: none;
+    outline: none;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 8px 16px;
+    padding-right: 12px;
+    border-radius: 12px;
+    border: 2px solid rgba(34, 197, 94, 0.15);
+    background-color: var(--card-bg, #ffffff);
+    color: #22c55e;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.month-dropdown-trigger:hover {
+    border-color: #22c55e;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.08);
+}
+
+.month-dropdown-trigger:focus-visible {
+    outline: 2px solid #22c55e;
+    outline-offset: 2px;
+}
+
+.month-dropdown-trigger:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.month-dropdown-trigger.open {
+    border-color: #22c55e;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1);
+}
+
+.month-dropdown-arrow {
+    width: 14px;
+    height: 14px;
+    color: #22c55e;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.month-dropdown-trigger.open .month-dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.month-dropdown-list {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 180px;
+    background-color: var(--card-bg, #ffffff);
+    border: 2px solid rgba(34, 197, 94, 0.18);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 1005;
+    padding: 6px 0;
+    transform-origin: top center;
+    animation: slideDownFade 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Custom Scrollbar for Dropdown List */
+.month-dropdown-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.month-dropdown-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.month-dropdown-list::-webkit-scrollbar-thumb {
+    background: rgba(34, 197, 94, 0.2);
+    border-radius: 10px;
+}
+
+.month-dropdown-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(34, 197, 94, 0.4);
+}
+
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -8px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+}
+
+.month-dropdown-item {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color, #1a1a1a);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+    gap: 12px;
+}
+
+.month-dropdown-item:hover {
+    background-color: rgba(34, 197, 94, 0.05);
+    color: #22c55e;
+    padding-left: 18px; /* Micro-interaction slide */
+}
+
+.month-dropdown-item.highlighted {
+    background-color: rgba(34, 197, 94, 0.04);
+    color: #22c55e;
+}
+
+.month-dropdown-item.active {
+    color: #22c55e;
+    background-color: rgba(34, 197, 94, 0.08);
+    font-weight: 700;
+}
+
+.item-checkmark {
+    width: 14px;
+    height: 14px;
+    color: #22c55e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Dark Mode Adapts */
+body.dark-theme .month-dropdown-trigger {
+    background-color: #2a2a2a;
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #22c55e;
+}
+
+body.dark-theme .month-dropdown-trigger:hover {
+    border-color: #22c55e;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);
+}
+
+body.dark-theme .month-dropdown-trigger.open {
+    border-color: #22c55e;
+}
+
+body.dark-theme .month-dropdown-list {
+    background-color: #2a2a2a;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+body.dark-theme .month-dropdown-item {
+    color: #e2e8f0;
+}
+
+body.dark-theme .month-dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+    color: #22c55e;
+}
+
+body.dark-theme .month-dropdown-item.highlighted {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+body.dark-theme .month-dropdown-item.active {
+    background-color: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}

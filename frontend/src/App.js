@@ -3154,37 +3154,52 @@ const App = () => {
             </h3>
             {!collapsedSettingsSections.theme && (
               <div className="theme-options">
-              <button
-                className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
-                onClick={() => {
-                  setTheme('light');
-                  localStorage.setItem('theme', 'light');
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px', verticalAlign: 'middle'}}><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-                {t('lightTheme')}
-              </button>
-              <button
-                className={`theme-btn ${theme === 'dark' ? 'active' : ''}`}
-                onClick={() => {
-                  setTheme('dark');
-                  localStorage.setItem('theme', 'dark');
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px', verticalAlign: 'middle'}}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                {t('darkTheme')}
-              </button>
-              <button
-                className={`theme-btn ${theme === 'auto' ? 'active' : ''}`}
-                onClick={() => {
-                  setTheme('auto');
-                  localStorage.setItem('theme', 'auto');
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px', verticalAlign: 'middle'}}><circle cx="12" cy="12" r="10"></circle><path d="M12 2v20a10 10 0 0 0 0-20z" fill="currentColor"></path></svg>
-                {t('autoTheme')}
-              </button>
-            </div>
+                <button
+                  className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
+                  onClick={() => {
+                    setTheme('light');
+                    localStorage.setItem('theme', 'light');
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                  </svg>
+                  <span className="theme-btn-label">{t('lightTheme')}</span>
+                </button>
+                <button
+                  className={`theme-btn ${theme === 'dark' ? 'active' : ''}`}
+                  onClick={() => {
+                    setTheme('dark');
+                    localStorage.setItem('theme', 'dark');
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                  </svg>
+                  <span className="theme-btn-label">{t('darkTheme')}</span>
+                </button>
+                <button
+                  className={`theme-btn ${theme === 'auto' ? 'active' : ''}`}
+                  onClick={() => {
+                    setTheme('auto');
+                    localStorage.setItem('theme', 'auto');
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 2v20a10 10 0 0 0 0-20z" fill="currentColor"></path>
+                  </svg>
+                  <span className="theme-btn-label">{t('autoTheme')}</span>
+                </button>
+              </div>
             )}
           </div>
 
