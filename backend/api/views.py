@@ -399,9 +399,30 @@ class HabitViewSet(viewsets.ModelViewSet):
                     prev_sun = start_date - timedelta(days=1)
                     prev_sat = start_date - timedelta(days=2)
                     prev_fri = start_date - timedelta(days=3)
-                    habit_data['prev_week_sun_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sun, is_done=True, is_restored=False).exists()
-                    habit_data['prev_week_sat_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sat, is_done=True, is_restored=False).exists()
-                    habit_data['prev_week_fri_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_fri, is_done=True, is_restored=False).exists()
+
+                    today_dt = date.today()
+                    is_streak_active_today = None # Lazy evaluation cache
+
+                    if prev_sun > today_dt:
+                        if is_streak_active_today is None:
+                            is_streak_active_today = self._is_streak_active_on_date(habit, user_profile, today_dt)
+                        habit_data['prev_week_sun_done'] = is_streak_active_today
+                    else:
+                        habit_data['prev_week_sun_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sun, is_done=True, is_restored=False).exists()
+
+                    if prev_sat > today_dt:
+                        if is_streak_active_today is None:
+                            is_streak_active_today = self._is_streak_active_on_date(habit, user_profile, today_dt)
+                        habit_data['prev_week_sat_done'] = is_streak_active_today
+                    else:
+                        habit_data['prev_week_sat_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_sat, is_done=True, is_restored=False).exists()
+
+                    if prev_fri > today_dt:
+                        if is_streak_active_today is None:
+                            is_streak_active_today = self._is_streak_active_on_date(habit, user_profile, today_dt)
+                        habit_data['prev_week_fri_done'] = is_streak_active_today
+                    else:
+                        habit_data['prev_week_fri_done'] = Date.objects.filter(user=user_profile, habit=habit, habit_date=prev_fri, is_done=True, is_restored=False).exists()
 
                     # Count previous week completions for dot transition
                     prev_week_start = start_date - timedelta(days=7)
@@ -721,6 +742,45 @@ class HabitViewSet(viewsets.ModelViewSet):
             import traceback
             traceback.print_exc()
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _is_streak_active_on_date(self, habit, user_profile, check_date):
+        """
+        Determines if the streak for a habit is active on a given date.
+        A streak becomes active after 2 consecutive hits.
+        A streak becomes inactive after 1 miss.
+        """
+        start_date = check_date - timedelta(days=45)
+        if habit.start_date and habit.start_date > start_date:
+            start_date = habit.start_date
+
+        dates = Date.objects.filter(
+            user=user_profile, habit=habit,
+            habit_date__range=[start_date, check_date],
+            is_done=True,
+            is_restored=False
+        ).values_list('habit_date', flat=True)
+        done_dates = set(dates)
+
+        streak_active = False
+        consecutive_hits = 0
+        consecutive_misses = 0
+
+        curr = start_date
+        while curr <= check_date:
+            is_done = curr in done_dates
+            if is_done:
+                consecutive_hits += 1
+                consecutive_misses = 0
+                if consecutive_hits >= 2:
+                    streak_active = True
+            else:
+                consecutive_hits = 0
+                consecutive_misses += 1
+                if consecutive_misses >= 1:
+                    streak_active = False
+            curr += timedelta(days=1)
+
+        return streak_active
 
     def _get_streak_history(self, habit, start_date, end_date):
         """
