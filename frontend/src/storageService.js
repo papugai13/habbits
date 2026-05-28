@@ -28,6 +28,59 @@ const toLocalDateString = (dateInput) => {
   return `${year}-${month}-${day}`;
 };
 
+const isStreakActiveOnDate = (habitId, checkDateStr, statuses, habitStartDateStr) => {
+  const checkDate = new Date(checkDateStr);
+  let startDate = new Date(checkDate);
+  startDate.setDate(checkDate.getDate() - 45);
+
+  if (habitStartDateStr) {
+    const habitStartDate = new Date(habitStartDateStr);
+    if (habitStartDate > startDate) {
+      startDate = habitStartDate;
+    }
+  }
+
+  const datesInRange = [];
+  const curr = new Date(startDate);
+  const checkDateNormalized = new Date(checkDate);
+  curr.setHours(0, 0, 0, 0);
+  checkDateNormalized.setHours(0, 0, 0, 0);
+
+  while (curr <= checkDateNormalized) {
+    datesInRange.push(toLocalDateString(curr));
+    curr.setDate(curr.getDate() + 1);
+  }
+
+  let streakActive = false;
+  let consecutiveHits = 0;
+  let consecutiveMisses = 0;
+
+  datesInRange.forEach(dateStr => {
+    const isDone = statuses.some(s => 
+      String(s.habit) === String(habitId) && 
+      s.date === dateStr && 
+      s.is_done && 
+      !s.is_restored
+    );
+
+    if (isDone) {
+      consecutiveHits++;
+      consecutiveMisses = 0;
+      if (consecutiveHits >= 2) {
+        streakActive = true;
+      }
+    } else {
+      consecutiveHits = 0;
+      consecutiveMisses++;
+      if (consecutiveMisses >= 1) {
+        streakActive = false;
+      }
+    }
+  });
+
+  return streakActive;
+};
+
 // Helper for JSON fetch with error handling
 const fetchJson = async (url, opts) => {
   const resp = await fetch(url, opts);
@@ -338,9 +391,38 @@ const storageService = {
         return habitIdMatch && dateMatch;
       });
 
-      const prevSunDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevSunStr && s.is_done && !s.is_restored);
-      const prevSatDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevSatStr && s.is_done && !s.is_restored);
-      const prevFriDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevFriStr && s.is_done && !s.is_restored);
+      const todayStr = toLocalDateString(new Date());
+      let isStreakActiveToday = null;
+
+      let prevSunDone;
+      if (prevSunStr > todayStr) {
+        if (isStreakActiveToday === null) {
+          isStreakActiveToday = isStreakActiveOnDate(h.id, todayStr, statuses, h.start_date);
+        }
+        prevSunDone = isStreakActiveToday;
+      } else {
+        prevSunDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevSunStr && s.is_done && !s.is_restored);
+      }
+
+      let prevSatDone;
+      if (prevSatStr > todayStr) {
+        if (isStreakActiveToday === null) {
+          isStreakActiveToday = isStreakActiveOnDate(h.id, todayStr, statuses, h.start_date);
+        }
+        prevSatDone = isStreakActiveToday;
+      } else {
+        prevSatDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevSatStr && s.is_done && !s.is_restored);
+      }
+
+      let prevFriDone;
+      if (prevFriStr > todayStr) {
+        if (isStreakActiveToday === null) {
+          isStreakActiveToday = isStreakActiveOnDate(h.id, todayStr, statuses, h.start_date);
+        }
+        prevFriDone = isStreakActiveToday;
+      } else {
+        prevFriDone = statuses.some(s => String(s.habit) === String(h.id) && s.date === prevFriStr && s.is_done && !s.is_restored);
+      }
 
       return {
         ...h,
