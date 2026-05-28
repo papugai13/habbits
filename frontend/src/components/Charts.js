@@ -826,7 +826,7 @@ const Charts = ({
                             <ResponsiveContainer width="100%" height="100%" style={{ overflow: 'visible' }}>
                                 <BarChart
                                     data={chartData}
-                                    margin={{ top: 15, right: 30, left: 0, bottom: 10 }}
+                                    margin={{ top: 30, right: 30, left: 0, bottom: 10 }}
                                     barCategoryGap={chartData.length === 1 ? "2%" : "10%"}
                                     barGap={chartData.length === 1 ? 0 : 2}
                                     barSize={isMobile ? 18 : isTablet ? 22 : 28}
@@ -847,7 +847,11 @@ const Charts = ({
                                         stroke={isDark ? "#666" : "#666"}
                                         tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 12 }}
                                         allowDecimals={false}
-                                        domain={[0, 'dataMax']}
+                                        domain={[0, (dataMax) => {
+                                            if (!dataMax || isNaN(dataMax) || dataMax === 0) return 1;
+                                            if (dataMax <= 2) return dataMax + 1;
+                                            return Math.ceil(dataMax * 1.15);
+                                        }]}
                                         nice={true}
                                     />
                                     {viewType === 'habits' ? (
