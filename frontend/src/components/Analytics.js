@@ -3,6 +3,8 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Refe
 import './Analytics.css';
 import storageService from '../storageService';
 
+const MONTH_KEYS = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
+
 const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
     const [data, setData] = useState({ weeks: [], months: {} });
     const [habits, setHabits] = useState([]);
@@ -159,7 +161,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
             prevWeekPercentage = percentage;
             
             currentMonthBlock.weeks.push({
-                week_label: week.week_label.replace('н', 'неделя '),
+                week_label: week.week_label.replace('н', language === 'ru' ? 'неделя ' : 'week '),
                 date_range: dateRange,
                 days_done: daysDone,
                 total_days: totalDays,
@@ -183,7 +185,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
         });
 
         return months;
-    }, [data.weeks]);
+    }, [data.weeks, language]);
 
     // Update selected months when data changes
     useEffect(() => {
@@ -332,7 +334,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                                 >
                                     {tableData.map(m => (
                                         <option key={m.month_key} value={m.month_key}>
-                                            {m.month_name} {m.year}
+                                            {t(MONTH_KEYS[m.month - 1])} {m.year}
                                         </option>
                                     ))}
                                 </select>
@@ -351,7 +353,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                                 </tbody>
                                 <tfoot>
                                     <tr>
-                                        <td colSpan="2" className="footer-label">итого:</td>
+                                        <td colSpan="2" className="footer-label">{t('total') || 'итого:'}</td>
                                         <td className="col-fraction">{monthBlock.totals.days_done}/{monthBlock.totals.total_days}</td>
                                         <td className="col-percentage">{monthBlock.totals.percentage}%</td>
                                         <td className="col-trend">{renderTrend(trend)}</td>
@@ -378,7 +380,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                                 dataKey="week_start" 
                                 tickFormatter={(val) => {
                                     const week = data.weeks.find(w => w.week_start === val);
-                                    return week ? week.week_label : '';
+                                    return week ? week.week_label.replace('н', language === 'ru' ? 'н' : 'w') : '';
                                 }}
                                 tick={{ fill: isDark ? '#999' : '#666', fontSize: 11 }}
                                 axisLine={false}
@@ -425,7 +427,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                             className="analytics-month-block"
                             style={{ left: `${block.left}px`, transform: 'translateX(-50%)' }}
                         >
-                            <div className="analytics-month-name">{block.name}</div>
+                            <div className="analytics-month-name">{t(MONTH_KEYS[block.month - 1])}</div>
                             <div className="analytics-month-stats">
                                 <span className="percent">{block.percentage}%</span>
                                 {block.trend !== null && block.trend !== 0 && (
