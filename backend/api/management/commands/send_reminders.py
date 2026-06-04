@@ -7,6 +7,11 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from pywebpush import webpush, WebPushException
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    ZoneInfo = None
+
 from api.models import PushSubscription, ReminderSettings
 
 logger = logging.getLogger(__name__)
@@ -24,9 +29,25 @@ class Command(BaseCommand):
         active_settings = ReminderSettings.objects.filter(enabled=True)
         
         for setting in active_settings:
-            # Check if current time is in the list of times for this user
-            if current_time_str in setting.times:
-                self.stdout.write(f"Sending reminder to {setting.user.name} at {current_time_str}")
+            reminder_times = setting.times or []
+            if not isinstance(reminder_times, list):
+                reminder_times = [str(reminder_times)]
+
+            user_tz = None
+            if setting.time_zone and ZoneInfo is not None:
+                try:
+                    user_tz = ZoneInfo(setting.time_zone)
+                except Exception:
+                    user_tz = None
+
+            if user_tz is not None:
+                user_now = timezone.now().astimezone(user_tz)
+                current_time_str = user_now.strftime('%H:%M')
+            else:
+                user_now = now
+
+            if current_time_str in reminder_times:
+                self.stdout.write(f"Sending reminder to {setting.user.name} at {current_time_str} ({setting.time_zone or 'server timezone'})")
                 self.send_to_user(setting)
 
     def send_to_user(self, reminder_setting):
