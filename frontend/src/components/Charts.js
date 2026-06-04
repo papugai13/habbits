@@ -764,6 +764,9 @@ const Charts = ({
                             {t('quantity')}
                         </button>
                     </div>
+                </div>
+
+                <div className="charts-category-row">
                     <div className="period-selector">
                         <button
                             className={`period-btn ${period === 'day' ? 'active' : ''}`}
@@ -790,11 +793,10 @@ const Charts = ({
                             {t('years')}
                         </button>
                     </div>
-                </div>
 
-                {sortedCategories && onSelectCategory && (
-                    <div className="categories-section unified charts-category-filter">
-                        {sortedCategories.map(category => {
+                    {sortedCategories && onSelectCategory && (
+                        <div className="categories-section unified charts-category-filter">
+                            {sortedCategories.map(category => {
                             const displayName = category.name === 'Все' ? t('allCategories') : 
                                              (category.name === 'Без категории' ? t('noCategory') : category.name);
                             return (
@@ -809,6 +811,7 @@ const Charts = ({
                         })}
                     </div>
                 )}
+                </div>
             </div>
 
             {loading ? (

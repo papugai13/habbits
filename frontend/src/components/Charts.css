@@ -137,9 +137,9 @@
 
 .chart-navigation-controls {
     display: flex;
-    justify-content: flex-start;
+    justify-content: center;
     align-items: center;
-    gap: 20px;
+    gap: 4px;
     margin-bottom: 10px;
 }
 
@@ -157,6 +157,7 @@
     color: #333;
     transition: all 0.2s;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin: 0;
 }
 
 .nav-arrow-btn:hover {
@@ -175,7 +176,8 @@
 
 .navigation-labels {
     display: flex;
-    justify-content: flex-start;
+    justify-content: center;
+    width: 100%;
 }
 
 .selectors-container {
@@ -185,6 +187,13 @@
     gap: 8px;
     flex-wrap: nowrap;
     overflow-x: auto;
+}
+
+.charts-category-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 .view-selector,
