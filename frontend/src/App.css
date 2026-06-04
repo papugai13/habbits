@@ -4667,11 +4667,11 @@ html.dark-theme, body.dark-theme {
 }
 /* Habit Note Box (Daily Reports) */
 .habit-note-container {
-  margin: 2px 0 4px 0;
+  margin: 0;
   padding: 0;
   cursor: pointer;
   transition: all 0.2s ease;
-  width: 100%;
+  flex-shrink: 0;
 }
 
 .habit-note-box {

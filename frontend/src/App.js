@@ -1268,24 +1268,24 @@ const App = () => {
                           </span>
                         )}
                       </span>
-                    </div>
-                    {habit.latest_comment && (
-                      <div 
-                        className="habit-note-container"
-                        onClick={() => {
-                          const d = habit.latest_comment_details;
-                          if (d) {
-                            const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                            openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, d.is_restored);
-                          }
-                        }}
-                      >
-                        <div className="habit-note-box">
-                          <span className="habit-note-label">{t('comment')}:</span>
-                          <span className="habit-note-text">{habit.latest_comment}</span>
+                      {habit.latest_comment && (
+                        <div 
+                          className="habit-note-container"
+                          onClick={() => {
+                            const d = habit.latest_comment_details;
+                            if (d) {
+                              const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, d.is_restored);
+                            }
+                          }}
+                        >
+                          <div className="habit-note-box">
+                            <span className="habit-note-label">{t('comment')}:</span>
+                            <span className="habit-note-text">{habit.latest_comment}</span>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                     <div className="habit-row-content">
                       <div className="habit-checks">
                         {WEEK_DAYS.map((_, index) => {
