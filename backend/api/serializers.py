@@ -177,7 +177,7 @@ class LoginSerializer(serializers.Serializer):
 class ReminderSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReminderSettings
-        fields = ('enabled', 'text', 'times')
+        fields = ('enabled', 'text', 'times', 'time_zone')
 
 class PushSubscriptionSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,5 +1,6 @@
 // Service Worker for habit reminder notifications
 const REMINDER_CHECK_INTERVAL = 60000; // Check every minute
+const REMINDER_SEND_WINDOW = 5 * 60000; // Allow a 5 minute delivery window
 
 let reminderSettings = null;
 let lastNotificationDate = null;
@@ -26,7 +27,6 @@ function checkReminders() {
     lastNotificationDate = today;
     reminderSettings.notificationsSentToday = 0;
     reminderSettings.sentReminders = [];
-    saveReminderSettings();
   }
 
   // Get reminder times from settings (new format with array)
@@ -49,11 +49,11 @@ function checkReminders() {
     const reminderDate = new Date(now);
     reminderDate.setHours(hours, minutes, 0, 0);
     
-    // Check if current time matches reminder time (within 1 minute window)
-    const timeDiff = Math.abs(now - reminderDate);
-    console.log('[Service Worker] Checking time:', time, 'diff:', timeDiff, 'ms');
+    const timeDiff = now - reminderDate;
+    const isWithinWindow = timeDiff >= 0 && timeDiff < REMINDER_SEND_WINDOW;
+    console.log('[Service Worker] Checking time:', time, 'diff:', timeDiff, 'ms', 'withinWindow:', isWithinWindow);
     
-    if (timeDiff < REMINDER_CHECK_INTERVAL && reminderSettings.notificationsSentToday < reminderTimes.length) {
+    if (isWithinWindow && reminderSettings.notificationsSentToday < reminderTimes.length) {
       // Check if we already sent this reminder today
       const reminderKey = `${today}-${time}`;
       console.log('[Service Worker] Reminder key:', reminderKey, 'already sent:', reminderSettings.sentReminders?.includes(reminderKey));

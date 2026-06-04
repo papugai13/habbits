@@ -467,18 +467,24 @@ const App = () => {
         const registration = await navigator.serviceWorker.register('/service-worker.js');
         console.log('Service Worker registered:', registration);
 
-        // Send current settings to Service Worker
+        const settings = {
+          enabled: reminderEnabled,
+          reminderTimes: reminderTimes,
+          timesPerDay: reminderTimesPerDay === 'custom' ? customTimesPerDay : reminderTimesPerDay,
+          customTimesPerDay: customTimesPerDay,
+          notificationsSentToday: 0,
+          sentReminders: []
+        };
+
         if (registration.active) {
-          const settings = {
-            enabled: reminderEnabled,
-            reminderTimes: reminderTimes,
-            timesPerDay: reminderTimesPerDay === 'custom' ? customTimesPerDay : reminderTimesPerDay,
-            customTimesPerDay: customTimesPerDay,
-            notificationsSentToday: 0,
-            sentReminders: []
-          };
           registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings });
         }
+
+        navigator.serviceWorker.ready.then((readyRegistration) => {
+          if (readyRegistration.active) {
+            readyRegistration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings });
+          }
+        });
       } catch (error) {
         console.error('Service Worker registration failed:', error);
       }
@@ -527,6 +533,12 @@ const App = () => {
     localStorage.setItem('reminderSettings', JSON.stringify(settings));
   }, [reminderEnabled, reminderTimes, reminderTimesPerDay, customTimesPerDay]);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadReminderSettingsFromServer();
+    }
+  }, [isAuthenticated, loadReminderSettingsFromServer]);
+
   // Helper to convert VAPID key
   const urlBase64ToUint8Array = (base64String) => {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -574,8 +586,35 @@ const App = () => {
   };
 
   // Save reminder settings to server
+  const getLocalTimeZone = () => {
+    if (typeof window === 'undefined' || !Intl?.DateTimeFormat) return 'UTC';
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  };
+
+  const postReminderSettingsToServiceWorker = async (settings) => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      if (registration.active) {
+        registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings });
+      }
+    } catch (error) {
+      console.error('Failed to post reminder settings to service worker:', error);
+    }
+  };
+
   const saveReminderSettingsToServer = async (updates) => {
     try {
+      const body = { ...updates };
+      if (!body.time_zone && !body.timeZone) {
+        body.time_zone = getLocalTimeZone();
+      }
+      if (body.timeZone && !body.time_zone) {
+        body.time_zone = body.timeZone;
+        delete body.timeZone;
+      }
+
       await fetch('/api/v1/reminders/settings/', {
         method: 'PATCH',
         headers: { 
@@ -583,12 +622,49 @@ const App = () => {
           'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include',
-        body: JSON.stringify(updates)
+        body: JSON.stringify(body)
       });
     } catch (error) {
       console.error('Failed to save reminder settings:', error);
     }
   };
+
+  const loadReminderSettingsFromServer = React.useCallback(async () => {
+    if (typeof window === 'undefined' || !isAuthenticated) return;
+
+    try {
+      const response = await fetch('/api/v1/reminders/settings/', {
+        credentials: 'include'
+      });
+
+      if (!response.ok) return;
+      const data = await response.json();
+
+      const times = Array.isArray(data.times) && data.times.length ? data.times : ['09:00'];
+      const timesPerDay = [1, 2, 3].includes(times.length) ? times.length : 'custom';
+      const customCount = times.length > 3 ? times.length : 4;
+
+      setReminderEnabled(!!data.enabled);
+      setReminderText(data.text || 'Не забудьте отметить привычки!');
+      setReminderTimes(times);
+      setReminderTimesPerDay(timesPerDay);
+      setCustomTimesPerDay(customCount);
+
+      const localSettings = {
+        ...JSON.parse(localStorage.getItem('reminderSettings') || '{}'),
+        enabled: !!data.enabled,
+        reminderTimes: times,
+        timesPerDay,
+        customTimesPerDay: customCount,
+        text: data.text || 'Не забудьте отметить привычки!',
+        timeZone: data.time_zone || getLocalTimeZone()
+      };
+      localStorage.setItem('reminderSettings', JSON.stringify(localSettings));
+      await postReminderSettingsToServiceWorker(localSettings);
+    } catch (error) {
+      console.error('Failed to load reminder settings from server:', error);
+    }
+  }, [isAuthenticated]);
 
   // Request notification permission and subscribe
   const requestNotificationPermission = async () => {
@@ -622,15 +698,7 @@ const App = () => {
     const newSettings = { ...settings, enabled };
     localStorage.setItem('reminderSettings', JSON.stringify(newSettings));
     saveReminderSettingsToServer({ enabled, text: reminderText, times: reminderTimes });
-    
-    // Update SW
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(registration => {
-        if (registration.active) {
-          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: newSettings });
-        }
-      });
-    }
+    postReminderSettingsToServiceWorker(newSettings);
   };
 
 
@@ -657,9 +725,23 @@ const App = () => {
         lastDate.setHours(lastDate.getHours() + 1);
       }
       setReminderTimes(newTimes);
+      saveReminderSettingsToServer({ times: newTimes });
+      postReminderSettingsToServiceWorker({
+        enabled: reminderEnabled,
+        reminderTimes: newTimes,
+        timesPerDay: value,
+        customTimesPerDay
+      });
     } else if (newCount < currentCount) {
-      // Remove excess times
-      setReminderTimes(reminderTimes.slice(0, newCount));
+      const newTimes = reminderTimes.slice(0, newCount);
+      setReminderTimes(newTimes);
+      saveReminderSettingsToServer({ times: newTimes });
+      postReminderSettingsToServiceWorker({
+        enabled: reminderEnabled,
+        reminderTimes: newTimes,
+        timesPerDay: value,
+        customTimesPerDay
+      });
     }
   };
 
@@ -667,16 +749,16 @@ const App = () => {
   useEffect(() => {
     if (reminderTimesPerDay === 'custom') {
       const newCount = customTimesPerDay;
-      
-      setReminderTimes((prevTimes) => {
-        const currentCount = prevTimes.length;
+      const currentCount = reminderTimes.length;
+
+      if (newCount !== currentCount) {
+        const newTimes = [...reminderTimes];
+        const lastTime = reminderTimes[currentCount - 1] || '09:00';
+        const [hours, minutes] = lastTime.split(':').map(Number);
+        const lastDate = new Date();
+        lastDate.setHours(hours, minutes, 0, 0);
+
         if (newCount > currentCount) {
-          const newTimes = [...prevTimes];
-          const lastTime = prevTimes[currentCount - 1] || '09:00';
-          const [hours, minutes] = lastTime.split(':').map(Number);
-          const lastDate = new Date();
-          lastDate.setHours(hours, minutes, 0, 0);
-          
           for (let i = currentCount; i < newCount; i++) {
             const nextDate = new Date(lastDate);
             nextDate.setHours(nextDate.getHours() + 1);
@@ -684,12 +766,19 @@ const App = () => {
             newTimes.push(nextTime);
             lastDate.setHours(lastDate.getHours() + 1);
           }
-          return newTimes;
-        } else if (newCount < currentCount) {
-          return prevTimes.slice(0, newCount);
+        } else {
+          newTimes.length = newCount;
         }
-        return prevTimes;
-      });
+
+        setReminderTimes(newTimes);
+        saveReminderSettingsToServer({ times: newTimes });
+        postReminderSettingsToServiceWorker({
+          enabled: reminderEnabled,
+          reminderTimes: newTimes,
+          timesPerDay: reminderTimesPerDay,
+          customTimesPerDay: newCount
+        });
+      }
     }
   }, [customTimesPerDay, reminderTimesPerDay]);
 
@@ -699,14 +788,7 @@ const App = () => {
     const newSettings = { ...settings, text };
     localStorage.setItem('reminderSettings', JSON.stringify(newSettings));
     saveReminderSettingsToServer({ text });
-    
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(registration => {
-        if (registration.active) {
-          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: newSettings });
-        }
-      });
-    }
+    postReminderSettingsToServiceWorker(newSettings);
   };
 
   // Update a specific reminder time
@@ -715,20 +797,11 @@ const App = () => {
     newTimes[index] = value;
     setReminderTimes(newTimes);
     
-    // Save to server
     const settings = JSON.parse(localStorage.getItem('reminderSettings') || '{}');
     const newSettings = { ...settings, reminderTimes: newTimes };
     localStorage.setItem('reminderSettings', JSON.stringify(newSettings));
     saveReminderSettingsToServer({ times: newTimes });
-    
-    // Update SW
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(registration => {
-        if (registration.active) {
-          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: newSettings });
-        }
-      });
-    }
+    postReminderSettingsToServiceWorker(newSettings);
   };
 
   // Test notification
