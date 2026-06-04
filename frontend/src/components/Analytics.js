@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine } from 'recharts';
 import './Analytics.css';
 import storageService from '../storageService';
-import MonthDropdown from './MonthDropdown';
 
 const MONTH_KEYS = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
 
@@ -10,6 +9,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
     const [data, setData] = useState({ weeks: [], months: {} });
     const [habits, setHabits] = useState([]);
     const [selectedHabitId, setSelectedHabitId] = useState('all');
+    const [viewType, setViewType] = useState('habits');
     const [loading, setLoading] = useState(true);
     const chartWrapperRef = useRef(null);
 
@@ -50,18 +50,15 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                     credentials: 'include',
                 });
                 setHabits(result);
-                if (result.length > 0 && selectedHabitId === 'all') {
-                    setSelectedHabitId(result[0].id);
-                }
             } catch (error) {
                 console.error("Error fetching habits:", error);
             }
         };
         fetchHabits();
-    }, [selectedHabitId, storageMode]);
+    }, [storageMode]);
 
     useEffect(() => {
-        if (!selectedHabitId || selectedHabitId === 'all') return;
+        if (!selectedHabitId) return;
         
         const fetchAnalytics = async () => {
             setLoading(true);
@@ -96,6 +93,15 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
         return habit ? habit.name : t('allHabits') || 'Все привычки';
     }, [selectedHabitId, habits, t]);
 
+    const chartDataKey = useMemo(() => {
+        if (viewType === 'quantity') return 'quantity';
+        return selectedHabitId === 'all' ? 'days_done' : 'value';
+    }, [selectedHabitId, viewType]);
+
+    const chartColor = useMemo(() => {
+        return viewType === 'quantity' ? '#a855f7' : '#22c55e';
+    }, [viewType]);
+
     const chartWidth = useMemo(() => {
         if (!data.weeks || data.weeks.length === 0) return 0;
         return data.weeks.length * weekWidth + paddingLeft + paddingRight;
@@ -113,8 +119,11 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
         return transitions;
     }, [data.weeks]);
 
-    const [selectedMonth1, setSelectedMonth1] = useState(null);
-    const [selectedMonth2, setSelectedMonth2] = useState(null);
+    const yAxisMax = useMemo(() => {
+        if (!data.weeks || data.weeks.length === 0) return 1;
+        const maxValue = Math.max(...data.weeks.map(w => Number(w[chartDataKey]) || 0));
+        return Math.max(1, Math.ceil(maxValue));
+    }, [data.weeks, chartDataKey]);
 
     // Process data for tables
     const tableData = useMemo(() => {
@@ -188,20 +197,6 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
         return months;
     }, [data.weeks, language]);
 
-    // Update selected months when data changes
-    useEffect(() => {
-        if (tableData.length > 0) {
-            if (!selectedMonth1 || !tableData.find(m => m.month_key === selectedMonth1)) {
-                setSelectedMonth1(tableData[tableData.length - 1].month_key);
-            }
-            if (!selectedMonth2 || !tableData.find(m => m.month_key === selectedMonth2)) {
-                setSelectedMonth2(tableData.length > 1 
-                    ? tableData[tableData.length - 2].month_key 
-                    : tableData[tableData.length - 1].month_key
-                );
-            }
-        }
-    }, [tableData]);
 
     const getMonthTrend = (mKey, currentTableData) => {
         const idx = currentTableData.findIndex(m => m.month_key === mKey);
@@ -287,55 +282,72 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
     return (
         <div className="analytics-container">
             <div className="analytics-header">
-                <div className="analytics-habit-selector" ref={dropdownRef}>
-                    <div 
-                        className={`custom-dropdown-header ${isDropdownOpen ? 'open' : ''}`}
-                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    >
-                        <span>{selectedHabitName}</span>
-                        <div className="dropdown-arrow-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="6 9 12 15 18 9"></polyline>
-                            </svg>
-                        </div>
+                <h2 className="analytics-title">{t('analytics') || 'Аналитика'}</h2>
+                <div className="analytics-header-controls">
+                    <div className="analytics-view-selector">
+                        <button
+                            className={`view-btn ${viewType === 'habits' ? 'active' : ''}`}
+                            onClick={() => setViewType('habits')}
+                        >
+                            {t('completed') || 'Выполнено'}
+                        </button>
+                        <button
+                            className={`view-btn ${viewType === 'quantity' ? 'active' : ''}`}
+                            onClick={() => setViewType('quantity')}
+                        >
+                            {t('quantity') || 'Количество'}
+                        </button>
                     </div>
-                    {isDropdownOpen && (
-                        <div className="custom-dropdown-list">
-                            {habits.map(habit => (
-                                <div 
-                                    key={habit.id} 
-                                    className={`dropdown-item ${selectedHabitId.toString() === habit.id.toString() ? 'active' : ''}`}
+                    <div className="analytics-habit-selector" ref={dropdownRef}>
+                        <div 
+                            className={`custom-dropdown-header ${isDropdownOpen ? 'open' : ''}`}
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        >
+                            <span>{selectedHabitName}</span>
+                            <div className="dropdown-arrow-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        {isDropdownOpen && (
+                            <div className="custom-dropdown-list">
+                                <div
+                                    key="all"
+                                    className={`dropdown-item ${selectedHabitId === 'all' ? 'active' : ''}`}
                                     onClick={() => {
-                                        setSelectedHabitId(habit.id);
+                                        setSelectedHabitId('all');
                                         setIsDropdownOpen(false);
                                     }}
                                 >
-                                    {habit.name}
+                                    {t('allHabits') || 'Все привычки'}
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                {habits.map(habit => (
+                                    <div 
+                                        key={habit.id} 
+                                        className={`dropdown-item ${selectedHabitId.toString() === habit.id.toString() ? 'active' : ''}`}
+                                        onClick={() => {
+                                            setSelectedHabitId(habit.id);
+                                            setIsDropdownOpen(false);
+                                        }}
+                                    >
+                                        {habit.name}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <div className="analytics-tables-container compare-view">
-                {[selectedMonth2, selectedMonth1].map((mKey, idx) => {
-                    const monthBlock = tableData.find(m => m.month_key === mKey);
-                    if (!monthBlock) return null;
-                    const trend = getMonthTrend(mKey, tableData);
-                    
+            <div className="analytics-tables-container">
+                {tableData.map((monthBlock, idx) => {
+                    const trend = getMonthTrend(monthBlock.month_key, tableData);
                     return (
-                        <div key={idx} className="analytics-table-wrapper">
+                        <div key={monthBlock.month_key} className="analytics-table-wrapper">
                             <div className="analytics-table-header-select">
-                                <span className="habit-label">{selectedHabitName}</span>
-                                <MonthDropdown 
-                                    value={mKey}
-                                    options={tableData.map(m => ({
-                                        ...m,
-                                        label: `${t(MONTH_KEYS[m.month - 1])} ${m.year}`
-                                    }))}
-                                    onChange={(val) => idx === 1 ? setSelectedMonth1(val) : setSelectedMonth2(val)}
-                                />
+                                <span className="habit-label">{t(MONTH_KEYS[monthBlock.month - 1])} {monthBlock.year}</span>
+                                {trend !== null && renderTrend(trend)}
                             </div>
                             <table className="analytics-table">
                                 <tbody>
@@ -369,8 +381,8 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                         <AreaChart data={data.weeks} margin={{ top: 20, right: paddingRight, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                                    <stop offset="5%" stopColor={chartColor} stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor={chartColor} stopOpacity={0}/>
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "#404040" : "#f0f0f0"} />
@@ -386,8 +398,8 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                                 dy={10}
                             />
                             <YAxis 
-                                domain={[0, 7]} 
-                                tickCount={8}
+                                domain={[0, yAxisMax]} 
+                                tickCount={Math.min(8, yAxisMax + 1)}
                                 tick={{ fill: isDark ? '#999' : '#666', fontSize: 12, fontWeight: 600 }}
                                 axisLine={false}
                                 tickLine={false}
@@ -405,13 +417,13 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
 
                             <Area 
                                 type="monotone" 
-                                dataKey="value" 
-                                stroke="#22c55e" 
+                                dataKey={chartDataKey} 
+                                stroke={chartColor} 
                                 strokeWidth={4}
                                 fillOpacity={1} 
                                 fill="url(#colorValue)"
-                                dot={{ fill: '#22c55e', r: 4, strokeWidth: 2, stroke: isDark ? '#2a2a2a' : '#fff' }}
-                                activeDot={{ r: 6, stroke: '#22c55e', strokeWidth: 2, fill: isDark ? '#2a2a2a' : '#fff' }}
+                                dot={{ fill: chartColor, r: 4, strokeWidth: 2, stroke: isDark ? '#2a2a2a' : '#fff' }}
+                                activeDot={{ r: 6, stroke: chartColor, strokeWidth: 2, fill: isDark ? '#2a2a2a' : '#fff' }}
                                 isAnimationActive={true}
                             />
                         </AreaChart>

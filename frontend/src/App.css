@@ -3388,7 +3388,7 @@ body {
   .report-period-selector {
     gap: 4px;
     padding: 2px;
-    justify-content: center;
+    justify-content: flex-start;
   }
   .report-period-selector .period-btn {
     padding: 6px 10px;

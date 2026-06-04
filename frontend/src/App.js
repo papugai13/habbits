@@ -71,7 +71,7 @@ const App = () => {
   const [newHabitName, setNewHabitName] = useState('');
   const [newHabitCategory, setNewHabitCategory] = useState('');
   const [newHabitTargetType, setNewHabitTargetType] = useState('at_least');
-  const [newHabitStartDate, setNewHabitStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newHabitStartDate, setNewHabitStartDate] = useState('');
   const [newHabitUseTarget, setNewHabitUseTarget] = useState(false);
   const [newHabitCompletionTarget, setNewHabitCompletionTarget] = useState('');
   const [newHabitQuantityTarget, setNewHabitQuantityTarget] = useState('');
@@ -2087,11 +2087,13 @@ const App = () => {
         name: newHabitName.trim(),
         category: newHabitCategory === "" ? null : newHabitCategory,
         target_type: newHabitTargetType,
-        start_date: newHabitStartDate,
         use_target: newHabitUseTarget,
         completion_target: newHabitUseTarget ? (newHabitCompletionTarget !== '' ? parseInt(newHabitCompletionTarget, 10) : getDaysInCurrentMonth()) : null,
         quantity_target: newHabitUseTarget && newHabitQuantityTarget !== '' ? parseInt(newHabitQuantityTarget, 10) : null
       };
+      if (newHabitStartDate) {
+        payload.start_date = newHabitStartDate;
+      }
 
       await storageService.saveHabit(storageMode, payload, {
         headers: {
@@ -2290,7 +2292,7 @@ const App = () => {
         name: editingHabit.name,
         category: editingHabit.category === "" ? null : editingHabit.category,
         target_type: editingHabit.target_type,
-        start_date: editingHabit.start_date,
+        start_date: editingHabit.start_date ? editingHabit.start_date : null,
         use_target: editingHabit.use_target,
         completion_target: editingHabit.use_target ? (editingHabit.completion_target !== '' && editingHabit.completion_target !== null ? parseInt(editingHabit.completion_target, 10) : getDaysInCurrentMonth()) : null,
         quantity_target: editingHabit.use_target && editingHabit.quantity_target !== '' && editingHabit.quantity_target !== null ? parseInt(editingHabit.quantity_target, 10) : null
@@ -2556,7 +2558,7 @@ const App = () => {
             setCreateError('');
             setShowAddCategory(false);
             setNewCategoryName('');
-            setNewHabitStartDate(new Date().toISOString().split('T')[0]);
+            setNewHabitStartDate('');
             setShowCreateModal(true);
           }}
         >

@@ -158,7 +158,7 @@ const storageService = {
           id: generateId(),
           is_archived: false,
           order: habits.length,
-          start_date: habitData.start_date || new Date().toISOString().split('T')[0]
+          start_date: habitData.start_date || null
         };
         habits.push(habit);
       }
@@ -471,6 +471,25 @@ const storageService = {
         statuses.push(status);
       }
       localStorage.setItem(LOCAL_STORAGE_KEYS.STATUSES, JSON.stringify(statuses));
+
+      const habits = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]');
+      const habitIndex = habits.findIndex(h => h.id === habit_id);
+      if (habitIndex !== -1 && !habits[habitIndex].start_date) {
+        const filledStatuses = statuses
+          .filter(s => String(s.habit) === String(habit_id) && (s.is_done || s.comment || s.quantity != null))
+          .map(s => s.date)
+          .filter(Boolean)
+          .sort();
+
+        if (filledStatuses.length > 0) {
+          habits[habitIndex] = {
+            ...habits[habitIndex],
+            start_date: filledStatuses[0]
+          };
+          localStorage.setItem(LOCAL_STORAGE_KEYS.HABITS, JSON.stringify(habits));
+        }
+      }
+
       return status;
     }
   },
@@ -601,35 +620,69 @@ const storageService = {
         startOfPeriod.setDate(d.getDate() - day);
       } else if (period === 'month') {
         const d = new Date(date || now);
-        startOfPeriod = new Date(d.getFullYear(), d.getMonth(), 1);
+        startOfPeriod = new Date(d.getFullYear(), 0, 1);
       } else {
         startOfPeriod = new Date(new Date().getFullYear(), 0, 1);
       }
       
       startOfPeriod.setHours(0, 0, 0, 0);
       
-      // Calculate daily stats for the period
-      for (let i = 0; i < (period === 'week' ? 7 : (period === 'month' ? 31 : 366)); i++) {
-        const current = new Date(startOfPeriod);
-        current.setDate(startOfPeriod.getDate() + i);
-        if (period === 'month' && current.getMonth() !== startOfPeriod.getMonth()) break;
-        if (period === 'year' && current.getFullYear() !== startOfPeriod.getFullYear()) break;
-        
-        const dateStr = toLocalDateString(current);
-        const dayStatuses = statuses.filter(s => s.date === dateStr && s.is_done);
-        
-        const habitCount = habits.filter(h => !h.is_archived).length;
-        const completedCount = dayStatuses.length;
-        
-        stats.push({
-          date: dateStr,
-          label: current.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
-          habit_count: habitCount,
-          completed_count: completedCount,
-          completed_days: completedCount > 0 ? 1 : 0,
-          restored_days: 0, // Simplified
-          extra_quantity: 0
-        });
+      if (period === 'week') {
+        for (let i = 0; i < 7; i++) {
+          const current = new Date(startOfPeriod);
+          current.setDate(startOfPeriod.getDate() + i);
+          const dateStr = toLocalDateString(current);
+          const dayStatuses = statuses.filter(s => s.date === dateStr && s.is_done);
+          const habitCount = habits.filter(h => !h.is_archived).length;
+          const completedCount = dayStatuses.length;
+          stats.push({
+            date: dateStr,
+            label: current.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+            habit_count: habitCount,
+            completed_count: completedCount,
+            completed_days: completedCount > 0 ? 1 : 0,
+            restored_days: 0,
+            extra_quantity: 0
+          });
+        }
+      } else if (period === 'month') {
+        const year = startOfPeriod.getFullYear();
+        for (let month = 0; month < 12; month++) {
+          const periodStart = new Date(year, month, 1);
+          const periodEnd = new Date(year, month + 1, 0);
+          const monthKey = periodStart.toLocaleDateString('ru-RU', { month: 'short' });
+          const monthStatuses = statuses.filter(s => s.date >= toLocalDateString(periodStart) && s.date <= toLocalDateString(periodEnd) && s.is_done);
+          const habitCount = habits.filter(h => !h.is_archived).length;
+          const completedCount = monthStatuses.length;
+          stats.push({
+            date: toLocalDateString(periodStart),
+            label: monthKey,
+            habit_count: habitCount,
+            completed_count: completedCount,
+            completed_days: completedCount > 0 ? 1 : 0,
+            restored_days: 0,
+            extra_quantity: 0
+          });
+        }
+      } else {
+        for (let i = 0; i < 366; i++) {
+          const current = new Date(startOfPeriod);
+          current.setDate(startOfPeriod.getDate() + i);
+          if (current.getFullYear() !== startOfPeriod.getFullYear()) break;
+          const dateStr = toLocalDateString(current);
+          const dayStatuses = statuses.filter(s => s.date === dateStr && s.is_done);
+          const habitCount = habits.filter(h => !h.is_archived).length;
+          const completedCount = dayStatuses.length;
+          stats.push({
+            date: dateStr,
+            label: current.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+            habit_count: habitCount,
+            completed_count: completedCount,
+            completed_days: completedCount > 0 ? 1 : 0,
+            restored_days: 0,
+            extra_quantity: 0
+          });
+        }
       }
       
       return {
@@ -717,6 +770,9 @@ const storageService = {
         });
         
         const totalCompletions = weekStatuses.length;
+        const totalQuantity = weekStatuses.reduce((sum, status) => {
+          return sum + (status.quantity != null ? Number(status.quantity) : 1);
+        }, 0);
         
         let totalPossibleDays = 0;
         filteredHabits.forEach(habit => {
@@ -743,22 +799,16 @@ const storageService = {
         
         if (activeHabitsCount > 0) {
           avgDays = Number((totalCompletions / activeHabitsCount).toFixed(1));
-          if (activeHabitsCount > 1) {
-            displayDaysDone = Number((totalCompletions / activeHabitsCount).toFixed(1));
-            displayTotalDays = Number((totalPossibleDays / activeHabitsCount).toFixed(1));
-          } else {
-            displayDaysDone = totalCompletions;
-            displayTotalDays = totalPossibleDays;
-          }
         }
         
         weeksData.push({
           week_label: `н${getISOWeekNumber(currentWeek)}`,
           month: thursday.getMonth() + 1,
-          month_name: MONTHS_RU[thursday.month + 1],
+          month_name: MONTHS_RU[thursday.getMonth() + 1],
           value: Math.min(avgDays, 7),
           days_done: displayDaysDone,
           total_days: displayTotalDays,
+          quantity: totalQuantity,
           week_start: currentStr,
           week_end: endStr
         });
