@@ -377,23 +377,12 @@ class HabitViewSet(viewsets.ModelViewSet):
                 try:
                     habit_data = HabitSerializer(habit).data
                     
-                    # Fetch latest comment within the viewed week
+                    # Fetch latest comment of all time (most recent)
                     latest_date_entry = Date.objects.filter(
                         user=user_profile,
                         habit=habit,
-                        habit_date__range=[start_date, end_date],
                         comment__isnull=False
-                    ).exclude(comment__exact='').order_by('-habit_date').first()
-
-                    # If no comment in current week, check previous Sunday (carry over to Monday)
-                    if not latest_date_entry:
-                        prev_sunday = start_date - timedelta(days=1)  # Sunday of previous week
-                        latest_date_entry = Date.objects.filter(
-                            user=user_profile,
-                            habit=habit,
-                            habit_date=prev_sunday,
-                            comment__isnull=False
-                        ).exclude(comment__exact='').first()
+                    ).exclude(comment__exact='').order_by('-habit_date', '-id').first()
 
                     # Check previous week for streak continuation (Sunday and Saturday)
                     prev_sun = start_date - timedelta(days=1)
@@ -454,21 +443,11 @@ class HabitViewSet(viewsets.ModelViewSet):
                             "photo": photo_url
                         }
                     
-                    # Fetch latest photo within the viewed week
+                    # Fetch latest photo of all time (most recent)
                     latest_photo_entry = Date.objects.filter(
                         user=user_profile,
-                        habit=habit,
-                        habit_date__range=[start_date, end_date]
+                        habit=habit
                     ).exclude(photo=None).exclude(photo='').order_by('-habit_date', '-id').first()
-
-                    # If no photo in current week, check previous Sunday (carry over to Monday)
-                    if not latest_photo_entry:
-                        prev_sunday = start_date - timedelta(days=1)  # Sunday of previous week
-                        latest_photo_entry = Date.objects.filter(
-                            user=user_profile,
-                            habit=habit,
-                            habit_date=prev_sunday
-                        ).exclude(photo=None).exclude(photo='').first()
                     
                     habit_data['latest_photo'] = None
                     habit_data['latest_photo_details'] = None

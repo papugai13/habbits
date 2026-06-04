@@ -1325,13 +1325,13 @@ const App = () => {
                               }}
                               onMouseDown={() => {
                                 const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
+                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, habit.latest_comment_details?.comment, habit.latest_photo_details?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
                               }}
                               onMouseUp={handleLongPressEnd}
                               onMouseLeave={handleLongPressEnd}
                               onTouchStart={() => {
                                 const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, status?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
+                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, habit.latest_comment_details?.comment, habit.latest_photo_details?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
                               }}
                               onTouchMove={handleLongPressEnd}
                               onTouchEnd={handleLongPressEnd}
