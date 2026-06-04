@@ -3975,11 +3975,11 @@ const App = () => {
                   const noteText = quantityModalData.currentComment || habit?.latest_comment_details?.comment;
                   const noteDate = quantityModalData.currentCommentDate || habit?.latest_comment_details?.date;
                   return noteText ? (
-                    <div className="last-note-preview" style={{ marginBottom: '18px' }}>
-                      <div style={{ color: '#10b981', fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>
+                    <div className="last-note-preview">
+                      <div className="last-note-preview-label">
                         {t('comment')}:
                       </div>
-                      <div style={{ color: '#111', fontSize: '16px', lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>
+                      <div className="last-note-preview-text">
                         {noteDate && `${new Date(noteDate).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long' })}: `}
                         {noteText}
                       </div>

@@ -4711,6 +4711,39 @@ html.dark-theme, body.dark-theme {
   max-width: 180px;
 }
 
+.last-note-preview {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background-color: rgba(16, 185, 129, 0.08);
+}
+
+.last-note-preview-label {
+  color: #10b981;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.last-note-preview-text {
+  color: #111;
+  font-size: 16px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.dark-theme .last-note-preview {
+  background-color: rgba(16, 185, 129, 0.12);
+}
+
+.dark-theme .last-note-preview-label {
+  color: #34d399;
+}
+
+.dark-theme .last-note-preview-text {
+  color: #e0e0e0;
+}
+
 /* Removing photo-related indicators if not used elsewhere */
 .photo-indicator, .habit-thumbnail {
   display: none !important;
