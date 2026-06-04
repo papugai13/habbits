@@ -140,10 +140,10 @@ const translations = {
     habitDeleteError: 'Ошибка при удалении привычки',
 
     // Charts
-    habitProgress: 'Прогресс по привычкам',
+    habitProgress: 'Отчет по привычкам',
     completed: 'Выполнено',
     restored: 'Восполнено',
-    categoryComparison: 'Сравнение категорий',
+    categoryComparison: 'Прогресс по привычкам',
     totalDone: 'Всего выполнено',
     avgProgress: 'Средний прогресс',
     quantity: 'Количество',
@@ -385,10 +385,10 @@ const translations = {
     habitDeleteError: 'Error deleting habit',
 
     // Charts
-    habitProgress: 'Habit Progress',
+    habitProgress: 'Habits Report',
     completed: 'Completed',
     restored: 'Restored',
-    categoryComparison: 'Category Comparison',
+    categoryComparison: 'Habit Progress',
     totalDone: 'Total Done',
     avgProgress: 'Avg Progress',
     quantity: 'Quantity',
