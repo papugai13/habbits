@@ -1275,7 +1275,7 @@ const App = () => {
                             const d = habit.latest_comment_details;
                             if (d) {
                               const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, d.is_restored);
+                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.date, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, d.is_restored);
                             }
                           }}
                         >
@@ -1325,13 +1325,13 @@ const App = () => {
                               }}
                               onMouseDown={() => {
                                 const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, habit.latest_comment_details?.comment, habit.latest_photo_details?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
+                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, habit.latest_comment_details?.comment, habit.latest_comment_details?.date, habit.latest_photo_details?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
                               }}
                               onMouseUp={handleLongPressEnd}
                               onMouseLeave={handleLongPressEnd}
                               onTouchStart={() => {
                                 const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, habit.latest_comment_details?.comment, habit.latest_photo_details?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
+                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, habit.latest_comment_details?.comment, habit.latest_comment_details?.date, habit.latest_photo_details?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
                               }}
                               onTouchMove={handleLongPressEnd}
                               onTouchEnd={handleLongPressEnd}
@@ -1883,23 +1883,23 @@ const App = () => {
     return isRestored ? 1 : null;
   };
 
-  const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
-    setQuantityModalData({ habitId, habitName, dayDate, currentStatus, currentQuantity, currentComment, currentPhoto, dateId, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, currentIsRestored: isRestored });
+  const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentCommentDate, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
+    setQuantityModalData({ habitId, habitName, dayDate, currentStatus, currentQuantity, currentComment, currentCommentDate, currentPhoto, dateId, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, currentIsRestored: isRestored });
 
     const initialQuantity = currentStatus
       ? currentQuantity
       : getScrollDefaultQuantity(habitId, dayDate, isRestored);
 
     setQuantityValue(initialQuantity);
-    setCommentValue(currentComment || '');
+    setCommentValue('');
     setShowQuantityModal(true);
   };
 
-  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
+  const handleLongPressStart = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentCommentDate, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
     isLongPressActiveRef.current = false;
     longPressTimerRef.current = setTimeout(() => {
       isLongPressActiveRef.current = true;
-      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored);
+      openEntryModal(habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentCommentDate, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored);
     }, 500); // Increased to 500ms for better UX
   };
 
@@ -3967,6 +3967,23 @@ const App = () => {
                     )}
                   </div>
                 </div>
+
+                {(() => {
+                  const habit = habitsData.find(h => h.id === quantityModalData.habitId);
+                  const noteText = quantityModalData.currentComment || habit?.latest_comment_details?.comment;
+                  const noteDate = quantityModalData.currentCommentDate || habit?.latest_comment_details?.date;
+                  return noteText ? (
+                    <div className="last-note-preview" style={{ marginBottom: '18px' }}>
+                      <div style={{ color: '#10b981', fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>
+                        {t('comment')}:
+                      </div>
+                      <div style={{ color: '#111', fontSize: '16px', lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>
+                        {noteDate && `${new Date(noteDate).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long' })}: `}
+                        {noteText}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
 
                 <div className="form-group-row">
                   <div className="form-group form-group-flex">
