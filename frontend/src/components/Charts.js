@@ -55,7 +55,7 @@ const generatePeriodLabel = (period, referenceDate, t, language) => {
             subtitle: null 
         };
     } else if (period === 'month') {
-        return { title: t(months[today.getMonth()]), subtitle: '' };
+        return { title: `${today.getFullYear()}`, subtitle: '' };
     } else if (period === 'year') {
         return { title: `${today.getFullYear()}`, subtitle: '' };
     }

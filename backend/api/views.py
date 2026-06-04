@@ -861,16 +861,10 @@ class HabitViewSet(viewsets.ModelViewSet):
                 end_date = next_month - timedelta(days=1)
                 label = f"Недели: {MONTHS_RU[today.month]} {today.year}"
             elif period == 'month':
-                first_of_month = date(today.year, today.month, 1)
-                days_since_monday = first_of_month.weekday()
-                start_date = first_of_month - timedelta(days=days_since_monday)
-                
-                if today.month == 12:
-                    next_month = date(today.year + 1, 1, 1)
-                else:
-                    next_month = date(today.year, today.month + 1, 1)
-                end_date = next_month - timedelta(days=1)
-                label = f"{MONTHS_RU[today.month]} {today.year}"
+                # Show monthly bars for the full current year
+                start_date = date(today.year, 1, 1)
+                end_date = date(today.year, 12, 31)
+                label = str(today.year)
             elif period == 'year':
                 # For yearly period, we always show last 5 years relative to the selected year
                 start_date = date(today.year - 4, 1, 1)
@@ -1178,6 +1172,9 @@ class HabitViewSet(viewsets.ModelViewSet):
                 )
                 
                 total_completions = week_dates.count()
+                total_quantity = week_dates.aggregate(
+                    total=Sum(Case(When(quantity__isnull=True, then=Value(1)), default=F('quantity'), output_field=IntegerField()))
+                )['total'] or 0
                 
                 # Calculate active habits and total possible days in this week
                 total_possible_days = 0
@@ -1215,13 +1212,8 @@ class HabitViewSet(viewsets.ModelViewSet):
                 
                 if active_habits_count > 0:
                     avg_days = round(total_completions / active_habits_count, 1)
-                    if active_habits_count > 1:
-                        display_days_done = round(total_completions / active_habits_count, 1)
-                        display_total_days = round(total_possible_days / active_habits_count, 1)
-                    else:
-                        # Ensure integers when single habit is selected
-                        display_days_done = int(total_completions)
-                        display_total_days = int(total_possible_days)
+                    display_days_done = int(total_completions)
+                    display_total_days = int(total_possible_days)
                 
                 weeks_data.append({
                     "week_label": f"н{week_start.isocalendar()[1]}",
@@ -1230,6 +1222,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                     "value": min(avg_days, 7),
                     "days_done": display_days_done,
                     "total_days": display_total_days,
+                    "quantity": total_quantity,
                     "week_start": week_start.isoformat(),
                     "week_end": week_end.isoformat(),
                 })
@@ -1472,6 +1465,12 @@ class HabitViewSet(viewsets.ModelViewSet):
                     )
                 else:
                     return Response({'status': 'nothing to do'})
+
+            if not habit.start_date:
+                earliest_entry = Date.objects.filter(user=user_profile, habit=habit).aggregate(Min('habit_date'))['habit_date__min']
+                if earliest_entry:
+                    habit.start_date = earliest_entry
+                    habit.save(update_fields=['start_date'])
             
             return Response(DateSerializer(date_entry).data)
         except Exception as e:
