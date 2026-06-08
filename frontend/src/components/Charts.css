@@ -139,7 +139,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
     margin-bottom: 10px;
 }
 
@@ -157,7 +157,7 @@
     color: #333;
     transition: all 0.2s;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    margin: 0;
+    flex-shrink: 0;
 }
 
 .nav-arrow-btn:hover {
@@ -170,14 +170,15 @@
     font-size: 16px;
     font-weight: 600;
     color: #333;
-    min-width: 0;
-    text-align: left;
+    white-space: nowrap;
+    text-align: center;
 }
 
 .navigation-labels {
     display: flex;
     justify-content: center;
-    width: 100%;
+    align-items: center;
+    white-space: nowrap;
 }
 
 .selectors-container {

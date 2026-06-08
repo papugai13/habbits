@@ -375,6 +375,44 @@ const App = () => {
     }
   }, [storageMode]);
 
+  // Загрузка настроек напоминаний с сервера (при входе)
+  // Объявляем ДО checkAuth, чтобы избежать TDZ (Temporal Dead Zone)
+  const loadReminderSettingsFromServer = React.useCallback(async () => {
+    try {
+      const response = await fetch('/api/v1/reminders/settings/', {
+        credentials: 'include'
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      // Обновляем state из серверных данных
+      if (typeof data.enabled === 'boolean') setReminderEnabled(data.enabled);
+      if (data.text) setReminderText(data.text);
+      if (Array.isArray(data.times) && data.times.length > 0) {
+        setReminderTimes(data.times);
+        setReminderTimesPerDay(data.times.length);
+      }
+      // Синхронизируем с Service Worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(registration => {
+          if (registration.active) {
+            const swSettings = {
+              enabled: data.enabled,
+              text: data.text || 'Не забудьте отметить привычки!',
+              reminderTimes: data.times || ['09:00'],
+              timesPerDay: (data.times || ['09:00']).length,
+              notificationsSentToday: 0,
+              sentReminders: []
+            };
+            registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: swSettings });
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки настроек напоминаний:', error);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Check authentication status
   const checkAuth = React.useCallback(async () => {
     try {
@@ -386,6 +424,8 @@ const App = () => {
         const userData = await response.json();
         setUser(userData);
         setIsAuthenticated(true);
+        // Загружаем серверные настройки напоминаний
+        loadReminderSettingsFromServer();
       } else {
         setIsAuthenticated(false);
       }
@@ -406,7 +446,7 @@ const App = () => {
     } finally {
       setAuthLoading(false);
     }
-  }, [fetchHabits, fetchArchivedHabits, fetchCategories, fetchArchivedCategories]);
+  }, [fetchHabits, fetchArchivedHabits, fetchCategories, fetchArchivedCategories, loadReminderSettingsFromServer]);
 
   // Check authentication status on mount
   useEffect(() => {
@@ -471,9 +511,9 @@ const App = () => {
         if (registration.active) {
           const settings = {
             enabled: reminderEnabled,
+            text: reminderText,
             reminderTimes: reminderTimes,
             timesPerDay: reminderTimesPerDay === 'custom' ? customTimesPerDay : reminderTimesPerDay,
-            customTimesPerDay: customTimesPerDay,
             notificationsSentToday: 0,
             sentReminders: []
           };
@@ -492,9 +532,9 @@ const App = () => {
         console.log('[App] Received REQUEST_SETTINGS from Service Worker');
         const settings = {
           enabled: reminderEnabled,
+          text: reminderText,
           reminderTimes: reminderTimes,
           timesPerDay: reminderTimesPerDay === 'custom' ? customTimesPerDay : reminderTimesPerDay,
-          customTimesPerDay: customTimesPerDay,
           notificationsSentToday: 0,
           sentReminders: []
         };
@@ -513,7 +553,7 @@ const App = () => {
     return () => {
       navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
     };
-  }, [reminderEnabled, reminderTimes, reminderTimesPerDay, customTimesPerDay]);
+  }, [reminderEnabled, reminderText, reminderTimes, reminderTimesPerDay, customTimesPerDay]);
 
   // Update reminder settings in localStorage
   useEffect(() => {
@@ -622,15 +662,7 @@ const App = () => {
     const newSettings = { ...settings, enabled };
     localStorage.setItem('reminderSettings', JSON.stringify(newSettings));
     saveReminderSettingsToServer({ enabled, text: reminderText, times: reminderTimes });
-    
-    // Update SW
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(registration => {
-        if (registration.active) {
-          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: newSettings });
-        }
-      });
-    }
+    sendSettingsToSW({ enabled });
   };
 
 
@@ -693,42 +725,43 @@ const App = () => {
     }
   }, [customTimesPerDay, reminderTimesPerDay]);
 
+  // Отправка полного объекта настроек в Service Worker
+  const sendSettingsToSW = (overrides = {}) => {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(registration => {
+      if (!registration.active) return;
+      const swSettings = {
+        enabled: reminderEnabled,
+        text: reminderText,
+        reminderTimes,
+        timesPerDay: reminderTimesPerDay === 'custom' ? customTimesPerDay : reminderTimesPerDay,
+        notificationsSentToday: 0,
+        sentReminders: [],
+        ...overrides,
+      };
+      registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: swSettings });
+    });
+  };
+
   const handleReminderTextChange = (text) => {
     setReminderText(text);
     const settings = JSON.parse(localStorage.getItem('reminderSettings') || '{}');
     const newSettings = { ...settings, text };
     localStorage.setItem('reminderSettings', JSON.stringify(newSettings));
     saveReminderSettingsToServer({ text });
-    
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(registration => {
-        if (registration.active) {
-          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: newSettings });
-        }
-      });
-    }
+    sendSettingsToSW({ text });
   };
 
-  // Update a specific reminder time
+  // Изменение времени конкретного напоминания
   const handleReminderTimeChange = (index, value) => {
     const newTimes = [...reminderTimes];
     newTimes[index] = value;
     setReminderTimes(newTimes);
-    
-    // Save to server
     const settings = JSON.parse(localStorage.getItem('reminderSettings') || '{}');
     const newSettings = { ...settings, reminderTimes: newTimes };
     localStorage.setItem('reminderSettings', JSON.stringify(newSettings));
     saveReminderSettingsToServer({ times: newTimes });
-    
-    // Update SW
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(registration => {
-        if (registration.active) {
-          registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: newSettings });
-        }
-      });
-    }
+    sendSettingsToSW({ reminderTimes: newTimes });
   };
 
   // Test notification
