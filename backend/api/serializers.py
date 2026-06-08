@@ -69,18 +69,6 @@ class AchievementSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class ReminderSettingsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ReminderSettings
-        fields = '__all__'
-
-
-class PushSubscriptionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PushSubscription
-        fields = '__all__'
-
-
 # Authentication serializers
 class UserSerializer(serializers.ModelSerializer):
     """Сериализатор для отображения и редактирования данных пользователя"""
@@ -177,7 +165,7 @@ class LoginSerializer(serializers.Serializer):
 class ReminderSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReminderSettings
-        fields = ('enabled', 'text', 'times')
+        fields = ('enabled', 'text', 'times', 'time_zone')
 
 class PushSubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
