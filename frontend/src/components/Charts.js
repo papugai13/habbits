@@ -89,6 +89,7 @@ const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData })
     }
 
     const fontSize = period === 'year' ? (isMobile ? 8 : 9) : (isMobile ? 8 : 10);
+    const weekNumFontSize = isMobile ? 7 : 9;
     
     const isToday = dataItem?.isToday;
     const isCurrentWeek = dataItem?.isCurrentWeek;
@@ -98,33 +99,57 @@ const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData })
     const fontWeight = isHighlighted ? 700 : (period === 'week' ? 600 : 500);
     const fill = isHighlighted ? '#22c55e' : (isDark ? "#E0E0E0" : "#666");
 
-    // Calculate highlight square backdrop to fit around the text
-    // Text is at y+16 with textAnchor="middle", fontSize
-    const padding = 4;
-    const rectWidth = Math.max(displayValue.length * fontSize * 0.65 + padding * 2, 28);
-    const rectHeight = fontSize + padding * 2;
-    const squareSize = Math.max(rectWidth, rectHeight);
-    const textVisualCenterY = 16 - fontSize * 0.35;
+    const weekNumber = dataItem?.weekNumber;
+    const showWeekNum = period === 'week' && weekNumber != null;
+    const weekFill = isHighlighted ? '#22c55e' : (isDark ? '#aaa' : '#999');
+
+    // Геометрия подложки
+    // Первая строка: dy=16, вторая: dy=30
+    // Верх первой строки ≈ dy - fontSize, низ второй ≈ dy + weekNumFontSize * 0.5
+    const padding = 5;
+    const line1CenterY = 16;
+    const line2CenterY = 30;
+
+    // Если есть вторая строка — прямоугольник покрывает обе строки
+    const rectTop = showWeekNum
+        ? line1CenterY - fontSize - padding
+        : line1CenterY - fontSize - padding;
+    const rectBottom = showWeekNum
+        ? line2CenterY + weekNumFontSize * 0.6 + padding
+        : line1CenterY + fontSize * 0.6 + padding;
+    const rectHeight = rectBottom - rectTop;
+
+    // Ширина — по самой широкой строке
+    const line1Width = displayValue.length * fontSize * 0.65 + padding * 2;
+    const weekNumText = `нед ${weekNumber}`;
+    const line2Width = showWeekNum ? weekNumText.length * weekNumFontSize * 0.65 + padding * 2 : 0;
+    const rectWidth = Math.max(line1Width, line2Width, 28);
 
     return (
         <g transform={`translate(${x},${y})`}>
             {isHighlighted && (
                 <rect
-                    x={-squareSize / 2}
-                    y={textVisualCenterY - squareSize / 2}
-                    width={squareSize}
-                    height={squareSize}
+                    x={-rectWidth / 2}
+                    y={rectTop}
+                    width={rectWidth}
+                    height={rectHeight}
                     fill="#22c55e"
-                    rx={4}
+                    rx={5}
                     opacity={0.2}
                 />
             )}
             <text x={0} y={0} dy={16} textAnchor="middle" fill={fill} fontSize={fontSize} fontWeight={fontWeight}>
                 {displayValue}
             </text>
+            {showWeekNum && (
+                <text x={0} y={0} dy={30} textAnchor="middle" fill={weekFill} fontSize={weekNumFontSize} fontWeight={isHighlighted ? 700 : 500}>
+                    {`нед ${weekNumber}`}
+                </text>
+            )}
         </g>
     );
 };
+
 
 const CustomBarLabel = ({ x, y, width, height, value, color, baseSize = 14, suffix = '' }) => {
     if (!value || value <= 0) return null;
@@ -653,6 +678,7 @@ const Charts = ({
                     const commonData = {
                         index: index,
                         label: item.label || item.date,
+                        weekNumber: item.week_number || null,
                         date: item.date,
                         fullDate: item.date,
                         isToday: item.date === todayStr,
