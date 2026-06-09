@@ -342,8 +342,8 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     if (data.length === 0) return (
         <div className="habits-comparison-section">
             <div className="comparison-header"><h3>{t('habitProgress')}</h3></div>
-            <div className="comparison-no-data"><p>📊 {t('noData')}</p></div>
             <div className="comparison-footer"><div className="comparison-footer-label">{periodLabel.title}</div></div>
+            <div className="comparison-no-data"><p>📊 {t('noData')}</p></div>
         </div>
     );
 
@@ -353,6 +353,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     return (
         <div className="habits-comparison-section">
             <div className="comparison-header"><h3>{t('habitProgress')}</h3></div>
+            <div className="comparison-footer"><div className="comparison-footer-label">{periodLabel.title}</div></div>
             <div className="comparison-chart-layout horizontal">
                 <div className="comparison-scroll-wrapper" onScroll={handleScroll} ref={scrollRef}>
                     <div className="comparison-chart-inner">
@@ -386,7 +387,6 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                     </div>
                 </div>
             </div>
-            <div className="comparison-footer"><div className="comparison-footer-label">{periodLabel.title}</div></div>
             {showScroll && (
                 <div className="scroll-indicator-container">
                     <div className="scroll-indicator-bar" ref={indicatorRef}></div>
