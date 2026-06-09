@@ -335,8 +335,71 @@ class HabitViewSet(viewsets.ModelViewSet):
         return Response({"error": "Invalid period"}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'])
+    def export(self, request):
+        """Экспорт всех данных пользователя: привычки, категории, все записи выполнения."""
+        user_profile, _ = UserAll.objects.get_or_create(
+            auth_user=request.user,
+            defaults={'name': request.user.username, 'age': ''}
+        )
+
+        # Категории
+        categories = Category.objects.filter(user=user_profile).order_by('order')
+        categories_data = [
+            {
+                'id': c.id,
+                'name': c.name,
+                'order': c.order,
+                'is_archived': c.is_archived,
+            }
+            for c in categories
+        ]
+
+        # Привычки со всеми записями выполнения
+        habits = Habit.objects.filter(user=user_profile).order_by('order')
+        habits_data = []
+        for habit in habits:
+            records = Date.objects.filter(
+                user=user_profile,
+                habit=habit
+            ).order_by('habit_date')
+
+            statuses = [
+                {
+                    'date': r.habit_date.isoformat(),
+                    'is_done': r.is_done,
+                    'is_restored': r.is_restored,
+                    'quantity': r.quantity,
+                    'comment': r.comment or '',
+                }
+                for r in records
+            ]
+
+            category_name = habit.category.name if habit.category else None
+            habits_data.append({
+                'id': habit.id,
+                'name': habit.name,
+                'category': habit.category_id,
+                'category_name': category_name,
+                'order': habit.order,
+                'is_archived': habit.is_archived,
+                'target_type': habit.target_type,
+                'start_date': habit.start_date.isoformat() if habit.start_date else None,
+                'use_target': habit.use_target,
+                'completion_target': habit.completion_target,
+                'quantity_target': habit.quantity_target,
+                'statuses': statuses,
+            })
+
+        return Response({
+            'exported_at': datetime.now().isoformat(),
+            'categories': categories_data,
+            'habits': habits_data,
+        })
+
+    @action(detail=False, methods=['get'])
     @method_decorator(ensure_csrf_cookie)
     def weekly_status(self, request):
+
         try:
             # Get or create UserAll profile for authenticated user
             user_profile, created = UserAll.objects.get_or_create(

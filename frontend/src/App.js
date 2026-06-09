@@ -54,7 +54,7 @@ const App = () => {
     if (typeof window === 'undefined') return 'auto';
     return localStorage.getItem('theme') || 'auto';
   });
-  const [storageMode] = useState('cloud');
+  const [storageMode, setStorageMode] = useState(() => storageService.getStorageMode());
 
   const [habitsData, setHabitsData] = useState([]);
 
@@ -494,9 +494,100 @@ const App = () => {
   useEffect(() => {
     // Clear cache when mode changes
     weekDataCacheRef.current = {};
+    // Persist selected mode
+    storageService.setStorageMode(storageMode);
     // Trigger re-fetch
     checkAuth();
   }, [storageMode, checkAuth]); // Re-fetch everything when storage mode changes
+
+  // Переключение режима хранения с предупреждением
+  const handleStorageModeChange = (newMode) => {
+    if (newMode === storageMode) return;
+    const msg = language === 'ru'
+      ? 'При переключении режима данные не синхронизируются автоматически. Продолжить?'
+      : 'Data is not automatically synced when switching modes. Continue?';
+    if (!window.confirm(msg)) return;
+    setStorageMode(newMode);
+  };
+
+  // Экспорт локальных данных в JSON-файл
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportData = async () => {
+    const filename = `habbits_backup_${new Date().toISOString().slice(0, 10)}.json`;
+
+    const triggerDownload = (data) => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    if (storageMode === 'cloud') {
+      setIsExporting(true);
+      try {
+        const resp = await fetch('/api/v1/habits/export/', { credentials: 'include' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        triggerDownload(data);
+      } catch (e) {
+        console.error('Export failed:', e);
+        alert(language === 'ru' ? 'Ошибка при экспорте данных' : 'Export failed');
+      } finally {
+        setIsExporting(false);
+      }
+    } else {
+      // Локальный режим — читаем из localStorage
+      const habits = JSON.parse(localStorage.getItem('habbits_local_habits') || '[]');
+      const categories = JSON.parse(localStorage.getItem('habbits_local_categories') || '[]');
+      const statuses = JSON.parse(localStorage.getItem('habbits_local_statuses') || '[]');
+
+      // Собираем statuses внутрь каждой привычки для единого формата
+      const habitsWithStatuses = habits.map(h => ({
+        ...h,
+        statuses: statuses
+          .filter(s => String(s.habit) === String(h.id))
+          .map(s => ({
+            date: s.date,
+            is_done: s.is_done,
+            is_restored: s.is_restored,
+            quantity: s.quantity ?? null,
+            comment: s.comment || '',
+          }))
+      }));
+
+      triggerDownload({
+        exported_at: new Date().toISOString(),
+        categories,
+        habits: habitsWithStatuses,
+      });
+    }
+  };
+
+
+  // Импорт локальных данных из JSON-файла
+  const handleImportData = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.habits) localStorage.setItem('habbits_local_habits', JSON.stringify(data.habits));
+        if (data.categories) localStorage.setItem('habbits_local_categories', JSON.stringify(data.categories));
+        if (data.statuses) localStorage.setItem('habbits_local_statuses', JSON.stringify(data.statuses));
+        alert(t('importSuccess'));
+        window.location.reload();
+      } catch {
+        alert(t('importError'));
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   // Register Service Worker and handle notifications
   useEffect(() => {
@@ -3345,7 +3436,81 @@ const App = () => {
               </>
             )}
           </div>
+
+          {/* Секция: Хранилище */}
+          <div className="settings-section storage-settings">
+            <h3 className="section-title section-title-centered" onClick={() => setCollapsedSettingsSections({...collapsedSettingsSections, storage: !collapsedSettingsSections.storage})}>
+              <span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '8px', verticalAlign: 'middle', marginTop: '-2px'}}><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                {t('storageSettings')}
+              </span>
+              <span className={`collapse-icon ${collapsedSettingsSections.storage ? 'collapsed' : ''}`}>▼</span>
+            </h3>
+            {!collapsedSettingsSections.storage && (
+              <div className="storage-section-content">
+                <p className="storage-mode-notice">{t('storageModeNotice')}</p>
+
+                <div className="storage-options">
+                  <button
+                    id="storage-cloud-btn"
+                    className={`storage-option-card ${storageMode === 'cloud' ? 'active' : ''}`}
+                    onClick={() => handleStorageModeChange('cloud')}
+                  >
+                    <div className="storage-option-icon">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+                    </div>
+                    <div className="storage-option-info">
+                      <span className="storage-option-title">{t('cloudStorage')}</span>
+                      <span className="storage-option-desc">{t('cloudStorageDesc')}</span>
+                    </div>
+                    {storageMode === 'cloud' && (
+                      <span className="storage-check-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17L4 12"/></svg>
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    id="storage-local-btn"
+                    className={`storage-option-card ${storageMode === 'local' ? 'active' : ''}`}
+                    onClick={() => handleStorageModeChange('local')}
+                  >
+                    <div className="storage-option-icon">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    </div>
+                    <div className="storage-option-info">
+                      <span className="storage-option-title">{t('localStorage')}</span>
+                      <span className="storage-option-desc">{t('localStorageDesc')}</span>
+                    </div>
+                    {storageMode === 'local' && (
+                      <span className="storage-check-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17L4 12"/></svg>
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                <div className="storage-data-actions">
+                  <button id="export-data-btn" className="btn-secondary btn-small" onClick={handleExportData} disabled={isExporting}>
+                    {isExporting ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px', verticalAlign: 'middle', animation: 'spin 1s linear infinite'}}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px', verticalAlign: 'middle'}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    )}
+                    {isExporting ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t('exportData')}
+                  </button>
+
+                  <label htmlFor="import-data-input" className="btn-secondary btn-small storage-import-label">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px', verticalAlign: 'middle'}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    {t('importData')}
+                    <input id="import-data-input" type="file" accept=".json" style={{display: 'none'}} onChange={handleImportData} />
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+
       )}
 
       {/* Нижняя навигация */}
