@@ -988,6 +988,15 @@ const Charts = ({
                 </div>
             )}
 
+            <CategoryComparisonTable
+                period={period}
+                currentWeekDate={chartDate}
+                theme={theme}
+                t={t}
+                language={language}
+                storageMode={storageMode}
+            />
+
             {(viewType === 'habits' || viewType === 'quantity') && (
                 <HabitsComparisonChart
                     period={period}
@@ -1001,15 +1010,6 @@ const Charts = ({
                     storageMode={storageMode}
                 />
             )}
-
-            <CategoryComparisonTable
-                period={period}
-                currentWeekDate={chartDate}
-                theme={theme}
-                t={t}
-                language={language}
-                storageMode={storageMode}
-            />
         </div>
     );
 };
