@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.db.models import Case, F, IntegerField, Max, Min, Sum, Value, When
+from django.db.models import Case, F, IntegerField, Max, Min, Q, Sum, Value, When
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
@@ -1313,7 +1313,10 @@ class HabitViewSet(viewsets.ModelViewSet):
                     m_end = date(y, m + 1, 1) - timedelta(days=1)
                 
                 days_in_month = (m_end - m_start).days + 1
-                active_habits = habits.filter(start_date__lte=m_end).count()
+                # Include habits with no start_date (active from the beginning) or started before month end
+                active_habits = habits.filter(
+                    Q(start_date__isnull=True) | Q(start_date__lte=m_end)
+                ).count()
                 
                 month_dates = Date.objects.filter(
                     user=user_profile,
@@ -1326,14 +1329,14 @@ class HabitViewSet(viewsets.ModelViewSet):
                 max_possible = active_habits * days_in_month
                 percentage = 0
                 if max_possible > 0:
-                    percentage = round((month_dates.count() / max_possible) * 100)
+                    percentage = min(round((month_dates.count() / max_possible) * 100), 100)
                 
                 trend = None
                 if prev_percentage is not None:
                     trend = percentage - prev_percentage
                 
-                # We use 'm' as the key because the frontend expects data.months[currentMonth]
-                months_data[m] = {
+                # Use "year-month" as key to support multi-year data
+                months_data[f"{y}-{m}"] = {
                     "percentage": percentage,
                     "trend": trend
                 }
