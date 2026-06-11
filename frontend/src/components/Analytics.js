@@ -210,14 +210,22 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
     const monthBlocks = useMemo(() => {
         if (!data.weeks || data.weeks.length === 0) return [];
         const blocks = [];
-        let currentMonth = data.weeks[0].month;
+
+        // Helper: get "year-month" key from a week entry (using Thursday = week_start + 3 days)
+        const getYearMonthKey = (week) => {
+            const thursday = new Date(week.week_start);
+            thursday.setDate(thursday.getDate() + 3);
+            return `${thursday.getFullYear()}-${thursday.getMonth() + 1}`;
+        };
+
+        let currentKey = getYearMonthKey(data.weeks[0]);
         let startIndex = 0;
 
         for (let i = 1; i <= data.weeks.length; i++) {
             const isLast = i === data.weeks.length;
-            const weekMonth = !isLast ? data.weeks[i].month : null;
+            const weekKey = !isLast ? getYearMonthKey(data.weeks[i]) : null;
 
-            if (isLast || weekMonth !== currentMonth) {
+            if (isLast || weekKey !== currentKey) {
                 const endIndex = i - 1;
                 // calculate center in pixels
                 const centerIdx = startIndex + (endIndex - startIndex) / 2;
@@ -226,11 +234,12 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                 const actualWeekWidth = (chartWidth - paddingLeft - paddingRight) / data.weeks.length;
                 const leftPos = paddingLeft + (centerIdx * actualWeekWidth) + actualWeekWidth / 2;
 
-                const monthData = data.months[currentMonth] || { percentage: 0, trend: null };
+                const monthData = data.months[currentKey] || { percentage: 0, trend: null };
                 const monthName = data.weeks[startIndex].month_name;
+                const month = data.weeks[startIndex].month;
 
                 blocks.push({
-                    month: currentMonth,
+                    month,
                     name: monthName,
                     left: leftPos,
                     percentage: monthData.percentage,
@@ -238,7 +247,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                 });
 
                 if (!isLast) {
-                    currentMonth = weekMonth;
+                    currentKey = weekKey;
                     startIndex = i;
                 }
             }
