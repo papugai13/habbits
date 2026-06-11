@@ -716,9 +716,24 @@ const storageService = {
           startDateStr = h.start_date;
         }
       });
-      
-      let startDateOfChart = startDateStr ? new Date(startDateStr) : new Date();
-      if (!startDateStr) {
+
+      // Also check earliest actual completed entry (user may have backdated records)
+      const habitIds = new Set(filteredHabits.map(h => String(h.id)));
+      let earliestDoneStr = null;
+      statuses.forEach(s => {
+        if (s.is_done && habitIds.has(String(s.habit)) && s.date) {
+          if (!earliestDoneStr || s.date < earliestDoneStr) {
+            earliestDoneStr = s.date;
+          }
+        }
+      });
+
+      // Pick the earliest of the two
+      const candidates = [startDateStr, earliestDoneStr].filter(Boolean);
+      const resolvedStart = candidates.length > 0 ? candidates.reduce((a, b) => a < b ? a : b) : null;
+
+      let startDateOfChart = resolvedStart ? new Date(resolvedStart) : new Date();
+      if (!resolvedStart) {
         startDateOfChart.setDate(startDateOfChart.getDate() - 30);
       }
       

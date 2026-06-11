@@ -1196,11 +1196,24 @@ class HabitViewSet(viewsets.ModelViewSet):
                     pass
 
             # Get the earliest start_date among selected habits
-            start_date_of_chart = habits.aggregate(Min('start_date'))['start_date__min']
-            
+            habit_start = habits.aggregate(Min('start_date'))['start_date__min']
+
+            # Also look at earliest actual completed entry — user may have backdated records
+            # before the habit's start_date
+            earliest_done = Date.objects.filter(
+                user=user_profile,
+                habit__in=habits,
+                is_done=True,
+            ).aggregate(Min('habit_date'))['habit_date__min']
+
             today = date.today()
-            # If no habits or no start dates, use a default range
-            if not start_date_of_chart:
+
+            # Pick the earliest of the two (habit start_date vs first real entry)
+            candidates = [d for d in [habit_start, earliest_done] if d is not None]
+            if candidates:
+                start_date_of_chart = min(candidates)
+            else:
+                # No habits or no data at all — show last 30 days
                 start_date_of_chart = today - timedelta(days=30)
             
             # Chart ends at the end of the current week
