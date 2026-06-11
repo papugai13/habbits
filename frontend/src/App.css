@@ -2798,7 +2798,7 @@ body {
   text-align: center;
   display: block;
   font-size: 13px;
-  color: #888;
+  color: #8B5CF6;
   font-weight: 500;
   margin-bottom: 12px;
 }
@@ -3619,6 +3619,10 @@ html.dark-theme, body.dark-theme {
 
 .dark-theme .form-group label {
   color: #E0E0E0;
+}
+
+.dark-theme .quantity-modal .form-group label {
+  color: #8B5CF6;
 }
 
 .dark-theme .form-input,
