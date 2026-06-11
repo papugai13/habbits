@@ -189,6 +189,7 @@ const storageService = {
 
   reorderHabits: async (mode, orderedIds, options = {}) => {
     if (mode === 'cloud') {
+      const payload = orderedIds.map((id, index) => ({ id, order: index }));
       const response = await fetch('/api/v1/habits/reorder/', {
         ...options,
         method: 'POST',
@@ -196,7 +197,7 @@ const storageService = {
           ...options.headers,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ ordered_ids: orderedIds })
+        body: JSON.stringify(payload)
       });
       if (!response.ok) throw new Error('Failed to reorder habits');
       return response.json();
@@ -317,6 +318,7 @@ const storageService = {
 
   reorderCategories: async (mode, orderedIds, options = {}) => {
     if (mode === 'cloud') {
+      const payload = orderedIds.map((id, index) => ({ id, order: index }));
       const response = await fetch('/api/v1/categories/reorder/', {
         ...options,
         method: 'POST',
@@ -324,7 +326,7 @@ const storageService = {
           ...options.headers,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ ordered_ids: orderedIds })
+        body: JSON.stringify(payload)
       });
       if (!response.ok) throw new Error('Failed to reorder categories');
       return response.json();
