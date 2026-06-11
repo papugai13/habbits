@@ -1118,6 +1118,16 @@ const App = () => {
     return () => el.removeEventListener('touchmove', handleModalSwipeMove);
   }, [showQuantityModal]);
 
+  // Save entered quantity value to modal data to preserve it when modal is closed without saving
+  useEffect(() => {
+    if (showQuantityModal && quantityModalData && quantityValue !== undefined) {
+      setQuantityModalData(prev => ({
+        ...prev,
+        currentQuantity: quantityValue
+      }));
+    }
+  }, [quantityValue, showQuantityModal]);
+
   const getRussianMonthName = (monthIndex) => {
     const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
     return months[monthIndex] || '';
@@ -1443,7 +1453,7 @@ const App = () => {
                               className={`check-box ${isDone ? 'checked' : ''} ${isRestored ? 'restored' : ''} ${isMissed ? 'missed' : ''} ${isToday ? 'today' : ''} ${isDone && (quantity !== null && quantity !== undefined) ? 'with-quantity' : ''} ${hasComment ? 'has-comment' : ''} ${showDotClass} ${isBeforeCreation ? 'before-creation' : ''}`}
                               onClick={() => {
                                 if (!isDisabled && !isLongPressActiveRef.current) {
-                                  toggleHabitCheck(habit.id, slotDateStr, isDone, statusId);
+                                  toggleHabitCheck(habit.id, slotDateStr, isDone, statusId, quantity);
                                 }
                                 isLongPressActiveRef.current = false;
                               }}
@@ -1844,6 +1854,19 @@ const App = () => {
     const isPastDate = dayDate < todayStr;
     const isMarkingDone = !currentStatus;
 
+    // If we're unchecking (removing the mark), save the current quantity
+    if (!isMarkingDone && quantity !== null && quantity !== undefined) {
+      saveQuantityToSession(habitId, dayDate, quantity);
+    }
+
+    // If we're checking (adding the mark), try to restore saved quantity
+    if (isMarkingDone) {
+      const savedQuantity = getSavedQuantity(habitId, dayDate);
+      if (savedQuantity !== null) {
+        quantity = savedQuantity;
+      }
+    }
+
     // Determining the quantity to use:
     // If we're marking as "done" for today and no quantity is passed, default to null (shows as "≤1" in picker)
     let effectiveQuantity = quantity;
@@ -1861,7 +1884,7 @@ const App = () => {
               ...status,
               is_done: isMarkingDone,
               is_restored: isPastDate && isMarkingDone,
-              quantity: effectiveQuantity !== null ? effectiveQuantity : (isMarkingDone ? status.quantity : null)
+              quantity: isMarkingDone ? effectiveQuantity : null
             } : status
           )
         };
@@ -1876,7 +1899,7 @@ const App = () => {
         date: dayDate,
         is_done: isMarkingDone,
         is_restored: isPastDate && isMarkingDone,
-        quantity: effectiveQuantity !== null ? effectiveQuantity : undefined
+        quantity: isMarkingDone && effectiveQuantity !== null ? effectiveQuantity : undefined
       };
 
       await storageService.saveStatus(storageMode, payload, {
@@ -1885,6 +1908,9 @@ const App = () => {
         },
         credentials: 'include'
       });
+
+      // Don't clear saved quantity - keep it for next toggle
+      // saveQuantityToSession(habitId, dayDate, null);
 
       // Refetch to sync state
       await fetchHabits();
@@ -2007,12 +2033,51 @@ const App = () => {
     return isRestored ? 1 : null;
   };
 
+  // Save entered quantity to sessionStorage so it's preserved if user closes modal without saving
+  const saveQuantityToSession = (habitId, dayDate, quantity) => {
+    const key = `quantity_${habitId}_${dayDate}`;
+    if (quantity !== null && quantity !== undefined) {
+      sessionStorage.setItem(key, JSON.stringify(quantity));
+    } else {
+      sessionStorage.removeItem(key);
+    }
+  };
+
+  // Retrieve saved quantity from sessionStorage
+  const getSavedQuantity = (habitId, dayDate) => {
+    const key = `quantity_${habitId}_${dayDate}`;
+    const saved = sessionStorage.getItem(key);
+    return saved ? JSON.parse(saved) : null;
+  };
+
+  // Close quantity modal and save entered quantity if user didn't save
+  const closeQuantityModal = () => {
+    if (quantityModalData) {
+      saveQuantityToSession(quantityModalData.habitId, quantityModalData.dayDate, quantityValue);
+    }
+    setShowQuantityModal(false);
+    setQuantityModalData(null);
+    setQuantityValue(null);
+    setCommentValue('');
+  };
+
   const openEntryModal = (habitId, habitName, dayDate, currentStatus, dateId, currentQuantity, currentComment, currentCommentDate, currentPhoto, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, isRestored) => {
     setQuantityModalData({ habitId, habitName, dayDate, currentStatus, currentQuantity, currentComment, currentCommentDate, currentPhoto, dateId, weeklyTotal, monthlyTotal, weeklyOverflow, monthlyOverflow, currentIsRestored: isRestored });
 
-    const initialQuantity = currentStatus
-      ? currentQuantity
-      : getScrollDefaultQuantity(habitId, dayDate, isRestored);
+    // First check if user previously entered a value and closed without saving
+    const savedQuantity = getSavedQuantity(habitId, dayDate);
+    
+    let initialQuantity;
+    if (savedQuantity !== null) {
+      // Use saved quantity if it exists
+      initialQuantity = savedQuantity;
+    } else if (currentStatus) {
+      // Use current quantity from backend if entry is marked as done
+      initialQuantity = currentQuantity;
+    } else {
+      // Otherwise use the scroll default
+      initialQuantity = getScrollDefaultQuantity(habitId, dayDate, isRestored);
+    }
 
     setQuantityValue(initialQuantity);
     setCommentValue('');
@@ -2066,6 +2131,8 @@ const App = () => {
         credentials: 'include'
       });
 
+      // Clear saved quantity from session since it was successfully saved to backend
+      saveQuantityToSession(habitId, dayDate, null);
       setShowQuantityModal(false);
       setQuantityModalData(null);
       setQuantityValue(null);
@@ -2074,11 +2141,10 @@ const App = () => {
     } catch (error) {
       console.error('Error saving data:', error);
       alert(`${t('saveDataError')}: ${error.message}`);
-    } finally {
-      setShowQuantityModal(false);
-      setQuantityModalData(null);
-      setQuantityValue(null);
-      setCommentValue('');
+      // Keep modal open if there was an error, but save the entered quantity
+      if (quantityModalData) {
+        saveQuantityToSession(habitId, dayDate, quantityValue);
+      }
     }
   };
 
@@ -4090,10 +4156,7 @@ const App = () => {
       {/* Модальное окно для ввода количества, комментария и фото */}
       {showQuantityModal && quantityModalData && (
         <div className="modal-overlay" onClick={() => {
-          setShowQuantityModal(false);
-          setQuantityModalData(null);
-          setQuantityValue(null);
-          setCommentValue('');
+          closeQuantityModal();
         }}>
           <div className="modal-content quantity-modal"
             ref={modalContentRef}
@@ -4109,10 +4172,7 @@ const App = () => {
 
                   className="modal-close"
                   onClick={() => {
-                    setShowQuantityModal(false);
-                    setQuantityModalData(null);
-                    setQuantityValue(null);
-                    setCommentValue('');
+                    closeQuantityModal();
                   }}
                 >
                   ×
@@ -4206,10 +4266,7 @@ const App = () => {
                   type="button"
                   className="btn-secondary"
                   onClick={() => {
-                    setShowQuantityModal(false);
-                    setQuantityModalData(null);
-                    setQuantityValue(null);
-                    setCommentValue('');
+                    closeQuantityModal();
                   }}
                 >
                   {t('cancel')}
