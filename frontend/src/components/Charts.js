@@ -402,87 +402,86 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
 
     const isDark = theme === 'dark' || (theme === 'auto' && document.body.classList.contains('dark-theme'));
 
-    useEffect(() => {
-        const fetchAllData = async () => {
-            setLoading(true);
-            
-            if (period === 'week') {
-                const habitMap = new Map();
-                const endDate = new Date(currentWeekDate);
-                const startDate = new Date(endDate);
-                startDate.setDate(startDate.getDate() - 6);
-                
-                const promises = [];
-                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                    const dayStr = d.toISOString().split('T')[0];
-                    promises.push(
-                        storageService.getComparison(storageMode, {
-                            period: 'day',
-                            date: dayStr,
-                            category: 'Все'
-                        }, {
-                            credentials: 'include'
-                        })
-                    );
-                }
-                
-                try {
-                    const results = await Promise.all(promises);
-                    results.forEach(result => {
-                        if (result.habits) {
-                            result.habits.forEach(item => {
-                                if (!habitMap.has(item.id)) {
-                                    habitMap.set(item.id, {
-                                        ...item,
-                                        countCapped: 0,
-                                        countRestored: 0,
-                                        countExtra: 0
-                                    });
-                                }
-                                const habit = habitMap.get(item.id);
-                                habit.countCapped += (item.completed_days || 0);
-                                habit.countRestored += (item.restored_days || 0);
-                                habit.countExtra += (item.extra_quantity || 0);
-                            });
-                        }
-                    });
-                    setData(Array.from(habitMap.values()));
-                } catch (error) {
-                    console.error(`Error fetching category comparison data:`, error);
-                } finally {
-                    setLoading(false);
-                }
-                return;
+    const fetchAllData = useCallback(async () => {
+        if (period === 'week') {
+            const habitMap = new Map();
+            const endDate = new Date(currentWeekDate);
+            const startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - 6);
+
+            const promises = [];
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const dayStr = d.toISOString().split('T')[0];
+                promises.push(
+                    storageService.getComparison(storageMode, {
+                        period: 'day',
+                        date: dayStr,
+                        category: 'Все'
+                    }, { credentials: 'include' })
+                );
             }
-            
-            const apiDate = new Date(currentWeekDate);
-            if (period === 'month') apiDate.setDate(1);
-            else if (period === 'year') apiDate.setMonth(0, 1);
-            apiDate.setHours(0, 0, 0, 0);
-            const dateStr = apiDate.toISOString().split('T')[0];
-            
+
             try {
-                const result = await storageService.getComparison(storageMode, {
-                    period,
-                    date: dateStr,
-                    category: 'Все'
-                }, {
-                    credentials: 'include'
+                const results = await Promise.all(promises);
+                results.forEach(result => {
+                    if (result.habits) {
+                        result.habits.forEach(item => {
+                            if (!habitMap.has(item.id)) {
+                                habitMap.set(item.id, {
+                                    ...item,
+                                    countCapped: 0,
+                                    countRestored: 0,
+                                    countExtra: 0
+                                });
+                            }
+                            const habit = habitMap.get(item.id);
+                            habit.countCapped += (item.completed_days || 0);
+                            habit.countRestored += (item.restored_days || 0);
+                            habit.countExtra += (item.extra_quantity || 0);
+                        });
+                    }
                 });
-                setData(result.habits.map(h => ({
-                    ...h,
-                    countCapped: h.completed_days,
-                    countRestored: h.restored_days,
-                    countExtra: h.extra_quantity
-                })));
+                setData(Array.from(habitMap.values()));
             } catch (error) {
-                console.error(`Error fetching category comparison data:`, error);
+                console.error('Error fetching category comparison data:', error);
             } finally {
                 setLoading(false);
             }
-        };
-        fetchAllData();
+            return;
+        }
+
+        const apiDate = new Date(currentWeekDate);
+        if (period === 'month') apiDate.setDate(1);
+        else if (period === 'year') apiDate.setMonth(0, 1);
+        apiDate.setHours(0, 0, 0, 0);
+        const dateStr = apiDate.toISOString().split('T')[0];
+
+        try {
+            const result = await storageService.getComparison(storageMode, {
+                period,
+                date: dateStr,
+                category: 'Все'
+            }, { credentials: 'include' });
+            setData(result.habits.map(h => ({
+                ...h,
+                countCapped: h.completed_days,
+                countRestored: h.restored_days,
+                countExtra: h.extra_quantity
+            })));
+        } catch (error) {
+            console.error('Error fetching category comparison data:', error);
+        } finally {
+            setLoading(false);
+        }
     }, [period, currentWeekDate, storageMode]);
+
+    // Initial load + real-time polling every 30 seconds
+    useEffect(() => {
+        setLoading(true);
+        fetchAllData();
+        const interval = setInterval(fetchAllData, 30000);
+        return () => clearInterval(interval);
+    }, [fetchAllData]);
 
     const categoryStats = useMemo(() => {
         const stats = {};
@@ -512,25 +511,38 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                             <th>{t('category')}</th>
                             <th>{t('totalDone')}</th>
                             <th>{t('quantity')}</th>
-                            <th>{t('progress')}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {categoryStats.map((stat, idx) => {
                             const maxTotal = Math.max(...categoryStats.map(s => s.total)) || 1;
+                            const maxExtra = Math.max(...categoryStats.map(s => s.extra)) || 1;
                             const progressWidth = (stat.total / maxTotal) * 100;
+                            const extraWidth = (stat.extra / maxExtra) * 100;
                             return (
                                 <tr key={idx}>
                                     <td className="cat-name-cell">{stat.name}</td>
-                                    <td className="cat-value-cell">{stat.total}</td>
-                                    <td className="cat-value-cell">{stat.extra}</td>
-                                    <td className="cat-progress-cell">
-                                        <div className="cat-progress-bar-bg">
-                                            <div 
-                                                className="cat-progress-bar-fill" 
-                                                style={{ width: `${progressWidth}%` }}
-                                            ></div>
+                                    <td className="cat-value-cell">
+                                        <div className="cat-progress-container">
+                                            <span className="cat-progress-number">{stat.total}</span>
+                                            <div className="cat-progress-bar-bg">
+                                                <div className="cat-progress-bar-fill" style={{ width: `${progressWidth}%` }}></div>
+                                            </div>
+                                            <span className="cat-progress-percent">{Math.round(progressWidth)}%</span>
                                         </div>
+                                    </td>
+                                    <td className="cat-value-cell cat-value-quantity">
+                                        {stat.extra > 0 ? (
+                                            <div className="cat-progress-container">
+                                                <span className="cat-progress-number cat-quantity-number">{stat.extra}</span>
+                                                <div className="cat-progress-bar-bg cat-progress-bar-bg--purple">
+                                                    <div className="cat-progress-bar-fill cat-progress-bar-fill--purple" style={{ width: `${extraWidth}%` }}></div>
+                                                </div>
+                                                <span className="cat-progress-percent">{Math.round(extraWidth)}%</span>
+                                            </div>
+                                        ) : (
+                                            <span className="cat-quantity-zero">—</span>
+                                        )}
                                     </td>
                                 </tr>
                             );
