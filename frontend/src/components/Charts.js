@@ -396,7 +396,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     );
 };
 
-const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, storageMode }) => {
+const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, storageMode, sortedCategories }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -405,13 +405,18 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
     const fetchAllData = useCallback(async () => {
         if (period === 'week') {
             const habitMap = new Map();
-            const endDate = new Date(currentWeekDate);
-            const startDate = new Date(endDate);
-            startDate.setDate(startDate.getDate() - 6);
+            // currentWeekDate — это понедельник; endDate = воскресенье (Monday + 6)
+            const startDate = new Date(currentWeekDate);
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 6);
 
             const promises = [];
             for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                const dayStr = d.toISOString().split('T')[0];
+                // Используем локальную дату, чтобы избежать UTC-сдвига
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const dayStr = `${y}-${m}-${day}`;
                 promises.push(
                     storageService.getComparison(storageMode, {
                         period: 'day',
@@ -453,8 +458,11 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
         const apiDate = new Date(currentWeekDate);
         if (period === 'month') apiDate.setDate(1);
         else if (period === 'year') apiDate.setMonth(0, 1);
-        apiDate.setHours(0, 0, 0, 0);
-        const dateStr = apiDate.toISOString().split('T')[0];
+        // Используем локальную дату, чтобы избежать смещения UTC (timezone bug)
+        const year = apiDate.getFullYear();
+        const month = String(apiDate.getMonth() + 1).padStart(2, '0');
+        const day = String(apiDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
 
         try {
             const result = await storageService.getComparison(storageMode, {
@@ -490,12 +498,53 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
             if (!stats[cat]) {
                 stats[cat] = { name: cat, total: 0, extra: 0, habits: 0 };
             }
-            stats[cat].total += (item.countCapped || 0) + (item.countRestored || 0);
+            stats[cat].total += (item.countCapped || 0); // только тёмно-зелёные (streak)
             stats[cat].extra += (item.countExtra || 0);
             stats[cat].habits += 1;
         });
-        return Object.values(stats).sort((a, b) => b.total - a.total);
+
+        const allStats = Object.values(stats);
+
+        // Если есть sortedCategories — используем их порядок как на странице треков
+        if (sortedCategories && sortedCategories.length > 0) {
+            const orderMap = {};
+            sortedCategories.forEach((cat, idx) => {
+                const name = cat.name === 'Все' ? null : cat.name;
+                if (name) orderMap[name] = idx;
+            });
+            allStats.sort((a, b) => {
+                const ia = orderMap[a.name] ?? 9999;
+                const ib = orderMap[b.name] ?? 9999;
+                return ia - ib;
+            });
+        } else {
+            allStats.sort((a, b) => b.total - a.total);
+        }
+
+        return allStats;
+    }, [data, t, sortedCategories]);
+
+    // Привычки сгруппированные по категории
+    const habitsByCategory = useMemo(() => {
+        const map = {};
+        data.forEach(item => {
+            const cat = item.category_name || t('noCategory');
+            if (!map[cat]) map[cat] = [];
+            map[cat].push(item);
+        });
+        return map;
     }, [data, t]);
+
+    const [expandedCategories, setExpandedCategories] = useState(new Set());
+
+    const toggleCategory = (catName) => {
+        setExpandedCategories(prev => {
+            const next = new Set(prev);
+            if (next.has(catName)) next.delete(catName);
+            else next.add(catName);
+            return next;
+        });
+    };
 
     if (loading || categoryStats.length === 0) return null;
 
@@ -519,32 +568,95 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                             const maxExtra = Math.max(...categoryStats.map(s => s.extra)) || 1;
                             const progressWidth = (stat.total / maxTotal) * 100;
                             const extraWidth = (stat.extra / maxExtra) * 100;
+                            const isExpanded = expandedCategories.has(stat.name);
+                            const habits = habitsByCategory[stat.name] || [];
+                            const maxHabitTotal = Math.max(...habits.map(h => h.countCapped || 0)) || 1;
+                            const maxHabitExtra = Math.max(...habits.map(h => h.countExtra || 0)) || 1;
                             return (
-                                <tr key={idx}>
-                                    <td className="cat-name-cell">{stat.name}</td>
-                                    <td className="cat-value-cell">
-                                        <div className="cat-progress-container">
-                                            <span className="cat-progress-number">{stat.total}</span>
-                                            <div className="cat-progress-bar-bg">
-                                                <div className="cat-progress-bar-fill" style={{ width: `${progressWidth}%` }}></div>
-                                            </div>
-                                            <span className="cat-progress-percent">{Math.round(progressWidth)}%</span>
-                                        </div>
-                                    </td>
-                                    <td className="cat-value-cell cat-value-quantity">
-                                        {stat.extra > 0 ? (
+                                <React.Fragment key={idx}>
+                                    <tr className="cat-row">
+                                        <td className="cat-name-cell">
+                                            <button
+                                                className={`cat-toggle-btn ${isExpanded ? 'expanded' : ''}`}
+                                                onClick={() => toggleCategory(stat.name)}
+                                                aria-expanded={isExpanded}
+                                                aria-label={isExpanded ? `Свернуть категорию ${stat.name}` : `Развернуть категорию ${stat.name}`}
+                                            >
+                                                <svg
+                                                    className="cat-toggle-icon"
+                                                    width="12"
+                                                    height="12"
+                                                    viewBox="0 0 12 12"
+                                                    fill="none"
+                                                    aria-hidden="true"
+                                                    focusable="false"
+                                                >
+                                                    <path
+                                                        d="M4 2.5L7.5 6L4 9.5"
+                                                        stroke="currentColor"
+                                                        strokeWidth="1.75"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                    />
+                                                </svg>
+                                            </button>
+                                            {stat.name}
+                                        </td>
+                                        <td className="cat-value-cell">
                                             <div className="cat-progress-container">
-                                                <span className="cat-progress-number cat-quantity-number">{stat.extra}</span>
-                                                <div className="cat-progress-bar-bg cat-progress-bar-bg--purple">
-                                                    <div className="cat-progress-bar-fill cat-progress-bar-fill--purple" style={{ width: `${extraWidth}%` }}></div>
+                                                <span className="cat-progress-number">{stat.total}</span>
+                                                <div className="cat-progress-bar-bg">
+                                                    <div className="cat-progress-bar-fill" style={{ width: `${progressWidth}%` }}></div>
                                                 </div>
-                                                <span className="cat-progress-percent">{Math.round(extraWidth)}%</span>
+                                                <span className="cat-progress-percent">{Math.round(progressWidth)}%</span>
                                             </div>
-                                        ) : (
-                                            <span className="cat-quantity-zero">—</span>
-                                        )}
-                                    </td>
-                                </tr>
+                                        </td>
+                                        <td className="cat-value-cell cat-value-quantity">
+                                            {stat.extra > 0 ? (
+                                                <div className="cat-progress-container">
+                                                    <span className="cat-progress-number cat-quantity-number">{stat.extra}</span>
+                                                    <div className="cat-progress-bar-bg cat-progress-bar-bg--purple">
+                                                        <div className="cat-progress-bar-fill cat-progress-bar-fill--purple" style={{ width: `${extraWidth}%` }}></div>
+                                                    </div>
+                                                    <span className="cat-progress-percent">{Math.round(extraWidth)}%</span>
+                                                </div>
+                                            ) : (
+                                                <span className="cat-quantity-zero">—</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                    {isExpanded && habits.map((habit, hIdx) => {
+                                        const hProgressWidth = ((habit.countCapped || 0) / maxHabitTotal) * 100;
+                                        const hExtraWidth = ((habit.countExtra || 0) / maxHabitExtra) * 100;
+                                        return (
+                                            <tr key={`h-${hIdx}`} className="cat-habit-row">
+                                                <td className="cat-habit-name-cell">↳ {habit.name}</td>
+                                                <td className="cat-value-cell">
+                                                    <div className="cat-progress-container">
+                                                        <span className="cat-progress-number">{habit.countCapped || 0}</span>
+                                                        <div className="cat-progress-bar-bg">
+                                                            <div className="cat-progress-bar-fill" style={{ width: `${hProgressWidth}%` }}></div>
+                                                        </div>
+                                                        <span className="cat-progress-percent">{Math.round(hProgressWidth)}%</span>
+                                                    </div>
+                                                </td>
+                                                <td className="cat-value-cell cat-value-quantity">
+                                                    {(habit.countExtra || 0) > 0 ? (
+                                                        <div className="cat-progress-container">
+                                                            <span className="cat-progress-number cat-quantity-number">{habit.countExtra}</span>
+                                                            <div className="cat-progress-bar-bg cat-progress-bar-bg--purple">
+                                                                <div className="cat-progress-bar-fill cat-progress-bar-fill--purple" style={{ width: `${hExtraWidth}%` }}></div>
+                                                            </div>
+                                                            <span className="cat-progress-percent">{Math.round(hExtraWidth)}%</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="cat-quantity-zero">—</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </React.Fragment>
                             );
                         })}
                     </tbody>
@@ -573,7 +685,10 @@ const Charts = ({
     const [viewType, setViewType] = useState('habits'); // 'habits' or 'quantity'
     const [chartData, setChartData] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [chartDate, setChartDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [chartDate, setChartDate] = useState(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    });
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
     useEffect(() => {
@@ -611,7 +726,8 @@ const Charts = ({
     const handlePeriodChange = (newPeriod) => {
         setPeriod(newPeriod);
         if (newPeriod === 'day') {
-            setChartDate(new Date().toISOString().split('T')[0]);
+            const now = new Date();
+            setChartDate(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`);
         } else {
             setChartDate(currentWeekDate);
         }
@@ -1007,6 +1123,7 @@ const Charts = ({
                 t={t}
                 language={language}
                 storageMode={storageMode}
+                sortedCategories={sortedCategories}
             />
 
             {(viewType === 'habits' || viewType === 'quantity') && (
