@@ -1113,6 +1113,86 @@
 .cat-name-cell {
     font-weight: 600;
     color: #333;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Triangle toggle button */
+.cat-toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9ca3af;
+    padding: 4px;
+    border-radius: 4px;
+    line-height: 0;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.18s ease, background 0.18s ease;
+}
+
+.cat-toggle-btn:hover {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.08);
+}
+
+/* Keyboard focus ring — accessible, not colour-only */
+.cat-toggle-btn:focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 2px;
+}
+
+.cat-toggle-icon {
+    display: block;
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
+}
+
+.cat-toggle-btn.expanded .cat-toggle-icon {
+    transform: rotate(90deg);
+}
+
+.cat-toggle-btn.expanded {
+    color: #10b981;
+}
+
+/* Habit sub-rows */
+.cat-habit-row {
+    background: rgba(16, 185, 129, 0.04);
+}
+
+.cat-habit-row td {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    border-bottom: 1px dashed rgba(0,0,0,0.07) !important;
+}
+
+.cat-habit-name-cell {
+    font-size: 0.92rem;
+    color: #4b5563;
+    padding-left: 32px !important;
+    font-weight: 600;
+}
+
+/* Dark theme variants */
+.dark-theme .cat-toggle-btn {
+    color: #6b7280;
+}
+.dark-theme .cat-toggle-btn.expanded,
+.dark-theme .cat-toggle-btn:hover {
+    color: #34d399;
+}
+.dark-theme .cat-habit-row {
+    background: rgba(52, 211, 153, 0.04);
+}
+.dark-theme .cat-habit-row td {
+    border-bottom-color: rgba(255,255,255,0.05) !important;
+}
+.dark-theme .cat-habit-name-cell {
+    color: #9ca3af;
 }
 
 .cat-value-cell {
