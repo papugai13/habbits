@@ -1119,19 +1119,32 @@
     font-family: 'Inter', sans-serif;
     font-weight: 700;
     color: #059669;
+    vertical-align: middle;
 }
 
-.cat-progress-cell {
-    width: 30%;
-    min-width: 100px;
+/* Quantity column — purple */
+.cat-value-quantity {
+    color: #8B5CF6 !important;
+}
+.dark-theme .cat-value-quantity {
+    color: #a78bfa !important;
+}
+
+/* Progress container inside totalDone cell */
+.cat-progress-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 140px;
 }
 
 .cat-progress-bar-bg {
-    height: 8px;
-    background: #f0f0f0;
+    height: 7px;
+    background: #e5e7eb;
     border-radius: 4px;
     overflow: hidden;
-    width: 100%;
+    flex: 1;
+    min-width: 60px;
 }
 
 .cat-progress-bar-fill {
@@ -1139,6 +1152,34 @@
     background: linear-gradient(90deg, #10b981, #34d399);
     border-radius: 4px;
     transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Purple bar for quantity column */
+.cat-progress-bar-bg--purple {
+    background: rgba(139, 92, 246, 0.15);
+}
+
+.cat-progress-bar-fill--purple {
+    background: linear-gradient(90deg, #7c3aed, #a78bfa);
+}
+
+.dark-theme .cat-progress-bar-bg--purple {
+    background: rgba(139, 92, 246, 0.2);
+}
+
+/* Quantity number color — must override .cat-progress-number green */
+.cat-quantity-number {
+    color: #8B5CF6 !important;
+    font-weight: 700;
+}
+.dark-theme .cat-quantity-number {
+    color: #a78bfa !important;
+}
+
+/* Zero dash for empty quantity */
+.cat-quantity-zero {
+    color: #9ca3af;
+    font-size: 1rem;
 }
 
 /* Dark Theme */
@@ -1161,8 +1202,34 @@
 }
 
 .dark-theme .cat-progress-bar-bg {
-    background: #404040;
+    background: #374151;
 }
+
+/* Progress number and percent labels */
+.cat-progress-number {
+    font-weight: 700;
+    color: #059669;
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+.cat-progress-percent {
+    font-weight: 500;
+    color: #6b7280;
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.dark-theme .cat-progress-number {
+    color: #34d399;
+}
+
+.dark-theme .cat-progress-percent {
+    color: #9ca3af;
+}
+
+
+
 
 /* Dark Theme Text Visibility Polish */
 .dark-theme .category-comparison-table th {
