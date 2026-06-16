@@ -1389,6 +1389,20 @@ const App = () => {
                     <div className="habit-name">
                       <span className="habit-text">
                         {habit.name}
+                        {habit.latest_comment && (
+                          <span
+                            className="habit-note-dot-inline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const d = habit.latest_comment_details;
+                              if (d) {
+                                const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
+                                openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.date, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, d.is_restored);
+                              }
+                            }}
+                            title={habit.latest_comment}
+                          >●</span>
+                        )}
                         {weeklyAward && (
                           <span className="name-streak">
                             {' '}{weeklyCount === 3 ? '⚡' : 
@@ -1402,23 +1416,6 @@ const App = () => {
                           </span>
                         )}
                       </span>
-                      {habit.latest_comment && (
-                        <div 
-                          className="habit-note-container"
-                          onClick={() => {
-                            const d = habit.latest_comment_details;
-                            if (d) {
-                              const weeklyTotalVal = habit.statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                              openEntryModal(habit.id, habit.name, d.date, d.is_done, d.id, d.quantity, d.comment, d.date, d.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, d.is_restored);
-                            }
-                          }}
-                        >
-                          <div className="habit-note-box">
-                            <span className="habit-note-label">{t('comment')}:</span>
-                            <span className="habit-note-text">{habit.latest_comment}</span>
-                          </div>
-                        </div>
-                      )}
                     </div>
                     <div className="habit-row-content">
                       <div className="habit-checks">
@@ -2080,7 +2077,8 @@ const App = () => {
     }
 
     setQuantityValue(initialQuantity);
-    setCommentValue('');
+    // Предзаполняем поле заметки текущим комментарием для выбранного дня
+    setCommentValue(currentComment || '');
     setShowQuantityModal(true);
   };
 
@@ -2136,7 +2134,7 @@ const App = () => {
       setShowQuantityModal(false);
       setQuantityModalData(null);
       setQuantityValue(null);
-      setCommentValue('');
+      // Не сбрасываем commentValue — пользователь видит, что заметка сохранена
       await fetchHabits();
     } catch (error) {
       console.error('Error saving data:', error);
@@ -2145,6 +2143,25 @@ const App = () => {
       if (quantityModalData) {
         saveQuantityToSession(habitId, dayDate, quantityValue);
       }
+    }
+  };
+
+  const handleResetNote = async () => {
+    if (!quantityModalData) return;
+    const { habitId } = quantityModalData;
+    try {
+      await storageService.clearComment(storageMode, habitId, {
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        credentials: 'include'
+      });
+      setCommentValue('');
+      setShowQuantityModal(false);
+      setQuantityModalData(null);
+      setQuantityValue(null);
+      await fetchHabits();
+    } catch (error) {
+      console.error('Error clearing note:', error);
+      alert(`Ошибка при сбросе заметки: ${error.message}`);
     }
   };
 
@@ -3557,7 +3574,7 @@ const App = () => {
                 </div>
 
                 <div className="storage-data-actions">
-                  <button id="export-data-btn" className="btn-secondary btn-small" onClick={handleExportData} disabled={isExporting}>
+                  <button id="export-data-btn" className="storage-import-label" onClick={handleExportData} disabled={isExporting}>
                     {isExporting ? (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px', verticalAlign: 'middle', animation: 'spin 1s linear infinite'}}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                     ) : (
@@ -4230,16 +4247,18 @@ const App = () => {
 
                 {(() => {
                   const habit = habitsData.find(h => h.id === quantityModalData.habitId);
-                  const noteText = quantityModalData.currentComment || habit?.latest_comment_details?.comment;
-                  const noteDate = quantityModalData.currentCommentDate || habit?.latest_comment_details?.date;
-                  return noteText ? (
+                  // Предыдущая заметка — та, что сохранена в базе (не то, что сейчас введено)
+                  const prevNoteText = habit?.latest_comment_details?.comment;
+                  const prevNoteDate = habit?.latest_comment_details?.date;
+                  // Показываем предыдущую заметку только если она отличается от текущего ввода
+                  const showPrevNote = prevNoteText && prevNoteText !== commentValue;
+                  return showPrevNote ? (
                     <div className="last-note-preview">
                       <div className="last-note-preview-label">
-                        {t('comment')}:
+                        {prevNoteDate && new Date(prevNoteDate).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long' })}:
                       </div>
                       <div className="last-note-preview-text">
-                        {noteDate && `${new Date(noteDate).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long' })}: `}
-                        {noteText}
+                        {prevNoteText}
                       </div>
                     </div>
                   ) : null;
@@ -4247,7 +4266,20 @@ const App = () => {
 
                 <div className="form-group-row">
                   <div className="form-group form-group-flex">
-                    <label htmlFor="comment-input">{t('comment')}</label>
+                    <div className="note-label-row">
+                      <label htmlFor="comment-input">
+                        {t('comment')} — {new Date(quantityModalData.dayDate + 'T12:00:00').toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long' })}
+                      </label>
+                      {(commentValue || (() => { const h = habitsData.find(h => h.id === quantityModalData.habitId); return h?.latest_comment; })()) && (
+                        <button
+                          type="button"
+                          className="btn-reset-note"
+                          onClick={handleResetNote}
+                        >
+                          Сбросить заметку
+                        </button>
+                      )}
+                    </div>
                     <textarea
                       id="comment-input"
                       className="form-input"
