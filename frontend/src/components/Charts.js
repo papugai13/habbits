@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList, Rectangle } from 'recharts';
 import './Charts.css';
+import './Analytics.css';
 import storageService from '../storageService';
 
 const getWeekNumber = (dateInput) => {
@@ -42,13 +43,16 @@ const generatePeriodLabel = (period, referenceDate, t, language) => {
         };
 
         const weekNum = getWeekNumber(today);
+        const monthKey = months[today.getMonth()];
+        const monthName = t(monthKey);
+        const year = today.getFullYear();
         return { 
             title: (
                 <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.2' }}>
                     <span>{language === 'ru' ? 'Неделя' : t('week')} №{weekNum}</span>
                     <span style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
                         <span style={{ fontSize: '0.9em', fontWeight: 'normal' }}>{formatDate(monday)} - {formatDate(sunday)}</span>
-                        <span style={{ fontSize: '0.8em', opacity: 0.7, fontWeight: 'normal' }}>{today.getFullYear()}</span>
+                        <span style={{ fontSize: '0.8em', opacity: 0.7, fontWeight: 'normal' }}>{monthName} {year}</span>
                     </span>
                 </span>
             ), 
@@ -71,7 +75,7 @@ const getNumericDate = (dateStr) => {
     return `${day}.${month}`;
 };
 
-const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData }) => {
+const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData, t, language }) => {
     if (!payload || payload.value === undefined || payload.value === null) return null;
 
     // Use payload.index if available (represents the actual 0-based array index in Recharts)
@@ -106,27 +110,40 @@ const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData })
     const showWeekNum = period === 'week' && weekNumber != null;
     const weekFill = isHighlighted ? '#22c55e' : (isDark ? '#aaa' : '#999');
 
+    // Получаем месяц для отображения третьей строки
+    let monthName = '';
+    if (period === 'week' && dataItem.date) {
+        const parsedDate = new Date(dataItem.date);
+        const months = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
+        const monthKey = months[parsedDate.getMonth()];
+        monthName = t ? t(monthKey) : '';
+        if (language === 'ru' && monthName) {
+            monthName = monthName.toLowerCase();
+        }
+    }
+    const showMonthName = period === 'week' && monthName;
+
     // Геометрия подложки
-    // Первая строка: dy=16, вторая: dy=30
-    // Верх первой строки ≈ dy - fontSize, низ второй ≈ dy + weekNumFontSize * 0.5
+    // Первая строка: dy=16, вторая: dy=30, третья: dy=42
     const padding = 5;
     const line1CenterY = 16;
     const line2CenterY = 30;
+    const line3CenterY = 42;
 
-    // Если есть вторая строка — прямоугольник покрывает обе строки
-    const rectTop = showWeekNum
-        ? line1CenterY - fontSize - padding
-        : line1CenterY - fontSize - padding;
-    const rectBottom = showWeekNum
-        ? line2CenterY + weekNumFontSize * 0.6 + padding
-        : line1CenterY + fontSize * 0.6 + padding;
+    const rectTop = line1CenterY - fontSize - padding;
+    const rectBottom = showMonthName
+        ? line3CenterY + weekNumFontSize * 0.6 + padding
+        : (showWeekNum
+            ? line2CenterY + weekNumFontSize * 0.6 + padding
+            : line1CenterY + fontSize * 0.6 + padding);
     const rectHeight = rectBottom - rectTop;
 
     // Ширина — по самой широкой строке
     const line1Width = displayValue.length * fontSize * 0.65 + padding * 2;
     const weekNumText = `нед ${weekNumber}`;
     const line2Width = showWeekNum ? weekNumText.length * weekNumFontSize * 0.65 + padding * 2 : 0;
-    const rectWidth = Math.max(line1Width, line2Width, 28);
+    const line3Width = showMonthName ? monthName.length * weekNumFontSize * 0.65 + padding * 2 : 0;
+    const rectWidth = Math.max(line1Width, line2Width, line3Width, 28);
 
     return (
         <g transform={`translate(${x},${y})`}>
@@ -147,6 +164,11 @@ const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData })
             {showWeekNum && (
                 <text x={0} y={0} dy={30} textAnchor="middle" fill={weekFill} fontSize={weekNumFontSize} fontWeight={isHighlighted ? 700 : 500}>
                     {`нед ${weekNumber}`}
+                </text>
+            )}
+            {showMonthName && (
+                <text x={0} y={0} dy={42} textAnchor="middle" fill={weekFill} fontSize={weekNumFontSize} fontWeight={isHighlighted ? 700 : 500}>
+                    {monthName}
                 </text>
             )}
         </g>
@@ -692,6 +714,26 @@ const Charts = ({
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     });
+    
+    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+    const categoryDropdownRef = useRef(null);
+
+    const selectedCategoryName = useMemo(() => {
+        if (selectedCategory === 'all' || selectedCategory === 'Все') return t('allCategories') || 'Все категории';
+        return selectedCategory === 'Без категории' ? t('noCategory') : selectedCategory;
+    }, [selectedCategory, t]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
+                setIsCategoryDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
     useEffect(() => {
@@ -705,7 +747,7 @@ const Charts = ({
     const isDark = theme === 'dark' || (theme === 'auto' && document.body.classList.contains('dark-theme'));
     const CHART_HEIGHT = isMobile ? 400 : isTablet ? 500 : 650;
     const xAxisDataKey = 'index';
-    const xAxisHeight = isMobile ? (period === 'week' ? 60 : 50) : (period === 'week' ? 60 : 40);
+    const xAxisHeight = isMobile ? (period === 'week' ? 65 : 50) : (period === 'week' ? 72 : 40);
     const barLabelSize = isMobile ? 10 : isTablet ? 12 : 18;
     const barCategoryGap = '0%';
     const barGap = 0;
@@ -988,22 +1030,37 @@ const Charts = ({
                     </div>
 
                     {sortedCategories && onSelectCategory && (
-                        <div className="categories-section unified charts-category-filter">
-                            {sortedCategories.map(category => {
-                            const displayName = category.name === 'Все' ? t('allCategories') : 
-                                             (category.name === 'Без категории' ? t('noCategory') : category.name);
-                            return (
-                                <button
-                                    key={category.id}
-                                    className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
-                                    onClick={() => onSelectCategory(category.name)}
-                                >
-                                    {displayName}
-                                </button>
-                            );
-                        })}
-                    </div>
-                )}
+                        <div className="analytics-habit-selector analytics-category-selector" ref={categoryDropdownRef} style={{ zIndex: isCategoryDropdownOpen ? 1010 : 1000, margin: 0 }}>
+                            <div 
+                                className={`custom-dropdown-header ${isCategoryDropdownOpen ? 'open' : ''}`}
+                                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                            >
+                                <span>{selectedCategoryName}</span>
+                                <div className="dropdown-arrow-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                            {isCategoryDropdownOpen && (
+                                <div className="custom-dropdown-list">
+                                    {sortedCategories.map(cat => (
+                                        <div 
+                                            key={cat.id} 
+                                            className={`dropdown-item ${selectedCategory === cat.name ? 'active' : ''}`}
+                                            onClick={() => {
+                                                onSelectCategory(cat.name);
+                                                setIsCategoryDropdownOpen(false);
+                                            }}
+                                        >
+                                            {cat.name === 'Все' ? (t('allCategories') || 'Все категории') : 
+                                             (cat.name === 'Без категории' ? t('noCategory') : cat.name)}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -1022,7 +1079,7 @@ const Charts = ({
                             <ResponsiveContainer width="100%" height="100%" style={{ overflow: 'visible' }}>
                                 <BarChart
                                     data={chartData}
-                                    margin={{ top: 30, right: 30, left: 0, bottom: 10 }}
+                                    margin={{ top: 8, right: 30, left: 0, bottom: 10 }}
                                     barCategoryGap={chartData.length === 1 ? "2%" : "10%"}
                                     barGap={chartData.length === 1 ? 0 : 2}
                                     barSize={isMobile ? 18 : isTablet ? 22 : 28}
@@ -1032,7 +1089,7 @@ const Charts = ({
                                     <XAxis
                                         dataKey={xAxisDataKey}
                                         stroke={isDark ? "#666" : "#666"}
-                                        tick={<CustomXAxisTick period={period} isMobile={isMobile} isDark={isDark} chartData={chartData} />}
+                                        tick={<CustomXAxisTick period={period} isMobile={isMobile} isDark={isDark} chartData={chartData} t={t} language={language} />}
                                         height={xAxisHeight}
                                         interval={0}
                                         tickLine={false}

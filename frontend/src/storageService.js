@@ -73,7 +73,9 @@ const isStreakActiveOnDate = (habitId, checkDateStr, statuses, habitStartDateStr
       consecutiveHits = 0;
       consecutiveMisses++;
       if (consecutiveMisses >= 1) {
-        streakActive = false;
+        if (dateStr < checkDateStr) {
+          streakActive = false;
+        }
       }
     }
   });

@@ -7,12 +7,15 @@
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
 }
 
 .charts-container::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
+    display: none;
+    /* Chrome/Safari */
 }
 
 .chart-wrapper,
@@ -121,7 +124,7 @@
 }
 
 .charts-header {
-    margin-bottom: 20px;
+    margin-bottom: 0px;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -156,7 +159,7 @@
     cursor: pointer;
     color: #333;
     transition: all 0.2s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     flex-shrink: 0;
 }
 
@@ -195,6 +198,12 @@
     align-items: flex-start;
     gap: 12px;
     flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.charts-category-row .analytics-category-selector {
+    flex: 1 1 240px;
+    max-width: 320px;
 }
 
 .view-selector,
@@ -272,7 +281,7 @@
 .chart-wrapper {
     background: white;
     border-radius: 16px;
-    padding: 15px 15px 30px 15px;
+    padding: 4px 15px 30px 15px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     position: relative;
     margin-bottom: 20px;
@@ -386,19 +395,32 @@
     .selectors-container {
         flex-direction: column;
         align-items: stretch;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .view-selector,
     .period-selector {
         width: 100%;
+        box-sizing: border-box;
+        max-width: 100%;
     }
 
     .view-btn,
     .period-btn {
         flex: 1;
         text-align: center;
-        padding: 8px 5px;
+        padding: 8px 2px;
         font-size: 13px;
+        min-width: 0 !important;
+    }
+
+    .charts-category-row {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        box-sizing: border-box;
     }
 
     .chart-wrapper {
@@ -406,10 +428,11 @@
         min-height: 250px;
         border-radius: 12px;
     }
-    
-    .charts-category-filter {
-        padding: 0 5px;
-        gap: 6px;
+
+    .charts-category-row .analytics-category-selector {
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box;
     }
 
     .comparison-chart-layout {
@@ -430,12 +453,13 @@
 
 @media (max-width: 480px) {
     .period-selector {
-        gap: 8px;
+        gap: 4px;
     }
 
     .period-btn {
-        padding: 8px 12px;
-        font-size: 13px;
+        padding: 8px 4px;
+        font-size: 12px;
+        min-width: 0 !important;
     }
 }
 
@@ -666,7 +690,7 @@
     font-weight: 600;
     color: #059669;
     border: 1px solid rgba(5, 150, 105, 0.1);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
     text-transform: capitalize;
 }
 
@@ -966,7 +990,7 @@
     font-size: 11px;
     font-weight: 500;
     color: #666;
-    border-bottom: 1px solid rgba(0,0,0,0.03);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -975,7 +999,7 @@
 
 .dark-theme .habit-name-cell {
     color: #E0E0E0;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .day-cell-header {
@@ -993,11 +1017,11 @@
 .day-cell {
     padding: 6px 0;
     text-align: center;
-    border-bottom: 1px solid rgba(0,0,0,0.03);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
 }
 
 .dark-theme .day-cell {
-    border-bottom: 1px solid rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .completion-dot {
@@ -1005,7 +1029,7 @@
     height: 24px;
     border-radius: 50%;
     margin: 0 auto;
-    background: rgba(0,0,0,0.03);
+    background: rgba(0, 0, 0, 0.03);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1013,7 +1037,7 @@
 }
 
 .dark-theme .completion-dot {
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .completion-dot.done {
@@ -1025,21 +1049,24 @@
     height: 8px;
     background: white;
     border-radius: 50%;
-    box-shadow: 0 0 4px rgba(0,0,0,0.2);
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
 }
 
 @media (max-width: 480px) {
     .habit-name-col {
         width: 80px;
     }
+
     .habit-name-cell {
         font-size: 10px;
         padding: 6px 5px;
     }
+
     .completion-dot {
         width: 18px;
         height: 18px;
     }
+
     .dot-inner {
         width: 6px;
         height: 6px;
@@ -1151,7 +1178,7 @@
 .cat-habit-row td {
     padding-top: 10px !important;
     padding-bottom: 10px !important;
-    border-bottom: 1px dashed rgba(0,0,0,0.07) !important;
+    border-bottom: 1px dashed rgba(0, 0, 0, 0.07) !important;
 }
 
 .cat-habit-name-cell {
@@ -1165,16 +1192,20 @@
 .dark-theme .cat-toggle-btn {
     color: #6b7280;
 }
+
 .dark-theme .cat-toggle-btn.expanded,
 .dark-theme .cat-toggle-btn:hover {
     color: #34d399;
 }
+
 .dark-theme .cat-habit-row {
     background: rgba(52, 211, 153, 0.04);
 }
+
 .dark-theme .cat-habit-row td {
-    border-bottom-color: rgba(255,255,255,0.05) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.05) !important;
 }
+
 .dark-theme .cat-habit-name-cell {
     color: #9ca3af;
 }
@@ -1190,6 +1221,7 @@
 .cat-value-quantity {
     color: #8B5CF6 !important;
 }
+
 .dark-theme .cat-value-quantity {
     color: #a78bfa !important;
 }
@@ -1236,6 +1268,7 @@
     color: #8B5CF6 !important;
     font-weight: 700;
 }
+
 .dark-theme .cat-quantity-number {
     color: #a78bfa !important;
 }
@@ -1297,20 +1330,24 @@
 
 /* Dark Theme Text Visibility Polish */
 .dark-theme .category-comparison-table th {
-    color: #94a3b8; /* Slate 400 instead of #666 */
+    color: #94a3b8;
+    /* Slate 400 instead of #666 */
 }
 
 .dark-theme .current-period-subtitle,
 .dark-theme .comparison-period-subtitle {
-    color: #94a3b8; /* Slate 400 instead of #666 */
+    color: #94a3b8;
+    /* Slate 400 instead of #666 */
 }
 
 .dark-theme .report-card-category {
-    color: #94a3b8; /* Slate 400 instead of #888 */
+    color: #94a3b8;
+    /* Slate 400 instead of #888 */
 }
 
 .dark-theme .comparison-no-data {
-    color: #94a3b8; /* Slate 400 instead of #999 */
+    color: #94a3b8;
+    /* Slate 400 instead of #999 */
 }
 
 @media (max-width: 768px) {
@@ -1318,15 +1355,14 @@
         padding: 15px;
         margin-top: 20px;
     }
-    
-    .category-comparison-table th, 
+
+    .category-comparison-table th,
     .category-comparison-table td {
         padding: 10px;
         font-size: 13px;
     }
-    
+
     .cat-progress-cell {
         width: 25%;
     }
 }
-

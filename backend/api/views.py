@@ -819,7 +819,8 @@ class HabitViewSet(viewsets.ModelViewSet):
                 consecutive_hits = 0
                 consecutive_misses += 1
                 if consecutive_misses >= 1:
-                    streak_active = False
+                    if curr < check_date:
+                        streak_active = False
             curr += timedelta(days=1)
 
         return streak_active
