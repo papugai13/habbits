@@ -1559,6 +1559,35 @@ class HabitViewSet(viewsets.ModelViewSet):
             traceback.print_exc()
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=['post'])
+    def clear_comment(self, request):
+        """Сбросить последний комментарий привычки"""
+        try:
+            user_profile, _ = UserAll.objects.get_or_create(
+                auth_user=request.user,
+                defaults={'name': request.user.username}
+            )
+            habit_id = request.data.get('habit_id')
+            if not habit_id:
+                return Response({'error': 'habit_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            habit = get_object_or_404(Habit, id=habit_id, user=user_profile)
+
+            # Находим последнюю запись с комментарием
+            latest_entry = Date.objects.filter(
+                user=user_profile,
+                habit=habit,
+                comment__isnull=False
+            ).exclude(comment__exact='').order_by('-habit_date', '-id').first()
+
+            if latest_entry:
+                latest_entry.comment = ''
+                latest_entry.save(update_fields=['comment'])
+                return Response({'status': 'cleared'})
+            return Response({'status': 'no_comment'})
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @ensure_csrf_cookie

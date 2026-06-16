@@ -4753,6 +4753,98 @@ html.dark-theme, body.dark-theme {
   display: none !important;
 }
 
+/* ─── Зелёная точка-заметка в строке привычки ─── */
+.habit-note-dot-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #22c55e;
+  font-size: 10px;
+  line-height: 1;
+  margin-left: 5px;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: transform 0.15s ease, color 0.15s ease;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.habit-note-dot-inline:hover {
+  transform: scale(1.4);
+  color: #16a34a;
+}
+
+.habit-note-dot-inline:active {
+  transform: scale(1.2);
+}
+
+.dark-theme .habit-note-dot-inline {
+  color: #4ade80;
+}
+
+.dark-theme .habit-note-dot-inline:hover {
+  color: #22c55e;
+}
+
+/* ─── Строка лейбла заметки с кнопкой сброса ─── */
+.note-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+
+.note-label-row label {
+  margin-bottom: 0 !important;
+  font-weight: 600;
+  font-size: 14px;
+  color: #374151;
+  flex: 1;
+}
+
+.dark-theme .note-label-row label {
+  color: #e5e7eb;
+}
+
+/* ─── Кнопка сброса заметки ─── */
+.btn-reset-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1.5px solid #a78bfa;
+  background: transparent;
+  color: #7c3aed;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-reset-note:hover {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: #7c3aed;
+}
+
+.btn-reset-note:active {
+  background: rgba(139, 92, 246, 0.2);
+  transform: scale(0.96);
+}
+
+.dark-theme .btn-reset-note {
+  color: #c4b5fd;
+  border-color: #7c3aed;
+}
+
+.dark-theme .btn-reset-note:hover {
+  background: rgba(139, 92, 246, 0.15);
+  color: #ddd6fe;
+}
+
 /* ─── Extra small screens (< 360px) ─── */
 @media (max-width: 360px) {
   .habit-note-text {

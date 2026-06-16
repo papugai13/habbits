@@ -496,6 +496,36 @@ const storageService = {
     }
   },
 
+  clearComment: async (mode, habitId, options = {}) => {
+    if (mode === 'cloud') {
+      const response = await fetch('/api/v1/habits/clear_comment/', {
+        ...options,
+        method: 'POST',
+        headers: {
+          ...options.headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ habit_id: habitId })
+      });
+      if (!response.ok) throw new Error('Failed to clear comment');
+      return response.json();
+    } else {
+      // Локальный режим: очищаем комментарий в последнем статусе
+      const statuses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]');
+      const habitStatuses = statuses
+        .filter(s => String(s.habit) === String(habitId) && s.comment)
+        .sort((a, b) => (b.date > a.date ? 1 : -1));
+      if (habitStatuses.length > 0) {
+        const idx = statuses.findIndex(s => s.id === habitStatuses[0].id);
+        if (idx !== -1) {
+          statuses[idx].comment = '';
+          localStorage.setItem(LOCAL_STORAGE_KEYS.STATUSES, JSON.stringify(statuses));
+        }
+      }
+      return { status: 'cleared' };
+    }
+  },
+
   // --- COMPARISON / CHARTS ---
 
   getComparison: async (mode, params, options = {}) => {
