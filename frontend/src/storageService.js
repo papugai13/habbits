@@ -630,7 +630,7 @@ const storageService = {
   },
 
   getDailyStatistics: async (mode, params, options = {}) => {
-    const { period, date } = params;
+    const { period, date, category } = params;
     if (mode === 'cloud') {
       const query = new URLSearchParams(params).toString();
       const response = await fetch(`/api/v1/habits/daily_statistics/?${query}`, options);
@@ -641,6 +641,21 @@ const storageService = {
       const habits = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.HABITS) || '[]');
       const statuses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]');
       
+      let filteredHabits = habits.filter(h => !h.is_archived);
+      if (category && category !== 'Все') {
+        if (category === 'Без категории') {
+          filteredHabits = filteredHabits.filter(h => !h.category);
+        } else {
+          const categories = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES) || '[]');
+          const targetCat = categories.find(c => c.name === category);
+          if (targetCat) {
+            filteredHabits = filteredHabits.filter(h => String(h.category) === String(targetCat.id));
+          } else {
+            filteredHabits = [];
+          }
+        }
+      }
+
       const stats = [];
       const now = new Date();
       let startOfPeriod;
@@ -664,8 +679,8 @@ const storageService = {
           const current = new Date(startOfPeriod);
           current.setDate(startOfPeriod.getDate() + i);
           const dateStr = toLocalDateString(current);
-          const dayStatuses = statuses.filter(s => s.date === dateStr && s.is_done);
-          const habitCount = habits.filter(h => !h.is_archived).length;
+          const dayStatuses = statuses.filter(s => s.date === dateStr && s.is_done && filteredHabits.some(h => String(h.id) === String(s.habit)));
+          const habitCount = filteredHabits.filter(h => !h.start_date || h.start_date <= dateStr).length;
           const completedCount = dayStatuses.length;
           stats.push({
             date: dateStr,
@@ -683,11 +698,13 @@ const storageService = {
           const periodStart = new Date(year, month, 1);
           const periodEnd = new Date(year, month + 1, 0);
           const monthKey = periodStart.toLocaleDateString('ru-RU', { month: 'short' });
-          const monthStatuses = statuses.filter(s => s.date >= toLocalDateString(periodStart) && s.date <= toLocalDateString(periodEnd) && s.is_done);
-          const habitCount = habits.filter(h => !h.is_archived).length;
+          const startStr = toLocalDateString(periodStart);
+          const endStr = toLocalDateString(periodEnd);
+          const monthStatuses = statuses.filter(s => s.date >= startStr && s.date <= endStr && s.is_done && filteredHabits.some(h => String(h.id) === String(s.habit)));
+          const habitCount = filteredHabits.filter(h => !h.start_date || h.start_date <= endStr).length;
           const completedCount = monthStatuses.length;
           stats.push({
-            date: toLocalDateString(periodStart),
+            date: startStr,
             label: monthKey,
             habit_count: habitCount,
             completed_count: completedCount,
@@ -702,8 +719,8 @@ const storageService = {
           current.setDate(startOfPeriod.getDate() + i);
           if (current.getFullYear() !== startOfPeriod.getFullYear()) break;
           const dateStr = toLocalDateString(current);
-          const dayStatuses = statuses.filter(s => s.date === dateStr && s.is_done);
-          const habitCount = habits.filter(h => !h.is_archived).length;
+          const dayStatuses = statuses.filter(s => s.date === dateStr && s.is_done && filteredHabits.some(h => String(h.id) === String(s.habit)));
+          const habitCount = filteredHabits.filter(h => !h.start_date || h.start_date <= dateStr).length;
           const completedCount = dayStatuses.length;
           stats.push({
             date: dateStr,
@@ -724,9 +741,13 @@ const storageService = {
     }
   },
 
-  getAnalyticsChart: async (mode, habitId, options = {}) => {
+  getAnalyticsChart: async (mode, habitId, categoryName, options = {}) => {
     if (mode === 'cloud') {
-      const response = await fetch(`/api/v1/habits/analytics_chart/?habit_id=${habitId}`, options);
+      let url = `/api/v1/habits/analytics_chart/?habit_id=${habitId}`;
+      if (categoryName) {
+        url += `&category_name=${encodeURIComponent(categoryName)}`;
+      }
+      const response = await fetch(url, options);
       if (!response.ok) throw new Error('Failed to fetch analytics chart');
       return response.json();
     } else {
@@ -735,6 +756,13 @@ const storageService = {
       const statuses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]');
       
       let filteredHabits = habits.filter(h => !h.is_archived);
+      if (categoryName && categoryName !== 'all' && categoryName !== 'Все') {
+        if (categoryName === 'Без категории') {
+          filteredHabits = filteredHabits.filter(h => !h.category_name);
+        } else {
+          filteredHabits = filteredHabits.filter(h => h.category_name === categoryName);
+        }
+      }
       if (habitId && habitId !== 'all') {
         filteredHabits = filteredHabits.filter(h => String(h.id) === String(habitId));
       }

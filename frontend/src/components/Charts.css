@@ -199,87 +199,60 @@
 
 .view-selector,
 .period-selector {
-    display: flex;
+    display: inline-flex;
     gap: 8px;
-}
-
-.view-selector {
     align-items: center;
-    background: rgba(34, 197, 94, 0.08);
-    border: 1px solid rgba(34, 197, 94, 0.15);
-    border-radius: 999px;
-    padding: 6px;
-    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.7);
+    height: 52px;
+    box-sizing: border-box;
+    background-color: var(--card-bg, #ffffff);
+    border: 2px solid rgba(34, 197, 94, 0.15);
+    border-radius: 16px;
+    padding: 4px;
+    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.04);
 }
 
 .view-btn,
 .period-btn {
-    padding: 10px 18px;
     border: none;
     background: transparent;
-    border-radius: 999px;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-color, #1a1a1a);
+    color: #4b5563;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
     cursor: pointer;
     transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+    font-weight: 700;
+    font-size: 14px;
     min-width: 110px;
-}
-
-.view-btn.active {
-    color: #fff;
-    transform: translateY(-1px);
-}
-
-.view-btn.active.habits {
-    background: linear-gradient(135deg, #34d399 0%, #22c55e 100%);
-    box-shadow: 0 12px 24px rgba(34, 197, 94, 0.18);
-}
-
-.view-btn.active.quantity {
-    background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%);
-    box-shadow: 0 12px 24px rgba(168, 85, 247, 0.18);
-}
-
-.view-btn:not(.active):hover {
-    background: rgba(255, 255, 255, 0.7);
-}
-
-.period-selector {
-    background: #f5f5f5;
-    padding: 4px;
-    border-radius: 12px;
+    box-sizing: border-box;
 }
 
 .period-btn {
-    border-radius: 8px;
-    font-weight: 500;
-}
-
-.view-btn.habits:not(.active) {
-    background: rgba(31, 102, 59, 0.05);
-    color: #059669;
-}
-
-.view-btn.quantity:not(.active) {
-    background: rgba(139, 92, 246, 0.05);
-    color: #7c4dff;
-}
-
-.view-btn.streaks:not(.active) {
-    background: rgba(16, 185, 129, 0.05);
-    color: #10b981;
+    min-width: 85px;
 }
 
 .view-btn:hover,
 .period-btn:hover {
-    background: rgba(0, 0, 0, 0.05);
-    color: #333;
+    color: #111827;
+    background: rgba(34, 197, 94, 0.05);
 }
 
 .view-btn.active,
 .period-btn.active {
-    font-weight: 600;
+    color: #fff;
+}
+
+.view-btn.active.habits,
+.period-btn.active {
+    background: linear-gradient(135deg, #34d399 0%, #22c55e 100%);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.18);
+}
+
+.view-btn.active.quantity {
+    background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%);
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.18);
 }
 
 .view-btn.active.streaks {
@@ -776,25 +749,36 @@
 
 .dark-theme .view-selector,
 .dark-theme .period-selector {
-    background: #2D2D2D;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: none;
 }
 
 .dark-theme .view-btn,
 .dark-theme .period-btn {
-    color: #E0E0E0;
+    color: rgba(255, 255, 255, 0.6);
 }
 
 .dark-theme .view-btn:hover,
 .dark-theme .period-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #E0E0E0;
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .dark-theme .view-btn.active,
 .dark-theme .period-btn.active {
-    background: #404040;
-    color: #E0E0E0;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    color: #ffffff;
+}
+
+.dark-theme .view-btn.active.habits,
+.dark-theme .period-btn.active {
+    background: linear-gradient(135deg, #34d399 0%, #22c55e 100%);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.18);
+}
+
+.dark-theme .view-btn.active.quantity {
+    background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%);
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.18);
 }
 
 .dark-theme .chart-wrapper {
