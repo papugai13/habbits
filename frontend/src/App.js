@@ -1347,7 +1347,44 @@ const App = () => {
                 }
 
                 // Precalculate dots for the current week
-                let streakActiveForDots = (dMinus1 && dMinus2);
+                let streakOnToday = 0;
+                if (dMinus2 && dMinus1) {
+                  streakOnToday = 2;
+                } else if (dMinus1) {
+                  streakOnToday = 1;
+                } else {
+                  streakOnToday = 0;
+                }
+
+                WEEK_DAYS.forEach((_, idx) => {
+                  const baseDate = new Date(currentWeekDate);
+                  const dayOfWeek = baseDate.getDay();
+                  const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                  const slotDate = new Date(baseDate);
+                  slotDate.setDate(baseDate.getDate() + (idx - currentDayIndex));
+                  const slotDateStr = slotDate.toLocaleDateString('en-CA');
+
+                  if (slotDateStr < todayStr) {
+                    const status = statuses.find(s => s && s.date === slotDateStr);
+                    const isDoneForStreak = status ? (status.is_done && !status.is_restored) : false;
+                    if (isDoneForStreak) {
+                      streakOnToday++;
+                    } else {
+                      streakOnToday = 0;
+                    }
+                  }
+                });
+
+                const todayStatus = statuses.find(s => s && s.date === todayStr);
+                const todayIsDone = todayStatus ? (todayStatus.is_done && !todayStatus.is_restored) : false;
+
+                let hasActiveStreakForDots = false;
+                if (todayIsDone) {
+                  hasActiveStreakForDots = (streakOnToday + 1) >= 2;
+                } else {
+                  hasActiveStreakForDots = streakOnToday >= 2;
+                }
+
                 const dots = new Array(7).fill('');
                 WEEK_DAYS.forEach((_, index) => {
                   const baseDate = new Date(currentWeekDate);
@@ -1358,32 +1395,10 @@ const App = () => {
                   const slotDateStr = slotDate.toLocaleDateString('en-CA');
                   
                   const status = statuses.find(s => s && s.date === slotDateStr);
-                  const isDoneForStreak = status ? (status.is_done && !status.is_restored) : false;
                   const isDoneAtAll = status ? status.is_done : false;
-                  const isFuture = slotDateStr > todayStr;
 
-                  if (isDoneForStreak) {
-                    currentStreak++;
-                    consecutiveMissed = 0;
-                    if (currentStreak >= 2) {
-                      activeStreak = true;
-                      streakActiveForDots = true;
-                    }
-                  } else {
-                    currentStreak = 0;
-                    // A miss is any day in the past or today that is not completed
-                    const isPastOrTodayMiss = slotDateStr <= todayStr;
-                    if (isPastOrTodayMiss) {
-                      streakActiveForDots = false;
-                      consecutiveMissed++;
-                      if (consecutiveMissed >= 1) {
-                        activeStreak = false;
-                      }
-                    }
-                  }
-                  
                   // Dots appear on empty boxes for today or future days only
-                  if (streakActiveForDots && !isDoneAtAll && slotDateStr >= todayStr) {
+                  if (hasActiveStreakForDots && !isDoneAtAll && slotDateStr >= todayStr) {
                     dots[index] = 'has-dot-1';
                   }
                 });
@@ -2018,6 +2033,14 @@ const App = () => {
   };
 
   const getScrollDefaultQuantity = (habitId, dayDate, isRestored) => {
+    const habit = habitsData.find(h => h.id === habitId);
+    if (habit && habit.statuses) {
+      const hasAnyQuantity = habit.statuses.some(s => s && s.is_done && s.quantity !== null && s.quantity !== undefined && s.quantity >= 1);
+      if (hasAnyQuantity) {
+        return 1;
+      }
+    }
+
     const lastStatus = getLastRecordedStatus(habitId, dayDate);
 
     if (lastStatus) {
@@ -3707,18 +3730,6 @@ const App = () => {
               )}
 
               <div className="form-group">
-                <label className="form-label">{language === 'ru' ? 'Тип цели' : 'Target Type'}</label>
-                <select
-                  className="form-input"
-                  value={newHabitTargetType}
-                  onChange={(e) => setNewHabitTargetType(e.target.value)}
-                >
-                  <option value="at_least">{language === 'ru' ? 'Не менее (светло-зеленая)' : 'At least (light green)'}</option>
-                  <option value="less_or_equal">{language === 'ru' ? 'Не более (зеленая)' : 'Less or equal (green)'}</option>
-                </select>
-              </div>
-
-              <div className="form-group">
                 <label className="form-label">{language === 'ru' ? 'Дата создания' : 'Start Date'}</label>
                 <input
                   type="date"
@@ -3895,18 +3906,6 @@ const App = () => {
                   {createError}
                 </div>
               )}
-
-              <div className="form-group">
-                <label className="form-label">{language === 'ru' ? 'Тип цели' : 'Target Type'}</label>
-                <select
-                  className="form-input"
-                  value={editingHabit.target_type || 'at_least'}
-                  onChange={(e) => setEditingHabit({ ...editingHabit, target_type: e.target.value })}
-                >
-                  <option value="at_least">{language === 'ru' ? 'Не менее (светло-зеленая)' : 'At least (light green)'}</option>
-                  <option value="less_or_equal">{language === 'ru' ? 'Не более (зеленая)' : 'Less or equal (green)'}</option>
-                </select>
-              </div>
 
               <div className="form-group">
                 <label className="form-label">{language === 'ru' ? 'Дата создания' : 'Start Date'}</label>
