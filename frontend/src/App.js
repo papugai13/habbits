@@ -1244,12 +1244,16 @@ const App = () => {
               }, 0);
               const totalHabits = filteredHabits.length;
 
+              const monthName = columnDate.toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { month: 'short' });
+              const cleanMonthName = language === 'ru' ? monthName.replace('.', '') : monthName;
+
               return (
                 <React.Fragment key={day}>
                   <div className={`grid-col day-col ${isTodayCol ? (highlightWeekToday ? 'today highlight' : 'today') : ''} ${isMonthStart ? 'month-start' : ''}`}>
                     <div className="day-completion-count">{completedCount}/{totalHabits}</div>
                     <div className="day-name">{day}</div>
                     <div className="day-number">{columnDate.getDate()}</div>
+                    <div className="day-month">{cleanMonthName}</div>
                   </div>
                 </React.Fragment>
               );
@@ -2833,6 +2837,7 @@ const App = () => {
           t={t}
           language={language}
           storageMode={storageMode}
+          categories={sortedCategories}
         />
       )}
 

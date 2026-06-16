@@ -5,16 +5,21 @@ import storageService from '../storageService';
 
 const MONTH_KEYS = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
 
-const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
+const Analytics = ({ getCookie, theme, t, language, storageMode, categories = [] }) => {
     const [data, setData] = useState({ weeks: [], months: {} });
     const [habits, setHabits] = useState([]);
     const [selectedHabitId, setSelectedHabitId] = useState('all');
+    const [selectedCategory, setSelectedCategory] = useState('all');
     const [viewType, setViewType] = useState('habits');
     const [loading, setLoading] = useState(true);
     const chartWrapperRef = useRef(null);
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const [isMetricDropdownOpen, setIsMetricDropdownOpen] = useState(false);
+    const metricDropdownRef = useRef(null);
+    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+    const categoryDropdownRef = useRef(null);
 
     const isDark = theme === 'dark' || (theme === 'auto' && document.body.classList.contains('dark-theme'));
 
@@ -31,11 +36,17 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
         };
     }, []);
 
-    // Close dropdown when clicking outside
+    // Close dropdowns when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsDropdownOpen(false);
+            }
+            if (metricDropdownRef.current && !metricDropdownRef.current.contains(event.target)) {
+                setIsMetricDropdownOpen(false);
+            }
+            if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
+                setIsCategoryDropdownOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -63,7 +74,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
         const fetchAnalytics = async () => {
             setLoading(true);
             try {
-                const result = await storageService.getAnalyticsChart(storageMode, selectedHabitId, {
+                const result = await storageService.getAnalyticsChart(storageMode, selectedHabitId, selectedCategory, {
                     credentials: 'include',
                 });
                 setData(result);
@@ -81,17 +92,38 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
             }
         };
         fetchAnalytics();
-    }, [selectedHabitId, storageMode]);
+    }, [selectedHabitId, selectedCategory, storageMode]);
 
     const weekWidth = 50;
     const paddingLeft = 40;
     const paddingRight = 20;
+
+    const selectedCategoryName = useMemo(() => {
+        if (selectedCategory === 'all' || selectedCategory === 'Все') return t('allCategories') || 'Все категории';
+        return selectedCategory;
+    }, [selectedCategory, t]);
 
     const selectedHabitName = useMemo(() => {
         if (selectedHabitId === 'all') return t('allHabits') || 'Все привычки';
         const habit = habits.find(h => h.id.toString() === selectedHabitId.toString());
         return habit ? habit.name : t('allHabits') || 'Все привычки';
     }, [selectedHabitId, habits, t]);
+
+    const filteredHabitsForSelector = useMemo(() => {
+        if (selectedCategory === 'all' || selectedCategory === 'Все') {
+            return habits;
+        }
+        if (selectedCategory === 'Без категории' || selectedCategory === 'none') {
+            return habits.filter(h => !h.category_name);
+        }
+        return habits.filter(h => h.category_name === selectedCategory);
+    }, [habits, selectedCategory]);
+
+    const handleCategoryChange = (categoryName) => {
+        setSelectedCategory(categoryName);
+        setSelectedHabitId('all');
+        setIsCategoryDropdownOpen(false);
+    };
 
     const chartDataKey = useMemo(() => {
         if (viewType === 'quantity') return 'quantity';
@@ -131,7 +163,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
         
         const months = [];
         let currentMonthBlock = null;
-        let prevWeekPercentage = null;
+        let prevWeekVal = null;
         
         data.weeks.forEach((week) => {
             const startDate = new Date(week.week_start);
@@ -152,6 +184,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                         days_done: 0,
                         total_days: 0,
                         percentage: 0,
+                        quantity: 0,
                         trend: null
                     }
                 };
@@ -163,12 +196,14 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
             const totalDays = week.total_days || 7;
             const daysDone = Math.min(week.days_done || 0, totalDays);
             const percentage = totalDays > 0 ? Math.min(Math.round((daysDone / totalDays) * 100), 100) : 0;
+            const quantity = week.quantity || 0;
             
+            const currentVal = viewType === 'quantity' ? quantity : percentage;
             let trend = null;
-            if (prevWeekPercentage !== null) {
-                trend = percentage - prevWeekPercentage;
+            if (prevWeekVal !== null) {
+                trend = currentVal - prevWeekVal;
             }
-            prevWeekPercentage = percentage;
+            prevWeekVal = currentVal;
             
             currentMonthBlock.weeks.push({
                 week_label: week.week_label.replace('н', language === 'ru' ? 'неделя ' : 'week '),
@@ -176,11 +211,13 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                 days_done: daysDone,
                 total_days: totalDays,
                 percentage: percentage,
+                quantity: quantity,
                 trend: trend
             });
             
             currentMonthBlock.totals.days_done += daysDone;
             currentMonthBlock.totals.total_days += totalDays;
+            currentMonthBlock.totals.quantity += quantity;
         });
         
         if (currentMonthBlock) {
@@ -195,12 +232,15 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
         });
 
         return months;
-    }, [data.weeks, language]);
+    }, [data.weeks, language, viewType]);
 
 
     const getMonthTrend = (mKey, currentTableData) => {
         const idx = currentTableData.findIndex(m => m.month_key === mKey);
         if (idx > 0) {
+            if (viewType === 'quantity') {
+                return currentTableData[idx].totals.quantity - currentTableData[idx-1].totals.quantity;
+            }
             return currentTableData[idx].totals.percentage - currentTableData[idx-1].totals.percentage;
         }
         return null;
@@ -208,52 +248,35 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
 
     // Calculate month blocks for the row below the chart
     const monthBlocks = useMemo(() => {
-        if (!data.weeks || data.weeks.length === 0) return [];
+        if (!data.weeks || data.weeks.length === 0 || tableData.length === 0) return [];
         const blocks = [];
 
-        // Helper: get "year-month" key from a week entry (using Thursday = week_start + 3 days)
-        const getYearMonthKey = (week) => {
-            const thursday = new Date(week.week_start);
-            thursday.setDate(thursday.getDate() + 3);
-            return `${thursday.getFullYear()}-${thursday.getMonth() + 1}`;
-        };
+        // Helper to get index range of weeks for a month
+        let weekStartIndex = 0;
+        tableData.forEach((mBlock) => {
+            const numWeeks = mBlock.weeks.length;
+            const weekEndIndex = weekStartIndex + numWeeks - 1;
+            const centerIdx = weekStartIndex + (weekEndIndex - weekStartIndex) / 2;
 
-        let currentKey = getYearMonthKey(data.weeks[0]);
-        let startIndex = 0;
+            // Real width available for weeks is chartWidth - paddingLeft - paddingRight
+            const actualWeekWidth = (chartWidth - paddingLeft - paddingRight) / data.weeks.length;
+            const leftPos = paddingLeft + (centerIdx * actualWeekWidth) + actualWeekWidth / 2;
 
-        for (let i = 1; i <= data.weeks.length; i++) {
-            const isLast = i === data.weeks.length;
-            const weekKey = !isLast ? getYearMonthKey(data.weeks[i]) : null;
+            const trend = getMonthTrend(mBlock.month_key, tableData);
 
-            if (isLast || weekKey !== currentKey) {
-                const endIndex = i - 1;
-                // calculate center in pixels
-                const centerIdx = startIndex + (endIndex - startIndex) / 2;
-                
-                // Real width available for weeks is chartWidth - paddingLeft - paddingRight
-                const actualWeekWidth = (chartWidth - paddingLeft - paddingRight) / data.weeks.length;
-                const leftPos = paddingLeft + (centerIdx * actualWeekWidth) + actualWeekWidth / 2;
+            blocks.push({
+                month: mBlock.month,
+                name: mBlock.month_name,
+                left: leftPos,
+                value: viewType === 'quantity' ? mBlock.totals.quantity : mBlock.totals.percentage,
+                trend: trend
+            });
 
-                const monthData = data.months[currentKey] || { percentage: 0, trend: null };
-                const monthName = data.weeks[startIndex].month_name;
-                const month = data.weeks[startIndex].month;
+            weekStartIndex += numWeeks;
+        });
 
-                blocks.push({
-                    month,
-                    name: monthName,
-                    left: leftPos,
-                    percentage: monthData.percentage,
-                    trend: monthData.trend
-                });
-
-                if (!isLast) {
-                    currentKey = weekKey;
-                    startIndex = i;
-                }
-            }
-        }
         return blocks;
-    }, [data.weeks, data.months, chartWidth]);
+    }, [data.weeks, tableData, chartWidth, viewType]);
 
     if (loading) {
         return (
@@ -277,14 +300,15 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
         );
     }
 
-    const renderTrend = (trend) => {
+    const renderTrend = (trend, showPercent = true) => {
         if (trend === null || trend === undefined) return null;
+        const suffix = showPercent ? '%' : '';
         if (trend > 0) {
-            return <span className="trend-positive">+{trend}%↑</span>;
+            return <span className="trend-positive">+{trend}{suffix}↑</span>;
         } else if (trend < 0) {
-            return <span className="trend-negative">{trend}%↓</span>;
+            return <span className="trend-negative">{trend}{suffix}↓</span>;
         } else {
-            return <span className="trend-neutral">0%</span>;
+            return <span className="trend-neutral">0{suffix}</span>;
         }
     };
 
@@ -295,19 +319,19 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                 <div className="analytics-header-controls">
                     <div className="analytics-view-selector">
                         <button
-                            className={`view-btn ${viewType === 'habits' ? 'active' : ''}`}
+                            className={`view-btn habits ${viewType === 'habits' ? 'active' : ''}`}
                             onClick={() => setViewType('habits')}
                         >
                             {t('completed') || 'Выполнено'}
                         </button>
                         <button
-                            className={`view-btn ${viewType === 'quantity' ? 'active' : ''}`}
+                            className={`view-btn quantity ${viewType === 'quantity' ? 'active' : ''}`}
                             onClick={() => setViewType('quantity')}
                         >
                             {t('quantity') || 'Количество'}
                         </button>
                     </div>
-                    <div className="analytics-habit-selector" ref={dropdownRef}>
+                    <div className="analytics-habit-selector" ref={dropdownRef} style={{ zIndex: isDropdownOpen ? 1010 : 1000 }}>
                         <div 
                             className={`custom-dropdown-header ${isDropdownOpen ? 'open' : ''}`}
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -331,7 +355,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                                 >
                                     {t('allHabits') || 'Все привычки'}
                                 </div>
-                                {habits.map(habit => (
+                                {filteredHabitsForSelector.map(habit => (
                                     <div 
                                         key={habit.id} 
                                         className={`dropdown-item ${selectedHabitId.toString() === habit.id.toString() ? 'active' : ''}`}
@@ -341,6 +365,32 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                                         }}
                                     >
                                         {habit.name}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <div className="analytics-habit-selector analytics-category-selector" ref={categoryDropdownRef} style={{ zIndex: isCategoryDropdownOpen ? 1010 : 1000 }}>
+                        <div 
+                            className={`custom-dropdown-header ${isCategoryDropdownOpen ? 'open' : ''}`}
+                            onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                        >
+                            <span>{selectedCategoryName}</span>
+                            <div className="dropdown-arrow-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        {isCategoryDropdownOpen && (
+                            <div className="custom-dropdown-list">
+                                {categories.map(cat => (
+                                    <div 
+                                        key={cat.id} 
+                                        className={`dropdown-item ${selectedCategory === cat.name ? 'active' : ''}`}
+                                        onClick={() => handleCategoryChange(cat.name)}
+                                    >
+                                        {cat.name === 'Все' ? (t('allCategories') || 'Все категории') : cat.name}
                                     </div>
                                 ))}
                             </div>
@@ -356,7 +406,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                         <div key={monthBlock.month_key} className="analytics-table-wrapper">
                             <div className="analytics-table-header-select">
                                 <span className="habit-label">{t(MONTH_KEYS[monthBlock.month - 1])} {monthBlock.year}</span>
-                                {trend !== null && renderTrend(trend)}
+                                {trend !== null && renderTrend(trend, viewType !== 'quantity')}
                             </div>
                             <table className="analytics-table">
                                 <tbody>
@@ -364,18 +414,26 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                                         <tr key={wIdx}>
                                             <td className="col-week">{w.week_label}</td>
                                             <td className="col-date">{w.date_range}</td>
-                                            <td className="col-fraction">{w.days_done}/{w.total_days}</td>
-                                            <td className="col-percentage">{w.percentage}%</td>
-                                            <td className="col-trend">{renderTrend(w.trend)}</td>
+                                            <td className="col-fraction">
+                                                {viewType === 'quantity' ? w.quantity : `${w.days_done}/${w.total_days}`}
+                                            </td>
+                                            <td className="col-percentage">
+                                                {viewType === 'quantity' ? '' : `${w.percentage}%`}
+                                            </td>
+                                            <td className="col-trend">{renderTrend(w.trend, viewType !== 'quantity')}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                                 <tfoot>
                                     <tr>
                                         <td colSpan="2" className="footer-label">{t('total') || 'итого:'}</td>
-                                        <td className="col-fraction">{monthBlock.totals.days_done}/{monthBlock.totals.total_days}</td>
-                                        <td className="col-percentage">{monthBlock.totals.percentage}%</td>
-                                        <td className="col-trend">{renderTrend(trend)}</td>
+                                        <td className="col-fraction">
+                                            {viewType === 'quantity' ? monthBlock.totals.quantity : `${monthBlock.totals.days_done}/${monthBlock.totals.total_days}`}
+                                        </td>
+                                        <td className="col-percentage">
+                                            {viewType === 'quantity' ? '' : `${monthBlock.totals.percentage}%`}
+                                        </td>
+                                        <td className="col-trend">{renderTrend(trend, viewType !== 'quantity')}</td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -448,10 +506,12 @@ const Analytics = ({ getCookie, theme, t, language, storageMode }) => {
                         >
                             <div className="analytics-month-name">{t(MONTH_KEYS[block.month - 1])}</div>
                             <div className="analytics-month-stats">
-                                <span className="percent">{block.percentage}%</span>
+                                <span className="percent">
+                                    {block.value}{viewType === 'quantity' ? '' : '%'}
+                                </span>
                                 {block.trend !== null && block.trend !== 0 && (
                                     <span className={`trend ${block.trend > 0 ? 'positive' : 'negative'}`}>
-                                        {block.trend > 0 ? '+' : ''}{block.trend}%{block.trend > 0 ? '↑' : '↓'}
+                                        {block.trend > 0 ? '+' : ''}{block.trend}{viewType === 'quantity' ? '' : '%'}{block.trend > 0 ? '↑' : '↓'}
                                     </span>
                                 )}
                             </div>

@@ -55,7 +55,9 @@ const generatePeriodLabel = (period, referenceDate, t, language) => {
             subtitle: null 
         };
     } else if (period === 'month') {
-        return { title: `${today.getFullYear()}`, subtitle: '' };
+        const monthKey = months[today.getMonth()];
+        const monthName = t(monthKey);
+        return { title: `${monthName} ${today.getFullYear()}`, subtitle: '' };
     } else if (period === 'year') {
         return { title: `${today.getFullYear()}`, subtitle: '' };
     }
@@ -72,7 +74,8 @@ const getNumericDate = (dateStr) => {
 const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData }) => {
     if (!payload || payload.value === undefined || payload.value === null) return null;
 
-    const dataIndex = payload.value;
+    // Use payload.index if available (represents the actual 0-based array index in Recharts)
+    const dataIndex = payload.index !== undefined ? payload.index : payload.value;
     const dataItem = chartData[dataIndex];
     
     if (!dataItem) return null;
@@ -812,7 +815,8 @@ const Charts = ({
                         isToday: item.date === todayStr,
                         isCurrentWeek: isCurrentWeek,
                         isCurrentMonth: isCurrentMonth,
-                        isCurrentYear: isCurrentYear
+                        isCurrentYear: isCurrentYear,
+                        habit_count: habitCount
                     };
 
                     const countCapped = item.completed_days || 0;
@@ -831,13 +835,48 @@ const Charts = ({
                         percentage: percentageStr
                     };
                 });
+                // Filter out columns for periods before any habits were created (where habit_count is 0)
+                const filteredData = formattedData
+                    .filter(item => (item.habit_count || 0) > 0)
+                    .map((item, idx) => ({ ...item, index: idx }));
+
                 // Добавим фиктивные точки если данных мало
-                let paddedData = formattedData;
-                if (formattedData.length === 1) {
+                let paddedData = filteredData;
+                if (filteredData.length === 1) {
                     paddedData = [
-                        { ...formattedData[0], index: -1, countCapped: 0, countRestored: 0, countExtra: 0, streakCount: 0, label: '', dayMonth: '', dayNumber: '' },
-                        { ...formattedData[0], index: 0 },
-                        { ...formattedData[0], index: 1, countCapped: 0, countRestored: 0, countExtra: 0, streakCount: 0, label: '', dayMonth: '', dayNumber: '' }
+                        { ...filteredData[0], index: 0 },
+                        { 
+                            ...filteredData[0], 
+                            index: 1, 
+                            countCapped: 0, 
+                            countRestored: 0, 
+                            countExtra: 0, 
+                            streakCount: 0, 
+                            label: '', 
+                            dayMonth: '', 
+                            dayNumber: '',
+                            percentage: '',
+                            isToday: false,
+                            isCurrentWeek: false,
+                            isCurrentMonth: false,
+                            isCurrentYear: false
+                        },
+                        { 
+                            ...filteredData[0], 
+                            index: 2, 
+                            countCapped: 0, 
+                            countRestored: 0, 
+                            countExtra: 0, 
+                            streakCount: 0, 
+                            label: '', 
+                            dayMonth: '', 
+                            dayNumber: '',
+                            percentage: '',
+                            isToday: false,
+                            isCurrentWeek: false,
+                            isCurrentMonth: false,
+                            isCurrentYear: false
+                        }
                     ];
                 }
                 setChartData(paddedData);
