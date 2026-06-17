@@ -140,7 +140,7 @@ const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData, t
 
     // Ширина — по самой широкой строке
     const line1Width = displayValue.length * fontSize * 0.65 + padding * 2;
-    const weekNumText = `нед ${weekNumber}`;
+    const weekNumText = language === 'ru' ? `нед ${weekNumber}` : `wk ${weekNumber}`;
     const line2Width = showWeekNum ? weekNumText.length * weekNumFontSize * 0.65 + padding * 2 : 0;
     const line3Width = showMonthName ? monthName.length * weekNumFontSize * 0.65 + padding * 2 : 0;
     const rectWidth = Math.max(line1Width, line2Width, line3Width, 28);
@@ -163,7 +163,7 @@ const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData, t
             </text>
             {showWeekNum && (
                 <text x={0} y={0} dy={30} textAnchor="middle" fill={weekFill} fontSize={weekNumFontSize} fontWeight={isHighlighted ? 700 : 500}>
-                    {`нед ${weekNumber}`}
+                    {language === 'ru' ? `нед ${weekNumber}` : `wk ${weekNumber}`}
                 </text>
             )}
             {showMonthName && (
@@ -605,7 +605,10 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                                 className={`cat-toggle-btn ${isExpanded ? 'expanded' : ''}`}
                                                 onClick={() => toggleCategory(stat.name)}
                                                 aria-expanded={isExpanded}
-                                                aria-label={isExpanded ? `Свернуть категорию ${stat.name}` : `Развернуть категорию ${stat.name}`}
+                                                aria-label={isExpanded 
+                                                    ? (language === 'ru' ? `Свернуть категорию ${stat.name}` : `Collapse category ${stat.name}`) 
+                                                    : (language === 'ru' ? `Развернуть категорию ${stat.name}` : `Expand category ${stat.name}`)
+                                                }
                                             >
                                                 <svg
                                                     className="cat-toggle-icon"
@@ -693,13 +696,25 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
 
 // ─── CalendarReport ────────────────────────────────────────────────────────────
 
-const MONTH_NAMES_RU = [
-    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-];
-const QUARTER_NAMES = ['I КВАРТАЛ', 'II КВАРТАЛ', 'III КВАРТАЛ', 'IV КВАРТАЛ'];
+const MONTH_NAMES = {
+    ru: [
+        'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+    ],
+    en: [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ]
+};
+const QUARTER_NAMES = {
+    ru: ['I КВАРТАЛ', 'II КВАРТАЛ', 'III КВАРТАЛ', 'IV КВАРТАЛ'],
+    en: ['I QUARTER', 'II QUARTER', 'III QUARTER', 'IV QUARTER']
+};
 const QUARTERS = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 10, 11]];
-const DAY_HEADERS_RU = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const DAY_HEADERS = {
+    ru: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+    en: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+};
 
 const CalendarReport = ({ theme, t, language, storageMode, selectedCategory }) => {
     const [calYear, setCalYear] = useState(new Date().getFullYear());
@@ -711,6 +726,10 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory }) =
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     }, []);
+
+    const monthNames = MONTH_NAMES[language] || MONTH_NAMES.ru;
+    const quarterNames = QUARTER_NAMES[language] || QUARTER_NAMES.ru;
+    const dayHeaders = DAY_HEADERS[language] || DAY_HEADERS.ru;
 
     useEffect(() => {
         const fetchCalendarData = async () => {
@@ -758,9 +777,9 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory }) =
 
         return (
             <div className="cal-month" key={monthIdx}>
-                <div className="cal-month-title">{MONTH_NAMES_RU[monthIdx]}</div>
+                <div className="cal-month-title">{monthNames[monthIdx]}</div>
                 <div className="cal-grid">
-                    {DAY_HEADERS_RU.map(h => (
+                    {dayHeaders.map(h => (
                         <div key={h} className="cal-day-header">{h}</div>
                     ))}
                     {cells.map((cell, idx) => {
@@ -800,7 +819,9 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory }) =
                                 style={cellStyle}
                                 title={
                                     isDone
-                                        ? `${dateStr}: выполнено ${completed} из ${habitCount}${quantity > 0 ? `, кол-во: ${quantity}` : ''}`
+                                        ? language === 'ru'
+                                            ? `${dateStr}: выполнено ${completed} из ${habitCount}${quantity > 0 ? `, кол-во: ${quantity}` : ''}`
+                                            : `${dateStr}: completed ${completed} of ${habitCount}${quantity > 0 ? `, qty: ${quantity}` : ''}`
                                         : dateStr
                                 }
                             >
@@ -814,7 +835,7 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory }) =
                 </div>
             </div>
         );
-    }, [calYear, dayData, todayStr, isDark]);
+    }, [calYear, dayData, todayStr, isDark, language, monthNames, dayHeaders]);
 
     return (
         <div className="cal-report-container">
@@ -822,13 +843,13 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory }) =
                 <button
                     className="cal-nav-btn"
                     onClick={() => setCalYear(y => y - 1)}
-                    aria-label="Предыдущий год"
+                    aria-label={language === 'ru' ? 'Предыдущий год' : 'Previous year'}
                 >←</button>
                 <span className="cal-year-label">{calYear}</span>
                 <button
                     className="cal-nav-btn"
                     onClick={() => setCalYear(y => y + 1)}
-                    aria-label="Следующий год"
+                    aria-label={language === 'ru' ? 'Следующий год' : 'Next year'}
                 >→</button>
             </div>
 
@@ -841,7 +862,7 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory }) =
                 <div className="cal-quarters">
                     {QUARTERS.map((monthIdxs, qIdx) => (
                         <div key={qIdx} className="cal-quarter">
-                            <div className="cal-quarter-title">{QUARTER_NAMES[qIdx]}</div>
+                            <div className="cal-quarter-title">{quarterNames[qIdx]}</div>
                             <div className="cal-quarter-months">
                                 {monthIdxs.map(mIdx => renderMonth(mIdx))}
                             </div>
@@ -1144,8 +1165,8 @@ const Charts = ({
                             id="report-tab-charts"
                             className={`report-tab-btn${reportView === 'charts' ? ' active' : ''}`}
                             onClick={() => setReportView('charts')}
-                            title="Графики"
-                            aria-label="Графики"
+                            title={language === 'ru' ? 'Графики' : 'Charts'}
+                            aria-label={language === 'ru' ? 'Графики' : 'Charts'}
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <rect x="3" y="12" width="4" height="9" rx="1"/>
@@ -1157,8 +1178,8 @@ const Charts = ({
                             id="report-tab-calendar"
                             className={`report-tab-btn${reportView === 'calendar' ? ' active' : ''}`}
                             onClick={() => setReportView('calendar')}
-                            title="Календарный отчёт"
-                            aria-label="Календарный отчёт"
+                            title={language === 'ru' ? 'Календарный отчёт' : 'Calendar report'}
+                            aria-label={language === 'ru' ? 'Календарный отчёт' : 'Calendar report'}
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <rect x="3" y="4" width="18" height="18" rx="2"/>
