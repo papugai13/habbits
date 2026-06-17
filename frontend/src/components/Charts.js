@@ -140,7 +140,7 @@ const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData, t
 
     // Ширина — по самой широкой строке
     const line1Width = displayValue.length * fontSize * 0.65 + padding * 2;
-    const weekNumText = `нед ${weekNumber}`;
+    const weekNumText = language === 'ru' ? `нед ${weekNumber}` : `wk ${weekNumber}`;
     const line2Width = showWeekNum ? weekNumText.length * weekNumFontSize * 0.65 + padding * 2 : 0;
     const line3Width = showMonthName ? monthName.length * weekNumFontSize * 0.65 + padding * 2 : 0;
     const rectWidth = Math.max(line1Width, line2Width, line3Width, 28);
@@ -163,7 +163,7 @@ const CustomXAxisTick = ({ x, y, payload, period, isMobile, isDark, chartData, t
             </text>
             {showWeekNum && (
                 <text x={0} y={0} dy={30} textAnchor="middle" fill={weekFill} fontSize={weekNumFontSize} fontWeight={isHighlighted ? 700 : 500}>
-                    {`нед ${weekNumber}`}
+                    {language === 'ru' ? `нед ${weekNumber}` : `wk ${weekNumber}`}
                 </text>
             )}
             {showMonthName && (
@@ -605,7 +605,10 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                                 className={`cat-toggle-btn ${isExpanded ? 'expanded' : ''}`}
                                                 onClick={() => toggleCategory(stat.name)}
                                                 aria-expanded={isExpanded}
-                                                aria-label={isExpanded ? `Свернуть категорию ${stat.name}` : `Развернуть категорию ${stat.name}`}
+                                                aria-label={isExpanded 
+                                                    ? (language === 'ru' ? `Свернуть категорию ${stat.name}` : `Collapse category ${stat.name}`) 
+                                                    : (language === 'ru' ? `Развернуть категорию ${stat.name}` : `Expand category ${stat.name}`)
+                                                }
                                             >
                                                 <svg
                                                     className="cat-toggle-icon"
@@ -691,6 +694,188 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
     );
 };
 
+// ─── CalendarReport ────────────────────────────────────────────────────────────
+
+const MONTH_NAMES = {
+    ru: [
+        'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+    ],
+    en: [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ]
+};
+const QUARTER_NAMES = {
+    ru: ['I КВАРТАЛ', 'II КВАРТАЛ', 'III КВАРТАЛ', 'IV КВАРТАЛ'],
+    en: ['I QUARTER', 'II QUARTER', 'III QUARTER', 'IV QUARTER']
+};
+const QUARTERS = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 10, 11]];
+const DAY_HEADERS = {
+    ru: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+    en: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+};
+
+const CalendarReport = ({ theme, t, language, storageMode, selectedCategory }) => {
+    const [calYear, setCalYear] = useState(new Date().getFullYear());
+    const [dayData, setDayData] = useState({});
+    const [loading, setLoading] = useState(true);
+
+    const isDark = theme === 'dark' || (theme === 'auto' && document.body.classList.contains('dark-theme'));
+    const todayStr = useMemo(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }, []);
+
+    const monthNames = MONTH_NAMES[language] || MONTH_NAMES.ru;
+    const quarterNames = QUARTER_NAMES[language] || QUARTER_NAMES.ru;
+    const dayHeaders = DAY_HEADERS[language] || DAY_HEADERS.ru;
+
+    useEffect(() => {
+        const fetchCalendarData = async () => {
+            setLoading(true);
+            try {
+                const result = await storageService.getDailyStatistics(
+                    storageMode,
+                    {
+                        start_date: `${calYear}-01-01`,
+                        end_date: `${calYear}-12-31`,
+                        category: selectedCategory || 'Все'
+                    },
+                    { credentials: 'include' }
+                );
+                const map = {};
+                (result.data || []).forEach(item => {
+                    map[item.date] = {
+                        completed: item.completed_days || 0,
+                        quantity: item.extra_quantity || 0,
+                        habitCount: item.habit_count || 0
+                    };
+                });
+                setDayData(map);
+            } catch (e) {
+                console.error('Ошибка загрузки данных календаря:', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCalendarData();
+    }, [calYear, selectedCategory, storageMode]);
+
+    const renderMonth = useCallback((monthIdx) => {
+        const firstDay = new Date(calYear, monthIdx, 1).getDay();
+        const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+        const daysInMonth = new Date(calYear, monthIdx + 1, 0).getDate();
+
+        const cells = [];
+        for (let i = 0; i < startOffset; i++) cells.push(null);
+        for (let d = 1; d <= daysInMonth; d++) {
+            const mm = String(monthIdx + 1).padStart(2, '0');
+            const dd = String(d).padStart(2, '0');
+            cells.push({ day: d, dateStr: `${calYear}-${mm}-${dd}` });
+        }
+
+        return (
+            <div className="cal-month" key={monthIdx}>
+                <div className="cal-month-title">{monthNames[monthIdx]}</div>
+                <div className="cal-grid">
+                    {dayHeaders.map(h => (
+                        <div key={h} className="cal-day-header">{h}</div>
+                    ))}
+                    {cells.map((cell, idx) => {
+                        if (!cell) {
+                            return <div key={`e-${monthIdx}-${idx}`} className="cal-day cal-day-empty" />;
+                        }
+                        const { day, dateStr } = cell;
+                        const data = dayData[dateStr];
+                        const completed = data?.completed || 0;
+                        const quantity = data?.quantity || 0;
+                        const habitCount = data?.habitCount || 0;
+                        const isFuture = dateStr > todayStr;
+                        const isToday = dateStr === todayStr;
+                        const isDone = completed > 0 && !isFuture;
+
+                        const ratio = habitCount > 0 ? completed / habitCount : 0;
+
+                        const cellStyle = {};
+                        if (isDone) {
+                            cellStyle.backgroundColor = isDark
+                                ? '#059669'
+                                : '#22c55e';
+                        }
+
+                        const showNumber = isDone && completed > 0;
+                        const displayNumber = quantity > 0 ? quantity : completed;
+
+                        return (
+                            <div
+                                key={dateStr}
+                                className={[
+                                    'cal-day',
+                                    isDone ? 'done' : '',
+                                    isFuture ? 'future' : '',
+                                    isToday ? 'today' : ''
+                                ].filter(Boolean).join(' ')}
+                                style={cellStyle}
+                                title={
+                                    isDone
+                                        ? language === 'ru'
+                                            ? `${dateStr}: выполнено ${completed} из ${habitCount}${quantity > 0 ? `, кол-во: ${quantity}` : ''}`
+                                            : `${dateStr}: completed ${completed} of ${habitCount}${quantity > 0 ? `, qty: ${quantity}` : ''}`
+                                        : dateStr
+                                }
+                            >
+                                <span className="cal-day-num">{day}</span>
+                                {showNumber && (
+                                    <span className="cal-day-count">{displayNumber}</span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    }, [calYear, dayData, todayStr, isDark, language, monthNames, dayHeaders]);
+
+    return (
+        <div className="cal-report-container">
+            <div className="cal-year-nav">
+                <button
+                    className="cal-nav-btn"
+                    onClick={() => setCalYear(y => y - 1)}
+                    aria-label={language === 'ru' ? 'Предыдущий год' : 'Previous year'}
+                >←</button>
+                <span className="cal-year-label">{calYear}</span>
+                <button
+                    className="cal-nav-btn"
+                    onClick={() => setCalYear(y => y + 1)}
+                    aria-label={language === 'ru' ? 'Следующий год' : 'Next year'}
+                >→</button>
+            </div>
+
+            {loading ? (
+                <div className="charts-loading">
+                    <div className="loading-spinner" />
+                    <p>{t('loading') || 'Загрузка...'}</p>
+                </div>
+            ) : (
+                <div className="cal-quarters">
+                    {QUARTERS.map((monthIdxs, qIdx) => (
+                        <div key={qIdx} className="cal-quarter">
+                            <div className="cal-quarter-title">{quarterNames[qIdx]}</div>
+                            <div className="cal-quarter-months">
+                                {monthIdxs.map(mIdx => renderMonth(mIdx))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ─── Charts ────────────────────────────────────────────────────────────────────
+
 const Charts = ({ 
     getCookie, 
     habitsData, 
@@ -706,6 +891,7 @@ const Charts = ({
     language,
     storageMode
 }) => {
+    const [reportView, setReportView] = useState('charts'); // 'charts' | 'calendar'
     const [period, setPeriod] = useState('day');
     const [viewType, setViewType] = useState('habits'); // 'habits' or 'quantity'
     const [chartData, setChartData] = useState([]);
@@ -971,8 +1157,45 @@ const Charts = ({
     return (
         <div className="charts-container">
             <div className="charts-header">
-                <h2>{t('statistics')}</h2>
-                
+                <div className="charts-title-row">
+                    <h2>{t('statistics')}</h2>
+                    {/* Переключатель вкладок */}
+                    <div className="report-tab-switcher">
+                        <button
+                            id="report-tab-charts"
+                            className={`report-tab-btn${reportView === 'charts' ? ' active' : ''}`}
+                            onClick={() => setReportView('charts')}
+                            title={language === 'ru' ? 'Графики' : 'Charts'}
+                            aria-label={language === 'ru' ? 'Графики' : 'Charts'}
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="12" width="4" height="9" rx="1"/>
+                                <rect x="10" y="7" width="4" height="14" rx="1"/>
+                                <rect x="17" y="3" width="4" height="18" rx="1"/>
+                            </svg>
+                        </button>
+                        <button
+                            id="report-tab-calendar"
+                            className={`report-tab-btn${reportView === 'calendar' ? ' active' : ''}`}
+                            onClick={() => setReportView('calendar')}
+                            title={language === 'ru' ? 'Календарный отчёт' : 'Calendar report'}
+                            aria-label={language === 'ru' ? 'Календарный отчёт' : 'Calendar report'}
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                                <rect x="7" y="14" width="3" height="3" rx="0.5" fill="currentColor" stroke="none"/>
+                                <rect x="14" y="14" width="3" height="3" rx="0.5" fill="currentColor" stroke="none"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                {reportView === 'charts' && (
+                <>
+
                 <div className="chart-navigation-controls">
                     <button className="nav-arrow-btn" onClick={handlePrevPeriod}>←</button>
                     <div className="navigation-labels">
@@ -1062,8 +1285,20 @@ const Charts = ({
                         </div>
                     )}
                 </div>
+                </>
+                )}
             </div>
 
+            {reportView === 'calendar' ? (
+                <CalendarReport
+                    theme={theme}
+                    t={t}
+                    language={language}
+                    storageMode={storageMode}
+                    selectedCategory={selectedCategory}
+                />
+            ) : (
+            <>
             {loading ? (
                 <div className="charts-loading">
                     <div className="loading-spinner"></div>
@@ -1234,6 +1469,8 @@ const Charts = ({
                     chartData={chartData}
                     storageMode={storageMode}
                 />
+            )}
+            </>
             )}
         </div>
     );

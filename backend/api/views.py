@@ -900,6 +900,7 @@ class HabitViewSet(viewsets.ModelViewSet):
                 today = date.today()
 
             period = request.query_params.get('period', None)
+            label = ''  # Default, overridden per-period below
             
             MONTHS_RU = {
                 1: 'Январь', 2: 'Февраль', 3: 'Март', 4: 'Апрель',
