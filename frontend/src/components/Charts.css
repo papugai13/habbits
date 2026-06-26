@@ -1,4 +1,4 @@
-﻿.charts-container {
+.charts-container {
     padding: 20px;
     width: 100%;
     min-width: 0;
@@ -421,6 +421,7 @@
         align-items: stretch;
         gap: 12px;
         box-sizing: border-box;
+        margin-bottom: 16px;
     }
 
     .chart-wrapper {
@@ -433,6 +434,7 @@
         width: 100% !important;
         max-width: none !important;
         box-sizing: border-box;
+        flex: none !important;
     }
 
     .comparison-chart-layout {

@@ -1,5 +1,15 @@
 /* App.css - Трекер привычек */
 
+:root {
+  --progress-fill-green: #059669;
+  --progress-fill-purple: #8B5CF6;
+  --progress-bg: #FFFFFF;
+  --progress-text-under-green: #064E3B;
+  --progress-text-over-green: #FFFFFF;
+  --progress-text-under-purple: #5B21B6;
+  --progress-text-over-purple: #FFFFFF;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -380,21 +390,11 @@ body {
 .categories-section.unified {
   display: flex;
   gap: 10px;
-  overflow-x: auto;
+  flex-wrap: wrap;
   padding: 12px 16px;
   background-color: #FFFFFF;
   border-bottom: none;
-  scrollbar-width: none;
-  /* Firefox */
-  -ms-overflow-style: none;
-  /* IE/Edge */
   justify-content: flex-start;
-  -webkit-overflow-scrolling: touch;
-}
-
-.categories-section.unified::-webkit-scrollbar {
-  display: none;
-  /* Chrome/Safari */
 }
 
 .categories-section.unified .category-btn {
@@ -557,11 +557,73 @@ body {
 
 .category-group-header {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(76, 86, 110, 0.08);
   margin-bottom: 12px;
+}
+
+.category-header-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.category-header-bottom {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.category-weekly-total-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 98px;
+  min-width: 98px;
+  max-width: 98px;
+  box-sizing: border-box;
+}
+
+.category-weekly-total {
+  min-width: 52px;
+  font-size: 12px !important;
+  padding: 4px 10px !important;
+  border-radius: 12px !important;
+  text-align: center;
+}
+
+@media (max-width: 360px) {
+  .category-weekly-total-container {
+    width: 66px;
+    min-width: 66px;
+    max-width: 66px;
+    padding-left: 0;
+  }
+  .category-weekly-total {
+    min-width: 42px;
+    font-size: 10px !important;
+    padding: 3px 8px !important;
+    border-radius: 10px !important;
+  }
+}
+
+@media (max-width: 320px) {
+  .category-weekly-total-container {
+    width: 62px;
+    min-width: 62px;
+    max-width: 62px;
+    padding-left: 0;
+  }
+  .category-weekly-total {
+    min-width: 38px;
+    font-size: 9px !important;
+    padding: 2px 6px !important;
+    border-radius: 9px !important;
+  }
 }
 
 .category-collapse-btn {
@@ -593,64 +655,45 @@ body {
   flex: 1;
 }
 
-.category-habit-count {
-  font-size: 13px;
-  color: #5a5f7a;
-  min-width: 24px;
-  text-align: right;
-}
-
-.category-completion-count {
-  font-size: 12px;
-  font-weight: 500;
-  color: #059669;
-  background-color: rgba(5, 150, 105, 0.1);
-  border-radius: 6px;
-  padding: 1px 6px;
-  margin-left: 6px;
-  line-height: 1.2;
-}
-
-.dark-theme .category-completion-count {
-  color: #34D399;
-  background-color: rgba(52, 211, 153, 0.15);
-}
-
-.category-progress-cubes {
+.category-group-counter {
   display: flex;
   align-items: center;
-  gap: 3px;
-  margin-left: 6px;
+  gap: 6px;
+  background-color: rgba(5, 150, 105, 0.1);
+  border: 1px solid rgba(5, 150, 105, 0.2);
+  border-radius: 20px;
+  padding: 4px 10px;
 }
 
-.progress-cube {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  transition: all 0.2s ease;
+.category-group-counter .counter-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: #059669;
 }
 
-.progress-cube.filled {
-  background-color: #059669;
-}
-
-.progress-cube.empty {
-  background-color: #E5E7EB;
-}
-
-.dark-theme .progress-cube.filled {
-  background-color: #34D399;
-}
-
-.dark-theme .progress-cube.empty {
-  background-color: #404040;
-}
-
-.category-checkmark {
+.category-group-counter .counter-checkmark {
   display: inline-flex;
   align-items: center;
-  margin-left: 4px;
+  color: #059669;
   animation: checkmarkPop 0.3s ease-out;
+}
+
+.category-group-counter .counter-checkmark svg {
+  width: 14px;
+  height: 14px;
+}
+
+.dark-theme .category-group-counter {
+  background-color: rgba(52, 211, 153, 0.15);
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.dark-theme .category-group-counter .counter-text {
+  color: #34D399;
+}
+
+.dark-theme .category-group-counter .counter-checkmark {
+  color: #34D399;
 }
 
 @keyframes checkmarkPop {
@@ -874,6 +917,7 @@ body {
   align-items: center;
   justify-content: center;
   width: 100%;
+  gap: 6px;
 }
 
 
@@ -889,8 +933,6 @@ body {
 
 .habit-count.monthly {
   z-index: 2;
-  margin-left: -10px;
-  padding-left: 10px;
   background-color: #059669;
   color: #FFFFFF;
   opacity: 1;
@@ -902,8 +944,6 @@ body {
   color: #059669;
   border: 1.5px solid #059669;
   z-index: 1;
-  margin-left: -10px;
-  padding-left: 10px;
 }
 
 .habit-counts-wrapper {
@@ -931,6 +971,105 @@ body {
 .habit-count.has-double-star .habit-count-number,
 .habit-count.has-single-star .habit-count-number {
   transform: none;
+}
+
+
+/* Progress Bar styling for monthly total / target */
+/* Progress Bar styling for monthly total / target */
+.habit-count.monthly.progress-bar {
+  min-width: 46px;
+  max-width: 46px;
+  width: 46px;
+  border: 2px solid #059669;
+  background-color: var(--progress-bg, #FFFFFF);
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  --progress-width: 42px; /* 46px - 4px border */
+}
+
+.habit-count-overflow.monthly.progress-bar {
+  min-width: 46px;
+  max-width: 46px;
+  width: 46px;
+  border: 1.5px solid #8B5CF6;
+  background-color: var(--progress-bg, #FFFFFF);
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  --progress-width: 43px; /* 46px - 3px border */
+}
+
+/* Dark Theme overrides for progress bar */
+.dark-theme .habit-count.monthly.progress-bar {
+  border-color: #34D399;
+  background-color: var(--progress-bg);
+}
+
+.dark-theme .habit-count-overflow.monthly.progress-bar {
+  border-color: #A78BFA;
+  background-color: var(--progress-bg);
+}
+
+/* Inner elements for double-text rendering of progress bar */
+.progress-text-under,
+.progress-text-over {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.progress-text-under {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1;
+}
+
+.progress-bar.green .progress-text-under {
+  color: var(--progress-text-under-green);
+}
+
+.progress-bar.purple .progress-text-under {
+  color: var(--progress-text-under-purple);
+}
+
+.progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  z-index: 2;
+  overflow: hidden;
+  transition: width 0.2s ease-in-out;
+}
+
+.progress-bar.green .progress-fill {
+  background-color: var(--progress-fill-green);
+}
+
+.progress-bar.purple .progress-fill {
+  background-color: var(--progress-fill-purple);
+}
+
+.progress-text-over {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--progress-width, 42px);
+}
+
+.progress-bar.green .progress-text-over {
+  color: var(--progress-text-over-green);
+}
+
+.progress-bar.purple .progress-text-over {
+  color: var(--progress-text-over-purple);
 }
 
 
@@ -1125,8 +1264,6 @@ body {
   box-shadow: 0 1px 3px rgba(139, 92, 246, 0.3);
   z-index: 2;
   font-weight: 900;
-  margin-left: -10px;
-  padding-left: 10px;
 }
 
 .habit-count-overflow.target.purple-target {
@@ -1134,8 +1271,6 @@ body {
   color: #8B5CF6;
   border: 1.5px solid #8B5CF6;
   z-index: 1;
-  margin-left: -10px;
-  padding-left: 10px;
 }
 
 .dark-theme .habit-count.target.green-target {
@@ -1389,8 +1524,6 @@ body {
 
   .habit-count.monthly {
     z-index: 2;
-    margin-left: -6px;
-    padding-left: 6px;
     max-width: 26px;
     box-shadow: none;
     border: none;
@@ -1428,13 +1561,11 @@ body {
   }
 
   .habit-count-row {
-    gap: 0;
+    gap: 4px;
   }
 
   .habit-count.target.green-target {
     z-index: 1;
-    margin-left: -6px;
-    padding-left: 6px;
   }
 
   .habit-count-overflow {
@@ -1458,15 +1589,31 @@ body {
   }
 
   .habit-count-overflow.monthly {
-    margin-left: -6px;
-    padding-left: 8px;
     z-index: 2;
   }
 
   .habit-count-overflow.target.purple-target {
-    margin-left: -6px;
-    padding-left: 8px;
     z-index: 1;
+  }
+
+  .habit-count.monthly.progress-bar,
+  .habit-count-overflow.monthly.progress-bar {
+    min-width: 36px;
+    max-width: 36px;
+    width: 36px;
+  }
+
+  .habit-count.monthly.progress-bar {
+    --progress-width: 32px;
+  }
+
+  .habit-count-overflow.monthly.progress-bar {
+    --progress-width: 33px;
+  }
+
+  .progress-text-under,
+  .progress-text-over {
+    font-size: 8px;
   }
 }
 
@@ -1496,7 +1643,7 @@ body {
   }
 
   .habit-count-row {
-    gap: 0;
+    gap: 4px;
   }
 
   .header-count-badge.monthly,
@@ -1518,9 +1665,27 @@ body {
   }
 
   .habit-count.monthly {
-    margin-left: -5px;
-    padding-left: 6px;
     max-width: 24px;
+  }
+
+  .habit-count.monthly.progress-bar,
+  .habit-count-overflow.monthly.progress-bar {
+    min-width: 34px;
+    max-width: 34px;
+    width: 34px;
+  }
+
+  .habit-count.monthly.progress-bar {
+    --progress-width: 30px;
+  }
+
+  .habit-count-overflow.monthly.progress-bar {
+    --progress-width: 31px;
+  }
+
+  .progress-text-under,
+  .progress-text-over {
+    font-size: 8px;
   }
 
   .habit-count-overflow {
@@ -3440,6 +3605,13 @@ body {
 /* Dark Theme */
 html.dark-theme, body.dark-theme {
   background-color: #121212;
+  --progress-fill-green: #34D399;
+  --progress-fill-purple: #A78BFA;
+  --progress-bg: #2D2D2D;
+  --progress-text-under-green: #34D399;
+  --progress-text-over-green: #2D2D2D;
+  --progress-text-under-purple: #A78BFA;
+  --progress-text-over-purple: #2D2D2D;
 }
 
 .dark-theme .app {
