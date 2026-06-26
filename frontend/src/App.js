@@ -7,6 +7,7 @@ import Analytics from './components/Analytics';
 import DrumPicker from './components/DrumPicker';
 import translations from './translations';
 import storageService from './storageService';
+import HabitCounts from './components/HabitCounts';
 
 
 const getMondayString = (dateInput = new Date()) => {
@@ -1216,7 +1217,7 @@ const App = () => {
             {isSelectedCategoryComplete && (
               <span className="counter-checkmark">
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                  <path d="M15 4.5L6.75 12.75L3 9" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M15 4.5L6.75 12.75L3 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </span>
             )}
@@ -1284,37 +1285,75 @@ const App = () => {
           }, 0);
           const isTodayComplete = todayCompletedCount === habits.length && habits.length > 0;
 
+          // Calculate weekly completions count for this category
+          const categoryWeeklyCompletedTotal = habits.reduce((total, habit) => {
+            const statuses = habit.statuses || [];
+            let completions = 0;
+            WEEK_DAYS.forEach((_, index) => {
+              const baseDate = new Date(currentWeekDate);
+              const dayOfWeek = baseDate.getDay();
+              const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+              const diff = index - currentDayIndex;
+
+              const slotDate = new Date(baseDate);
+              slotDate.setDate(baseDate.getDate() + diff);
+              const slotDateStr = slotDate.toLocaleDateString('en-CA');
+
+              const status = statuses.find(s => s && s.date === slotDateStr);
+              if (status && status.is_done && !status.is_restored) {
+                completions++;
+              }
+            });
+            return total + completions;
+          }, 0);
+
           return (
             <div key={categoryKey} className={`category-group ${isCollapsed ? 'collapsed' : ''}`}>
               <div className="category-group-header">
-                <button
-                  type="button"
-                  className="category-collapse-btn"
-                  onClick={() => toggleCategoryCollapse(categoryKey)}
-                  aria-label={isCollapsed ? t('expand') : t('collapse')}
-                >
-                  {isCollapsed ? '▶' : '▼'}
-                </button>
-                <div className="category-group-title">
-                  {getCategoryDisplayName(categoryKey)}
+                <div className="category-header-left">
+                  <div className="category-header-top">
+                    <button
+                      type="button"
+                      className="category-collapse-btn"
+                      onClick={() => toggleCategoryCollapse(categoryKey)}
+                      aria-label={isCollapsed ? t('expand') : t('collapse')}
+                    >
+                      {isCollapsed ? '▶' : '▼'}
+                    </button>
+                    <div className="category-group-title">
+                      {getCategoryDisplayName(categoryKey)}
+                    </div>
+                  </div>
+                  
+                  <div className="habit-row-content category-header-bottom">
+                    <div className="habit-checks">
+                      {WEEK_DAYS.map((_, index) => {
+                        const baseDate = new Date(currentWeekDate);
+                        const dayOfWeek = baseDate.getDay();
+                        const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                        const diff = index - currentDayIndex;
+
+                        const slotDate = new Date(baseDate);
+                        slotDate.setDate(baseDate.getDate() + diff);
+                        const slotDateStr = slotDate.toLocaleDateString('en-CA');
+
+                        const dayCompletedCount = habits.reduce((count, habit) => {
+                          const status = habit.statuses?.find(s => s && s.date === slotDateStr);
+                          return (status && status.is_done && !status.is_restored) ? count + 1 : count;
+                        }, 0);
+
+                        return (
+                          <div key={slotDateStr} className="grid-col day-completion-col">
+                            <span className="day-completion-count">{dayCompletedCount}/{habits.length}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-                <div className="category-progress-cubes">
-                  {habits.map((habit, index) => {
-                    const status = habit.statuses?.find(s => s && s.date === todayStr);
-                    const isCompleted = status && status.is_done && !status.is_restored;
-                    return (
-                      <div key={habit.id} className={`progress-cube ${isCompleted ? 'filled' : 'empty'}`}></div>
-                    );
-                  })}
-                  {isTodayComplete && (
-                    <span className="category-checkmark">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <path d="M13.5 4.5L6 12L2.5 8.5" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </span>
-                  )}
+                <div className="category-weekly-total-container">
+                  <span className="day-completion-count category-weekly-total">{categoryWeeklyCompletedTotal}/{habits.length * 7}</span>
                 </div>
-                <div className="category-habit-count">{todayCompletedCount}/{habits.length}</div>
               </div>
 
               {!isCollapsed && habits.map((habit) => {
@@ -1499,42 +1538,12 @@ const App = () => {
                           );
                         })}
                       </div>
-                      <div className="habit-counts-wrapper">
-                        <div className="habit-count-container">
-                          <div className="habit-count-row">
-                            <div className={`habit-count weekly ${weeklyCount >= 3 ? 'active' : ''} ${weeklyCount === 3 ? 'has-single-lightning' : ''} ${weeklyCount === 4 ? 'has-double-lightning' : ''} ${weeklyCount === 5 ? 'has-single-star' : ''} ${weeklyCount === 6 ? 'has-double-star' : ''}`}>
-                              {((weeklyCount === 4 && weeklyAward.includes('⚡')) || (weeklyCount === 6 && weeklyAward.includes('⭐'))) && (
-                                <span className="award-side award-left">{weeklyCount === 4 ? '⚡' : '⭐'}</span>
-                              )}
-
-                              <span className={`habit-count-number ${weeklyAward ? 'with-awards' : ''}`}>
-                                {weeklyCount}
-                              </span>
-                              {weeklyAward && weeklyAward !== '👑' && (
-                                <span className="award-side award-right">
-                                  {weeklyCount === 4 ? '⚡' : weeklyCount === 6 ? '⭐' : weeklyAward}
-                                </span>
-                              )}
-                              {weeklyAward === '👑' && (
-                                <span className="crown-right">👑</span>
-                              )}
-                            </div>
-                            <div className="habit-count monthly">{habit.monthly_total || 0}</div>
-                            <div className={`habit-count target green-target ${!habit.use_target ? 'invisible' : ''}`}>
-                              {habit.use_target ? (habit.completion_target || 0) : ''}
-                            </div>
-                          </div>
-                          {!isLastQuantityLess1 && (
-                            <div className="habit-count-row">
-                              <div className="habit-count-overflow weekly">{habit.weekly_overflow || 0}</div>
-                              <div className="habit-count-overflow monthly">{habit.monthly_overflow || 0}</div>
-                              <div className={`habit-count-overflow target purple-target ${!habit.use_target ? 'invisible' : ''}`}>
-                                {habit.use_target ? (habit.quantity_target || 0) : ''}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <HabitCounts 
+                        weeklyCount={weeklyCount} 
+                        weeklyAward={weeklyAward} 
+                        habit={habit} 
+                        isLastQuantityLess1={isLastQuantityLess1} 
+                      />
                     </div>
                   </div>
                 );
