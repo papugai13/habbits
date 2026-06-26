@@ -1310,47 +1310,49 @@ const App = () => {
           return (
             <div key={categoryKey} className={`category-group ${isCollapsed ? 'collapsed' : ''}`}>
               <div className="category-group-header">
-                <div className="category-header-top">
-                  <button
-                    type="button"
-                    className="category-collapse-btn"
-                    onClick={() => toggleCategoryCollapse(categoryKey)}
-                    aria-label={isCollapsed ? t('expand') : t('collapse')}
-                  >
-                    {isCollapsed ? '▶' : '▼'}
-                  </button>
-                  <div className="category-group-title">
-                    {getCategoryDisplayName(categoryKey)}
+                <div className="category-header-left">
+                  <div className="category-header-top">
+                    <button
+                      type="button"
+                      className="category-collapse-btn"
+                      onClick={() => toggleCategoryCollapse(categoryKey)}
+                      aria-label={isCollapsed ? t('expand') : t('collapse')}
+                    >
+                      {isCollapsed ? '▶' : '▼'}
+                    </button>
+                    <div className="category-group-title">
+                      {getCategoryDisplayName(categoryKey)}
+                    </div>
+                  </div>
+                  
+                  <div className="habit-row-content category-header-bottom">
+                    <div className="habit-checks">
+                      {WEEK_DAYS.map((_, index) => {
+                        const baseDate = new Date(currentWeekDate);
+                        const dayOfWeek = baseDate.getDay();
+                        const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                        const diff = index - currentDayIndex;
+
+                        const slotDate = new Date(baseDate);
+                        slotDate.setDate(baseDate.getDate() + diff);
+                        const slotDateStr = slotDate.toLocaleDateString('en-CA');
+
+                        const dayCompletedCount = habits.reduce((count, habit) => {
+                          const status = habit.statuses?.find(s => s && s.date === slotDateStr);
+                          return (status && status.is_done && !status.is_restored) ? count + 1 : count;
+                        }, 0);
+
+                        return (
+                          <div key={slotDateStr} className="grid-col day-completion-col">
+                            <span className="day-completion-count">{dayCompletedCount}/{habits.length}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-                
-                <div className="habit-row-content category-header-bottom">
-                  <div className="habit-checks">
-                    {WEEK_DAYS.map((_, index) => {
-                      const baseDate = new Date(currentWeekDate);
-                      const dayOfWeek = baseDate.getDay();
-                      const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                      const diff = index - currentDayIndex;
-
-                      const slotDate = new Date(baseDate);
-                      slotDate.setDate(baseDate.getDate() + diff);
-                      const slotDateStr = slotDate.toLocaleDateString('en-CA');
-
-                      const dayCompletedCount = habits.reduce((count, habit) => {
-                        const status = habit.statuses?.find(s => s && s.date === slotDateStr);
-                        return (status && status.is_done && !status.is_restored) ? count + 1 : count;
-                      }, 0);
-
-                      return (
-                        <div key={slotDateStr} className="grid-col day-completion-col">
-                          <span className="day-completion-count">{dayCompletedCount}/{habits.length}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="category-weekly-total-container">
-                    <span className="day-completion-count category-weekly-total">{categoryWeeklyCompletedTotal}/{habits.length * 7}</span>
-                  </div>
+                <div className="category-weekly-total-container">
+                  <span className="day-completion-count category-weekly-total">{categoryWeeklyCompletedTotal}/{habits.length * 7}</span>
                 </div>
               </div>
 

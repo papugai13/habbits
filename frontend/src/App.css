@@ -557,12 +557,21 @@ body {
 
 .category-group-header {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(76, 86, 110, 0.08);
   margin-bottom: 12px;
+}
+
+.category-header-left {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
 }
 
 .category-header-top {
@@ -589,9 +598,10 @@ body {
 }
 
 .category-weekly-total {
-  min-width: 52px;
-  font-size: 12px !important;
-  padding: 4px 10px !important;
+  min-width: 60px;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  padding: 6px 12px !important;
   border-radius: 4px !important;
   text-align: center;
 }
