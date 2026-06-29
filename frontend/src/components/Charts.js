@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList, Rectangle } from 'recharts';
+import { ComposedChart, BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList, Rectangle } from 'recharts';
 import './Charts.css';
 import './Analytics.css';
 import storageService from '../storageService';
@@ -1033,6 +1033,12 @@ const Charts = ({
     const barCategoryGap = '0%';
     const barGap = 0;
     const [periodLabel, setPeriodLabel] = useState({ title: '', subtitle: '' });
+    const [slideDirection, setSlideDirection] = useState(null);
+    const swipeStartRef = useRef(null);
+    const swipeActiveRef = useRef(false);
+    const [columnOffset, setColumnOffset] = useState(0);
+    const [columnAnim, setColumnAnim] = useState(null);   // 'expand' | 'shrink' | null
+    const [barAnimActive, setBarAnimActive] = useState(false);
 
     const mainScrollRef = useRef(null);
     const mainIndicatorRef = useRef(null);
@@ -1068,7 +1074,7 @@ const Charts = ({
             mainScrollRef.current.scrollLeft = 0;
             mainIndicatorRef.current.style.left = '0%';
         }
-    }, [chartData.length, period]);
+    }, [chartData.length, period, columnOffset]);
 
     const fetchStatistics = useCallback(async () => {
         setLoading(true);
@@ -1255,6 +1261,115 @@ const Charts = ({
         });
     };
 
+    const goToPrev = () => {
+        setSlideDirection('right');
+        handlePrevPeriod();
+        setTimeout(() => setSlideDirection(null), 350);
+    };
+
+    const goToNext = () => {
+        setSlideDirection('left');
+        handleNextPeriod();
+        setTimeout(() => setSlideDirection(null), 350);
+    };
+
+    const handleSwipeTouchStart = (e) => {
+        swipeStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        swipeActiveRef.current = false;
+    };
+
+    const handleSwipeTouchMove = (e) => {
+        if (!swipeStartRef.current) return;
+        const dx = e.touches[0].clientX - swipeStartRef.current.x;
+        const dy = e.touches[0].clientY - swipeStartRef.current.y;
+        // Если движение горизонтальное и мы в начале/конце скролла — блокируем вертикальный scroll
+        if (Math.abs(dx) > Math.abs(dy) * 1.2 && Math.abs(dx) > 10) {
+            const scroll = mainScrollRef.current;
+            const fitsInView = !scroll || scroll.scrollWidth <= scroll.clientWidth + 4;
+            const atStart = !scroll || scroll.scrollLeft <= 2;
+            const atEnd = !scroll || scroll.scrollLeft >= scroll.scrollWidth - scroll.clientWidth - 2;
+            if (fitsInView || (dx < 0 && atEnd) || (dx > 0 && atStart)) {
+                swipeActiveRef.current = true;
+            }
+        }
+    };
+
+    const handleSwipeTouchEnd = (e) => {
+        if (!swipeStartRef.current) return;
+        const dx = e.changedTouches[0].clientX - swipeStartRef.current.x;
+        const dy = e.changedTouches[0].clientY - swipeStartRef.current.y;
+        swipeStartRef.current = null;
+        if (Math.abs(dx) < 55 || Math.abs(dy) > Math.abs(dx) * 0.75) return;
+        const scroll = mainScrollRef.current;
+        const fitsInView = !scroll || scroll.scrollWidth <= scroll.clientWidth + 4;
+        const atStart = !scroll || scroll.scrollLeft <= 2;
+        const atEnd = !scroll || scroll.scrollLeft >= scroll.scrollWidth - scroll.clientWidth - 2;
+        if (dx < 0 && (atEnd || fitsInView)) goToNext();
+        else if (dx > 0 && (atStart || fitsInView)) goToPrev();
+    };
+
+    // Mouse drag swipe for desktop
+    const mouseStartRef = useRef(null);
+    const handleMouseDown = (e) => {
+        // Only main mouse button, not on buttons or interactive elements
+        if (e.button !== 0 || e.target.closest('button, select, input')) return;
+        mouseStartRef.current = { x: e.clientX };
+    };
+    const handleMouseUp = (e) => {
+        if (!mouseStartRef.current) return;
+        const dx = e.clientX - mouseStartRef.current.x;
+        mouseStartRef.current = null;
+        if (Math.abs(dx) < 60) return;
+        const scroll = mainScrollRef.current;
+        const fitsInView = !scroll || scroll.scrollWidth <= scroll.clientWidth + 4;
+        const atStart = !scroll || scroll.scrollLeft <= 2;
+        const atEnd = !scroll || scroll.scrollLeft >= scroll.scrollWidth - scroll.clientWidth - 2;
+        if (dx < 0 && (atEnd || fitsInView)) goToNext();
+        else if (dx > 0 && (atStart || fitsInView)) goToPrev();
+    };
+    const handleMouseLeave = () => { mouseStartRef.current = null; };
+
+    // ─── Видимые данные (slicing для + / − кнопок) ───────────────────────────
+    const visibleChartData = useMemo(
+        () => chartData.slice(columnOffset),
+        [chartData, columnOffset]
+    );
+
+    // Сбрасываем смещение при смене периода или загрузке новых данных
+    useEffect(() => {
+        setColumnOffset(0);
+    }, [period, chartDate]);
+
+    const triggerColumnAnimation = (dir, action) => {
+        // Оптимистичное обновление: меняем данные сразу, анимация играет поверх
+        action();
+        setColumnAnim(dir);
+        setBarAnimActive(true);
+        setTimeout(() => {
+            setColumnAnim(null);
+            setBarAnimActive(false);
+        }, 480);
+    };
+
+    const handleAddColumn = () => {
+        if (columnOffset > 0) {
+            triggerColumnAnimation('expand', () => setColumnOffset(o => o - 1));
+        }
+    };
+
+    const handleRemoveColumn = () => {
+        if (visibleChartData.length > 1) {
+            triggerColumnAnimation('shrink', () => setColumnOffset(o => o + 1));
+        }
+    };
+
+    const periodUnitLabel = () => {
+        if (period === 'day') return language === 'ru' ? 'дн.' : 'd';
+        if (period === 'week') return language === 'ru' ? 'нед.' : 'w';
+        if (period === 'month') return language === 'ru' ? 'мес.' : 'mo';
+        return language === 'ru' ? 'л.' : 'yr';
+    };
+
     return (
         <div className="charts-container">
             <div className="charts-header">
@@ -1297,15 +1412,23 @@ const Charts = ({
                 {reportView === 'charts' && (
                 <>
 
-                <div className="chart-navigation-controls">
-                    <button className="nav-arrow-btn" onClick={handlePrevPeriod}>←</button>
+                <div
+                    className="chart-navigation-controls"
+                    onTouchStart={handleSwipeTouchStart}
+                    onTouchMove={handleSwipeTouchMove}
+                    onTouchEnd={handleSwipeTouchEnd}
+                    onMouseDown={handleMouseDown}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
+                >
+                    <button className="nav-arrow-btn" onClick={goToPrev} aria-label={language === 'ru' ? 'Предыдущий период' : 'Previous period'}>←</button>
                     <div className="navigation-labels">
                         <span className="current-period-label">
                             <span>{periodLabel.title}</span>
                             {periodLabel.subtitle && <span className="current-period-subtitle">{periodLabel.subtitle}</span>}
                         </span>
                     </div>
-                    <button className="nav-arrow-btn" onClick={handleNextPeriod}>→</button>
+                    <button className="nav-arrow-btn" onClick={goToNext} aria-label={language === 'ru' ? 'Следующий период' : 'Next period'}>→</button>
                 </div>
 
                 <div className="selectors-container">
@@ -1391,85 +1514,133 @@ const Charts = ({
             </div>
 
             {reportView === 'calendar' ? (
-                <CalendarReport
-                    theme={theme}
-                    t={t}
-                    language={language}
-                    storageMode={storageMode}
-                    selectedCategory={selectedCategory}
-                />
-            ) : (
-            <>
-            {loading ? (
-                <div className="charts-loading">
-                    <div className="loading-spinner"></div>
-                    <p>{t('loading')}</p>
+                <div key={selectedCategory} className="report-entrance-active">
+                    <CalendarReport
+                        theme={theme}
+                        t={t}
+                        language={language}
+                        storageMode={storageMode}
+                        selectedCategory={selectedCategory}
+                    />
                 </div>
             ) : (
-                <div className="chart-wrapper">
-                    <div className="main-chart-scroll-wrapper" onScroll={handleMainScroll} ref={mainScrollRef}>
-                        <div className="main-chart-inner" style={{ 
-                            width: `${Math.max(chartData.length * (isMobile ? 50 : 70), 400)}px`,
-                            transition: 'width 0.3s ease'
-                        }}>
-                            <ResponsiveContainer width="100%" height="100%" style={{ overflow: 'visible' }}>
-                                <BarChart
-                                    data={chartData}
-                                    margin={{ top: 8, right: 30, left: 0, bottom: 10 }}
-                                    barCategoryGap={chartData.length === 1 ? "2%" : (period === 'month' ? "5%" : "10%")}
-                                    barGap={chartData.length === 1 ? 0 : 2}
-                                    barSize={isMobile ? (period === 'month' ? 28 : 18) : isTablet ? (period === 'month' ? 36 : 22) : (period === 'month' ? 44 : 28)}
-                                    maxBarSize={100}
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#404040" : "#e0e0e0"} />
-                                    <XAxis
-                                        dataKey={xAxisDataKey}
-                                        stroke={isDark ? "#666" : "#666"}
-                                        tick={<CustomXAxisTick period={period} isMobile={isMobile} isDark={isDark} chartData={chartData} t={t} language={language} />}
-                                        height={xAxisHeight}
-                                        interval={0}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        type="category"
-                                    />
-                                    <YAxis
-                                        stroke={isDark ? "#666" : "#666"}
-                                        tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 12 }}
-                                        allowDecimals={false}
-                                        domain={[0, (dataMax) => {
-                                            if (!dataMax || isNaN(dataMax) || dataMax === 0) return 1;
-                                            if (dataMax <= 2) return dataMax + 1;
-                                            return Math.ceil(dataMax * 1.15);
-                                        }]}
-                                        nice={true}
-                                    />
-                                    {viewType === 'habits' ? (
-                                        <>
-                                            <Bar
-                                                dataKey="countCapped"
-                                                stackId="a"
-                                                fill="#059669"
-                                                radius={[8, 8, 0, 0]}
-                                                isAnimationActive={false}
-                                                name={t('completed')}
-                                                shape={<CustomBarShape />}
-                                            >
-                                                <LabelList
+                <>
+                {loading ? (
+                    <div className="charts-loading">
+                        <div className="loading-spinner"></div>
+                        <p>{t('loading')}</p>
+                    </div>
+                ) : (
+                    <div
+                        key={`${period}-${viewType}`}
+                        className={`chart-wrapper report-entrance-active ${slideDirection ? `slide-anim-${slideDirection}` : ''}${columnAnim ? ` col-anim-${columnAnim}` : ''}`}
+                        onTouchStart={handleSwipeTouchStart}
+                        onTouchMove={handleSwipeTouchMove}
+                        onTouchEnd={handleSwipeTouchEnd}
+                        onMouseDown={handleMouseDown}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseLeave}
+                    >
+                        <div className="main-chart-scroll-wrapper" onScroll={handleMainScroll} ref={mainScrollRef}>
+                            <div className="main-chart-inner" style={{ 
+                                width: `${Math.max(visibleChartData.length * (isMobile ? 50 : 70), 400)}px`,
+                                transition: 'width 0.35s cubic-bezier(0.25,0.46,0.45,0.94)'
+                            }}>
+                                <ResponsiveContainer width="100%" height="100%" style={{ overflow: 'visible' }}>
+                                    <ComposedChart
+                                        data={visibleChartData}
+                                        margin={{ top: 8, right: 30, left: 0, bottom: 10 }}
+                                        barCategoryGap={visibleChartData.length === 1 ? "2%" : (period === 'month' ? "5%" : "10%")}
+                                        barGap={visibleChartData.length === 1 ? 0 : 2}
+                                        barSize={isMobile ? (period === 'month' ? 28 : 18) : isTablet ? (period === 'month' ? 36 : 22) : (period === 'month' ? 44 : 28)}
+                                        maxBarSize={100}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#404040" : "#e0e0e0"} />
+                                        <XAxis
+                                            dataKey={xAxisDataKey}
+                                            stroke={isDark ? "#666" : "#666"}
+                                            tick={<CustomXAxisTick period={period} isMobile={isMobile} isDark={isDark} chartData={visibleChartData} t={t} language={language} />}
+                                            height={xAxisHeight}
+                                            interval={0}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            type="category"
+                                        />
+                                        <YAxis
+                                            stroke={isDark ? "#666" : "#666"}
+                                            tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 12 }}
+                                            allowDecimals={false}
+                                            domain={[0, (dataMax) => {
+                                                if (!dataMax || isNaN(dataMax) || dataMax === 0) return 1;
+                                                if (dataMax <= 2) return dataMax + 1;
+                                                return Math.ceil(dataMax * 1.15);
+                                            }]}
+                                            nice={true}
+                                        />
+                                        {viewType === 'habits' ? (
+                                            <>
+                                                <Bar
                                                     dataKey="countCapped"
-                                                    content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={barLabelSize} />}
-                                                />
-                                            </Bar>
+                                                    stackId="a"
+                                                    fill="#059669"
+                                                    radius={[8, 8, 0, 0]}
+                                                    isAnimationActive={barAnimActive}
+                                                    name={t('completed')}
+                                                    shape={<CustomBarShape />}
+                                                >
+                                                    <LabelList
+                                                        dataKey="countCapped"
+                                                        content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={barLabelSize} />}
+                                                    />
+                                                </Bar>
+                                                <Bar
+                                                    dataKey="countRestored"
+                                                    stackId="a"
+                                                    fill="#6EE7B7"
+                                                    radius={[8, 8, 0, 0]}
+                                                    isAnimationActive={barAnimActive}
+                                                    name={t('restored')}
+                                                    shape={<CustomBarShape />}
+                                                >
+                                                    <LabelList
+                                                        dataKey="countRestored"
+                                                        content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={barLabelSize} />}
+                                                    />
+                                                    {period === 'day' && (
+                                                        <LabelList
+                                                            dataKey="dayMonth"
+                                                            position="top"
+                                                            content={(props) => {
+                                                                const { x, y, value, index, width } = props;
+                                                                if (!value || x == null || y == null) return null;
+                                                                const chartTop = 8;
+                                                                const cx = x + width / 2;
+                                                                return (
+                                                                    <text x={cx} y={chartTop} textAnchor="middle" fill={isDark ? "#E0E0E0" : "#666"} fontSize={isMobile ? 10 : 11} fontWeight={500}>
+                                                                        {value}
+                                                                    </text>
+                                                                );
+                                                            }}
+                                                        />
+                                                    )}
+                                                    <LabelList
+                                                        dataKey="percentage"
+                                                        position="top"
+                                                        content={(props) => <PercentageBadgeVertical {...props} fSize={isMobile ? 10 : 12} period={period} />}
+                                                    />
+                                                </Bar>
+                                            </>
+                                        ) : (
                                             <Bar
-                                                dataKey="countRestored"
-                                                stackId="a"
-                                                fill="#6EE7B7"
+                                                dataKey="countExtra"
+                                                fill="#8B5CF6"
                                                 radius={[8, 8, 0, 0]}
-                                                isAnimationActive={false}
-                                                name={t('restored')}
+                                                isAnimationActive={barAnimActive}
+                                                name={t('quantity')}
                                                 shape={<CustomBarShape />}
                                             >
                                                 <LabelList
-                                                    dataKey="countRestored"
+                                                    dataKey="countExtra"
                                                     content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={barLabelSize} />}
                                                 />
                                                 {period === 'day' && (
@@ -1495,84 +1666,96 @@ const Charts = ({
                                                     content={(props) => <PercentageBadgeVertical {...props} fSize={isMobile ? 10 : 12} period={period} />}
                                                 />
                                             </Bar>
-                                        </>
-                                    ) : (
-                                        <Bar
-                                            dataKey="countExtra"
-                                            fill="#8B5CF6"
-                                            radius={[8, 8, 0, 0]}
-                                            isAnimationActive={false}
-                                            name={t('quantity')}
-                                            shape={<CustomBarShape />}
-                                        >
-                                            <LabelList
-                                                dataKey="countExtra"
-                                                content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={barLabelSize} />}
-                                            />
-                                            {period === 'day' && (
-                                                <LabelList
-                                                    dataKey="dayMonth"
-                                                    position="top"
-                                                    content={(props) => {
-                                                        const { x, y, value, index, width } = props;
-                                                        if (!value || x == null || y == null) return null;
-                                                        const chartTop = 8;
-                                                        const cx = x + width / 2;
-                                                        return (
-                                                            <text x={cx} y={chartTop} textAnchor="middle" fill={isDark ? "#E0E0E0" : "#666"} fontSize={isMobile ? 10 : 11} fontWeight={500}>
-                                                                {value}
-                                                            </text>
-                                                        );
-                                                    }}
-                                                />
-                                            )}
-                                        </Bar>
-                                    )}
-                                </BarChart>
-                            </ResponsiveContainer>
+                                        )}
+                                        {/* Зелёная пунктирная линия по вершинам столбцов */}
+                                        <Line
+                                            dataKey={viewType === 'habits'
+                                                ? (d => (d.countCapped || 0) + (d.countRestored || 0))
+                                                : 'countExtra'
+                                            }
+                                            type="monotone"
+                                            stroke="#22c55e"
+                                            strokeWidth={isMobile ? 1.5 : 2}
+                                            strokeDasharray="7 5"
+                                            dot={{ r: isMobile ? 2.5 : 3.5, fill: '#22c55e', stroke: '#fff', strokeWidth: 1.5 }}
+                                            activeDot={{ r: 5, fill: '#22c55e', stroke: '#fff', strokeWidth: 2 }}
+                                            isAnimationActive={barAnimActive}
+                                            name="trend"
+                                            legendType="none"
+                                            connectNulls={false}
+                                        />
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
+
+                        {period === 'year' && visibleChartData.length > 0 && (
+                            <div className="main-scroll-indicator-container">
+                                <div className="main-scroll-indicator-bar" ref={mainIndicatorRef}></div>
+                            </div>
+                        )}
+
+                        {visibleChartData.length === 0 && (
+                            <div className="no-data-message">
+                                <p>📊 {t('noData')}</p>
+                                <p className="no-data-hint">{t('noDataHint')}</p>
+                            </div>
+                        )}
+
+                        {/* Кнопки расширения / сжатия диапазона */}
+                        {chartData.length > 0 && (
+                            <div className="chart-expand-controls">
+                                <button
+                                    className="chart-expand-btn minus"
+                                    onClick={handleRemoveColumn}
+                                    disabled={visibleChartData.length <= 1}
+                                    aria-label={language === 'ru' ? 'Убрать столбец' : 'Remove column'}
+                                    title={language === 'ru' ? 'Убрать старый столбец' : 'Remove oldest column'}
+                                >−</button>
+                                <span className="chart-expand-count">
+                                    {visibleChartData.length} {periodUnitLabel()}
+                                </span>
+                                <button
+                                    className="chart-expand-btn plus"
+                                    onClick={handleAddColumn}
+                                    disabled={columnOffset === 0}
+                                    aria-label={language === 'ru' ? 'Добавить столбец' : 'Add column'}
+                                    title={language === 'ru' ? 'Показать ещё один период' : 'Show one more period'}
+                                >+</button>
+                            </div>
+                        )}
                     </div>
+                )}
 
-                    {period === 'year' && chartData.length > 0 && (
-                        <div className="main-scroll-indicator-container">
-                            <div className="main-scroll-indicator-bar" ref={mainIndicatorRef}></div>
-                        </div>
-                    )}
-
-                    {chartData.length === 0 && (
-                        <div className="no-data-message">
-                            <p>📊 {t('noData')}</p>
-                            <p className="no-data-hint">{t('noDataHint')}</p>
-                        </div>
-                    )}
+                <div key={`${period}-${chartDate}-${selectedCategory}`} className="report-entrance-active">
+                    <CategoryComparisonTable
+                        period={period}
+                        currentWeekDate={chartDate}
+                        theme={theme}
+                        t={t}
+                        language={language}
+                        storageMode={storageMode}
+                        sortedCategories={sortedCategories}
+                    />
                 </div>
-            )}
 
-            <CategoryComparisonTable
-                period={period}
-                currentWeekDate={chartDate}
-                theme={theme}
-                t={t}
-                language={language}
-                storageMode={storageMode}
-                sortedCategories={sortedCategories}
-            />
-
-            {(viewType === 'habits' || viewType === 'quantity') && (
-                <HabitsComparisonChart
-                    period={period}
-                    viewType={viewType}
-                    currentWeekDate={chartDate}
-                    selectedCategory={selectedCategory}
-                    theme={theme}
-                    t={t}
-                    language={language}
-                    chartData={chartData}
-                    storageMode={storageMode}
-                />
-            )}
+                {(viewType === 'habits' || viewType === 'quantity') && (
+                    <div key={`${period}-${chartDate}-${selectedCategory}-${viewType}`} className="report-entrance-active">
+                        <HabitsComparisonChart
+                            period={period}
+                            viewType={viewType}
+                            currentWeekDate={chartDate}
+                            selectedCategory={selectedCategory}
+                            theme={theme}
+                            t={t}
+                            language={language}
+                            chartData={chartData}
+                            storageMode={storageMode}
+                        />
+                    </div>
+                )}
             </>
-            )}
+        )}
         </div>
     );
 };
