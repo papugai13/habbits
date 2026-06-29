@@ -241,10 +241,10 @@ const PercentageBadge = ({ x, y, width, height, value, badgeW, badgeH, fSize, pe
 };
 
 const PercentageBadgeVertical = ({ x, y, width, height, value, badgeW, badgeH, fSize, period }) => {
-    if (!value || value === '0%') return null;
+    if (!value || value === '0/0') return null;
     const fs = fSize || 16;
     const cx = x + width / 2;
-    // place percentage label slightly above bar top
+    // place fraction label slightly above bar top
     const cy = y - 12;
     return (
         <text
@@ -593,6 +593,8 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                             const maxExtra = Math.max(...categoryStats.map(s => s.extra)) || 1;
                             const progressWidth = (stat.total / maxTotal) * 100;
                             const extraWidth = (stat.extra / maxExtra) * 100;
+                            const totalFraction = `${stat.total}/${maxTotal}`;
+                            const extraFraction = `${stat.extra}/${maxExtra}`;
                             const isExpanded = expandedCategories.has(stat.name);
                             const habits = habitsByCategory[stat.name] || [];
                             const maxHabitTotal = Math.max(...habits.map(h => h.countCapped || 0)) || 1;
@@ -636,7 +638,7 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                                 <div className="cat-progress-bar-bg">
                                                     <div className="cat-progress-bar-fill" style={{ width: `${progressWidth}%` }}></div>
                                                 </div>
-                                                <span className="cat-progress-percent">{Math.round(progressWidth)}%</span>
+                                                <span className="cat-progress-percent">{totalFraction}</span>
                                             </div>
                                         </td>
                                         <td className="cat-value-cell cat-value-quantity">
@@ -646,7 +648,7 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                                     <div className="cat-progress-bar-bg cat-progress-bar-bg--purple">
                                                         <div className="cat-progress-bar-fill cat-progress-bar-fill--purple" style={{ width: `${extraWidth}%` }}></div>
                                                     </div>
-                                                    <span className="cat-progress-percent">{Math.round(extraWidth)}%</span>
+                                                    <span className="cat-progress-percent">{extraFraction}</span>
                                                 </div>
                                             ) : (
                                                 <span className="cat-quantity-zero">—</span>
@@ -656,6 +658,8 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                     {isExpanded && habits.map((habit, hIdx) => {
                                         const hProgressWidth = ((habit.countCapped || 0) / maxHabitTotal) * 100;
                                         const hExtraWidth = ((habit.countExtra || 0) / maxHabitExtra) * 100;
+                                        const hTotalFraction = `${habit.countCapped || 0}/${maxHabitTotal}`;
+                                        const hExtraFraction = `${habit.countExtra || 0}/${maxHabitExtra}`;
                                         return (
                                             <tr key={`h-${hIdx}`} className="cat-habit-row">
                                                 <td className="cat-habit-name-cell">↳ {habit.name}</td>
@@ -665,7 +669,7 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                                         <div className="cat-progress-bar-bg">
                                                             <div className="cat-progress-bar-fill" style={{ width: `${hProgressWidth}%` }}></div>
                                                         </div>
-                                                        <span className="cat-progress-percent">{Math.round(hProgressWidth)}%</span>
+                                                        <span className="cat-progress-percent">{hTotalFraction}</span>
                                                     </div>
                                                 </td>
                                                 <td className="cat-value-cell cat-value-quantity">
@@ -675,7 +679,7 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                                             <div className="cat-progress-bar-bg cat-progress-bar-bg--purple">
                                                                 <div className="cat-progress-bar-fill cat-progress-bar-fill--purple" style={{ width: `${hExtraWidth}%` }}></div>
                                                             </div>
-                                                            <span className="cat-progress-percent">{Math.round(hExtraWidth)}%</span>
+                                                            <span className="cat-progress-percent">{hExtraFraction}</span>
                                                         </div>
                                                     ) : (
                                                         <span className="cat-quantity-zero">—</span>
@@ -1009,13 +1013,16 @@ const Charts = ({
                     const completed = item.completed_days || 0;
 
                     let percentageStr = '';
+                    let completionFraction = '';
                     if (!isFuture && maxPossible > 0) {
                         const rawPercent = (completed / maxPossible) * 100;
                         const roundedPercent = Math.round(rawPercent);
                         const finalPercent = (completed > 0 && roundedPercent === 0) ? 1 : roundedPercent;
                         percentageStr = `${finalPercent}%`;
+                        completionFraction = `${completed}/${maxPossible}`;
                     } else if (!isFuture && maxPossible === 0) {
                         percentageStr = '0%';
+                        completionFraction = '0/0';
                     }
 
                     const parsedDate = new Date(item.date);
@@ -1060,7 +1067,8 @@ const Charts = ({
                         countRestored: item.restored_days || 0,
                         countExtra: item.extra_quantity,
                         streakCount: streakCount,
-                        percentage: percentageStr
+                        percentage: percentageStr,
+                        completionFraction: completionFraction
                     };
                 });
                 // Filter out columns for periods before any habits were created (where habit_count is 0)
@@ -1084,6 +1092,7 @@ const Charts = ({
                             dayMonth: '', 
                             dayNumber: '',
                             percentage: '',
+                            completionFraction: '',
                             isToday: false,
                             isCurrentWeek: false,
                             isCurrentMonth: false,
@@ -1100,6 +1109,7 @@ const Charts = ({
                             dayMonth: '', 
                             dayNumber: '',
                             percentage: '',
+                            completionFraction: '',
                             isToday: false,
                             isCurrentWeek: false,
                             isCurrentMonth: false,
@@ -1315,9 +1325,9 @@ const Charts = ({
                                 <BarChart
                                     data={chartData}
                                     margin={{ top: 8, right: 30, left: 0, bottom: 10 }}
-                                    barCategoryGap={chartData.length === 1 ? "2%" : "10%"}
+                                    barCategoryGap={chartData.length === 1 ? "2%" : (period === 'month' ? "5%" : "10%")}
                                     barGap={chartData.length === 1 ? 0 : 2}
-                                    barSize={isMobile ? 18 : isTablet ? 22 : 28}
+                                    barSize={isMobile ? (period === 'month' ? 28 : 18) : isTablet ? (period === 'month' ? 36 : 22) : (period === 'month' ? 44 : 28)}
                                     maxBarSize={100}
                                 >
                                     <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#404040" : "#e0e0e0"} />
@@ -1389,7 +1399,7 @@ const Charts = ({
                                                     />
                                                 )}
                                                 <LabelList
-                                                    dataKey="percentage"
+                                                    dataKey="completionFraction"
                                                     position="top"
                                                     content={(props) => <PercentageBadgeVertical {...props} fSize={isMobile ? 10 : 12} period={period} />}
                                                 />
