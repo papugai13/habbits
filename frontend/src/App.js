@@ -1459,7 +1459,7 @@ const App = () => {
                               }
                             }}
                             title={habit.latest_comment}
-                          >●</span>
+                          >● {habit.latest_comment}</span>
                         )}
                         {weeklyAward && (
                           <span className="name-streak">
