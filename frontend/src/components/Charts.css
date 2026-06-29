@@ -144,6 +144,12 @@
     align-items: center;
     gap: 8px;
     margin-bottom: 10px;
+    cursor: grab;
+    user-select: none;
+}
+
+.chart-navigation-controls:active {
+    cursor: grabbing;
 }
 
 .nav-arrow-btn {
@@ -278,6 +284,7 @@
     color: #666;
 }
 
+
 .chart-wrapper {
     background: white;
     border-radius: 16px;
@@ -292,7 +299,48 @@
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
+    overflow: hidden;
 }
+
+/* ─── Swipe slide animations ─── */
+@keyframes slideInFromLeft {
+    from { transform: translateX(-45px); opacity: 0.2; }
+    to   { transform: translateX(0);     opacity: 1; }
+}
+
+@keyframes slideInFromRight {
+    from { transform: translateX(45px);  opacity: 0.2; }
+    to   { transform: translateX(0);     opacity: 1; }
+}
+
+.slide-anim-left {
+    animation: slideInFromLeft 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.slide-anim-right {
+    animation: slideInFromRight 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ─── Column expand / shrink animations (+/− buttons) ─── */
+@keyframes colExpandIn {
+    0%   { transform: translateX(-32px) scaleX(0.97); opacity: 0.1; }
+    60%  { transform: translateX(4px)   scaleX(1.01); opacity: 0.85; }
+    100% { transform: translateX(0)     scaleX(1);    opacity: 1; }
+}
+
+@keyframes colShrinkIn {
+    0%   { transform: translateX(24px) scaleX(0.98); opacity: 0.2; }
+    100% { transform: translateX(0)    scaleX(1);    opacity: 1; }
+}
+
+.col-anim-expand {
+    animation: colExpandIn 0.44s cubic-bezier(0.34, 1.26, 0.64, 1);
+}
+
+.col-anim-shrink {
+    animation: colShrinkIn 0.30s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
 
 /* Top chart specific - reduce bar gaps */
 .chart-wrapper .recharts-bar-category-gap {
@@ -345,7 +393,99 @@
     border-radius: 2px;
 }
 
+/* ─── Кнопки + / − для управления диапазоном ─── */
+.chart-expand-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px 2px;
+    margin-top: 6px;
+}
 
+.chart-expand-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.chart-expand-btn.minus {
+    background: linear-gradient(135deg, #22c55e, #059669);
+    color: white;
+    box-shadow: 0 4px 14px rgba(34,197,94,0.35);
+}
+
+.chart-expand-btn.plus {
+    background: linear-gradient(135deg, #22c55e, #059669);
+    color: white;
+    box-shadow: 0 4px 14px rgba(34,197,94,0.35);
+}
+
+.chart-expand-btn:hover:not(:disabled) {
+    transform: scale(1.12);
+}
+
+.chart-expand-btn.plus:hover:not(:disabled),
+.chart-expand-btn.minus:hover:not(:disabled) {
+    box-shadow: 0 6px 18px rgba(34,197,94,0.45);
+}
+
+.chart-expand-btn:active:not(:disabled) {
+    transform: scale(0.92);
+    transition: transform 0.08s ease;
+}
+
+.chart-expand-btn:disabled {
+    opacity: 0.28;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none;
+}
+
+.chart-expand-count {
+    font-size: 13px;
+    font-weight: 600;
+    color: #94a3b8;
+    letter-spacing: 0.3px;
+}
+
+/* Тёмная тема */
+.dark-theme .chart-expand-btn.minus {
+    background: linear-gradient(135deg, #16a34a, #047857);
+    box-shadow: 0 4px 14px rgba(34,197,94,0.25);
+}
+
+.dark-theme .chart-expand-count {
+    color: #64748b;
+}
+
+
+
+/* ─── report entrance transition animation ─── */
+@keyframes reportEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.995);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.report-entrance-active {
+    animation: reportEntrance 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
 
 .no-data-message {
     position: absolute;
