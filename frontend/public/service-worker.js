@@ -214,11 +214,13 @@ self.addEventListener('message', async (event) => {
     await sendNotification(false);
 
   } else if (type === 'PING') {
-    // Keepalive-пинг от страницы — убеждаемся, что интервал запущен
+    // Keepalive-пинг от страницы — убеждаемся, что интервал запущен,
+    // и сразу проверяем время (на случай пропущенного интервала)
     if (!reminderSettings) {
       reminderSettings = await loadSettingsFromDB();
     }
     ensureIntervalRunning();
+    checkReminders();
   }
 });
 
