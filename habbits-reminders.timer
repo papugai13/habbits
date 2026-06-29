@@ -1,0 +1,11 @@
+[Unit]
+Description=Habbits — таймер проверки напоминаний каждую минуту
+
+[Timer]
+# Запускать каждую минуту, синхронизировано по часам
+OnCalendar=minutely
+AccuracySec=10s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import datetime
 
+import pytz
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -23,20 +24,32 @@ class Command(BaseCommand):
             ))
             return
 
-        now = timezone.localtime(timezone.now())
-        current_time_str = now.strftime('%H:%M')
-
-        self.stdout.write(f"Проверка напоминаний для {current_time_str}...")
+        utc_now = timezone.now()
+        self.stdout.write(f"Проверка напоминаний (UTC: {utc_now.strftime('%H:%M')})...")
 
         # Находим все активные настройки напоминаний
         active_settings = ReminderSettings.objects.filter(enabled=True).select_related('user')
 
         sent_count = 0
         for setting in active_settings:
+            # Переводим текущее UTC-время в часовой пояс пользователя
+            user_tz_name = setting.time_zone or 'UTC'
+            try:
+                user_tz = pytz.timezone(user_tz_name)
+            except pytz.UnknownTimeZoneError:
+                self.stdout.write(self.style.WARNING(
+                    f"  Неизвестный часовой пояс '{user_tz_name}' для {setting.user.name}, используем UTC"
+                ))
+                user_tz = pytz.utc
+
+            local_now = utc_now.astimezone(user_tz)
+            current_time_str = local_now.strftime('%H:%M')
+
             # Проверяем, есть ли текущее время в списке времён пользователя
-            if current_time_str in setting.times:
+            if current_time_str in (setting.times or []):
                 self.stdout.write(
-                    f"Отправляем напоминание для {setting.user.name} в {current_time_str}"
+                    f"Отправляем напоминание для {setting.user.name} "
+                    f"(tz={user_tz_name}, local={current_time_str})"
                 )
                 sent = self._send_to_user(setting, webpush, WebPushException)
                 sent_count += sent
@@ -57,11 +70,12 @@ class Command(BaseCommand):
             "body": reminder_setting.text or "Не забудьте отметить привычки!",
             "icon": "/favicon.ico",
             "badge": "/favicon-96x96.png",
-            "tag": f"habit-reminder-{reminder_setting.user.id}-{timezone.now().timestamp()}",
+            "tag": f"habit-reminder-{reminder_setting.user.id}",
             "url": "/"
         }
 
         sent = 0
+        stale_subs = []
         for sub in subscriptions:
             try:
                 webpush(
@@ -79,18 +93,22 @@ class Command(BaseCommand):
                     }
                 )
                 self.stdout.write(
-                    self.style.SUCCESS(f"  ✓ Отправлено на {sub.endpoint[:50]}...")
+                    self.style.SUCCESS(f"  ✓ Отправлено на {sub.endpoint[:60]}...")
                 )
                 sent += 1
             except WebPushException as ex:
                 self.stdout.write(
-                    self.style.ERROR(f"  ✗ Ошибка для {sub.endpoint[:50]}: {ex}")
+                    self.style.ERROR(f"  ✗ Ошибка для {sub.endpoint[:60]}: {ex}")
                 )
                 # 404/410 — подписка истекла, удаляем
                 if ex.response and ex.response.status_code in [404, 410]:
-                    sub.delete()
-                    self.stdout.write("    Устаревшая подписка удалена.")
+                    stale_subs.append(sub)
+                    self.stdout.write("    Устаревшая подписка помечена для удаления.")
             except Exception as ex:
                 self.stdout.write(self.style.ERROR(f"  ✗ Неожиданная ошибка: {ex}"))
+
+        # Удаляем устаревшие подписки пакетом
+        for sub in stale_subs:
+            sub.delete()
 
         return sent

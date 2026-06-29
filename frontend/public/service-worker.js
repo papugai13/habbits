@@ -207,11 +207,13 @@ self.addEventListener('message', async (event) => {
     await sendNotification(true);
 
   } else if (type === 'SHOW_REMINDER_NOTIFICATION') {
-    // Резервный вызов из страницы (когда SW не отвечает на setInterval)
+    // Резервный вызов из страницы-вкладки.
+    // Используем checkReminders() — там есть дедупликация через sentReminders,
+    // чтобы не слать дубль если SW-интервал уже отправил уведомление.
     if (!reminderSettings) {
       reminderSettings = await loadSettingsFromDB();
     }
-    await sendNotification(false);
+    checkReminders();
 
   } else if (type === 'PING') {
     // Keepalive-пинг от страницы — убеждаемся, что интервал запущен,

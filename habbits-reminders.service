@@ -1,0 +1,12 @@
+[Unit]
+Description=Habbits — отправка push-уведомлений о напоминаниях
+After=network.target
+
+[Service]
+Type=oneshot
+# Укажи путь к своему venv и проекту
+WorkingDirectory=/path/to/habbits/backend
+ExecStart=/path/to/habbits/venv/bin/python manage.py send_reminders
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=habbits-reminders

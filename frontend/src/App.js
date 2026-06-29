@@ -705,6 +705,12 @@ const App = () => {
   // Save reminder settings to server
   const saveReminderSettingsToServer = async (updates) => {
     try {
+      // Всегда включаем часовой пояс пользователя — он нужен
+      // серверному команде send_reminders для правильного времени отправки
+      const payload = {
+        ...updates,
+        time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      };
       await fetch('/api/v1/reminders/settings/', {
         method: 'PATCH',
         headers: { 
@@ -712,7 +718,7 @@ const App = () => {
           'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include',
-        body: JSON.stringify(updates)
+        body: JSON.stringify(payload)
       });
     } catch (error) {
       console.error('Failed to save reminder settings:', error);
