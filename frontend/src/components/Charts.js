@@ -421,6 +421,53 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     );
 };
 
+const getScaledTarget = (habit, type, period, dateStr) => {
+    const isUseTarget = habit.use_target;
+    if (!isUseTarget) return 0;
+
+    const rawTarget = type === 'quantity' ? habit.quantity_target : habit.completion_target;
+    if (!rawTarget) return 0;
+
+    const dateObj = new Date(dateStr);
+    const year = dateObj.getFullYear();
+    const month = dateObj.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    if (period === 'day') {
+        if (type === 'completion') return 1;
+        return Math.max(1, Math.round(rawTarget / daysInMonth));
+    }
+    if (period === 'week') {
+        const scaled = Math.round((rawTarget * 7) / daysInMonth);
+        if (type === 'completion') {
+            return Math.min(7, Math.max(1, scaled));
+        }
+        return Math.max(1, scaled);
+    }
+    if (period === 'month') {
+        return rawTarget;
+    }
+    if (period === 'year') {
+        return rawTarget * 12;
+    }
+    return rawTarget;
+};
+
+const getDaysInPeriod = (period, dateStr) => {
+    if (period === 'day') return 1;
+    if (period === 'week') return 7;
+    if (period === 'month') {
+        const dateObj = new Date(dateStr);
+        return new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0).getDate();
+    }
+    if (period === 'year') {
+        const dateObj = new Date(dateStr);
+        const year = dateObj.getFullYear();
+        return (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 366 : 365;
+    }
+    return 7;
+};
+
 const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, storageMode, sortedCategories }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -521,11 +568,22 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
         data.forEach(item => {
             const cat = item.category_name || t('noCategory');
             if (!stats[cat]) {
-                stats[cat] = { name: cat, total: 0, extra: 0, habits: 0 };
+                stats[cat] = { name: cat, total: 0, extra: 0, habits: 0, targetTotal: 0, targetExtra: 0 };
             }
             stats[cat].total += (item.countCapped || 0); // только тёмно-зелёные (streak)
             stats[cat].extra += (item.countExtra || 0);
             stats[cat].habits += 1;
+
+            const daysInPeriod = getDaysInPeriod(period, currentWeekDate);
+            const hTargetTotal = item.use_target && item.completion_target
+                ? getScaledTarget(item, 'completion', period, currentWeekDate)
+                : daysInPeriod;
+            const hTargetExtra = item.use_target && item.quantity_target
+                ? getScaledTarget(item, 'quantity', period, currentWeekDate)
+                : 0;
+
+            stats[cat].targetTotal += hTargetTotal;
+            stats[cat].targetExtra += hTargetExtra;
         });
 
         const allStats = Object.values(stats);
@@ -547,7 +605,7 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
         }
 
         return allStats;
-    }, [data, t, sortedCategories]);
+    }, [data, t, sortedCategories, period, currentWeekDate]);
 
     // Привычки сгруппированные по категории
     const habitsByCategory = useMemo(() => {
@@ -589,16 +647,29 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                     </thead>
                     <tbody>
                         {categoryStats.map((stat, idx) => {
-                            const maxTotal = Math.max(...categoryStats.map(s => s.total)) || 1;
                             const maxExtra = Math.max(...categoryStats.map(s => s.extra)) || 1;
-                            const progressWidth = (stat.total / maxTotal) * 100;
-                            const extraWidth = (stat.extra / maxExtra) * 100;
-                            const totalFraction = `${stat.total}/${maxTotal}`;
-                            const extraFraction = `${stat.extra}/${maxExtra}`;
+                            
+                            const catTargetTotal = stat.targetTotal || 1;
+                            const progressWidth = Math.min(100, (stat.total / catTargetTotal) * 100);
+                            const catTotalPercent = Math.round((stat.total / catTargetTotal) * 100);
+                            const totalFraction = `${stat.total}/${catTargetTotal} (${catTotalPercent}%)`;
+
+                            let progressWidthExtra = 0;
+                            let extraFraction = '';
+                            if (stat.targetExtra > 0) {
+                                progressWidthExtra = Math.min(100, (stat.extra / stat.targetExtra) * 100);
+                                const catExtraPercent = Math.round((stat.extra / stat.targetExtra) * 100);
+                                extraFraction = `${stat.extra}/${stat.targetExtra} (${catExtraPercent}%)`;
+                            } else {
+                                progressWidthExtra = (stat.extra / maxExtra) * 100;
+                                const catExtraPercentRelative = Math.round((stat.extra / maxExtra) * 100);
+                                extraFraction = `${stat.extra}/${maxExtra} (${catExtraPercentRelative}%)`;
+                            }
+
                             const isExpanded = expandedCategories.has(stat.name);
                             const habits = habitsByCategory[stat.name] || [];
-                            const maxHabitTotal = Math.max(...habits.map(h => h.countCapped || 0)) || 1;
                             const maxHabitExtra = Math.max(...habits.map(h => h.countExtra || 0)) || 1;
+
                             return (
                                 <React.Fragment key={idx}>
                                     <tr className="cat-row">
@@ -646,7 +717,7 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                                 <div className="cat-progress-container">
                                                     <span className="cat-progress-number cat-quantity-number">{stat.extra}</span>
                                                     <div className="cat-progress-bar-bg cat-progress-bar-bg--purple">
-                                                        <div className="cat-progress-bar-fill cat-progress-bar-fill--purple" style={{ width: `${extraWidth}%` }}></div>
+                                                        <div className="cat-progress-bar-fill cat-progress-bar-fill--purple" style={{ width: `${progressWidthExtra}%` }}></div>
                                                     </div>
                                                     <span className="cat-progress-percent">{extraFraction}</span>
                                                 </div>
@@ -656,10 +727,30 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                         </td>
                                     </tr>
                                     {isExpanded && habits.map((habit, hIdx) => {
-                                        const hProgressWidth = ((habit.countCapped || 0) / maxHabitTotal) * 100;
-                                        const hExtraWidth = ((habit.countExtra || 0) / maxHabitExtra) * 100;
-                                        const hTotalFraction = `${habit.countCapped || 0}/${maxHabitTotal}`;
-                                        const hExtraFraction = `${habit.countExtra || 0}/${maxHabitExtra}`;
+                                        const daysInPeriod = getDaysInPeriod(period, currentWeekDate);
+
+                                        const hTargetTotal = habit.use_target && habit.completion_target
+                                            ? getScaledTarget(habit, 'completion', period, currentWeekDate)
+                                            : daysInPeriod;
+                                        const hProgressWidth = Math.min(100, ((habit.countCapped || 0) / hTargetTotal) * 100);
+                                        const hTotalPercent = Math.round(((habit.countCapped || 0) / hTargetTotal) * 100);
+                                        const hTotalFraction = `${habit.countCapped || 0}/${hTargetTotal} (${hTotalPercent}%)`;
+
+                                        const hTargetExtra = habit.use_target && habit.quantity_target
+                                            ? getScaledTarget(habit, 'quantity', period, currentWeekDate)
+                                            : 0;
+                                        
+                                        let hExtraWidth = 0;
+                                        let hExtraFraction = '';
+                                        if (hTargetExtra > 0) {
+                                            hExtraWidth = Math.min(100, ((habit.countExtra || 0) / hTargetExtra) * 100);
+                                            const hExtraPercent = Math.round(((habit.countExtra || 0) / hTargetExtra) * 100);
+                                            hExtraFraction = `${habit.countExtra || 0}/${hTargetExtra} (${hExtraPercent}%)`;
+                                        } else {
+                                            hExtraWidth = ((habit.countExtra || 0) / maxHabitExtra) * 100;
+                                            const hExtraPercentRelative = Math.round(((habit.countExtra || 0) / maxHabitExtra) * 100);
+                                            hExtraFraction = `${habit.countExtra || 0}/${maxHabitExtra} (${hExtraPercentRelative}%)`;
+                                        }
                                         return (
                                             <tr key={`h-${hIdx}`} className="cat-habit-row">
                                                 <td className="cat-habit-name-cell">↳ {habit.name}</td>
