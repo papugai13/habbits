@@ -599,15 +599,13 @@ const App = () => {
         const registration = await navigator.serviceWorker.register('/service-worker.js');
         console.log('Service Worker registered:', registration);
 
-        // Send current settings to Service Worker
+        // Передаём только пользовательские настройки — без сброса счётчиков SW
         if (registration.active) {
           const settings = {
             enabled: reminderEnabled,
             text: reminderText,
             reminderTimes: reminderTimes,
             timesPerDay: reminderTimesPerDay === 'custom' ? customTimesPerDay : reminderTimesPerDay,
-            notificationsSentToday: 0,
-            sentReminders: []
           };
           registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings });
         }
@@ -622,13 +620,12 @@ const App = () => {
     const handleServiceWorkerMessage = (event) => {
       if (event.data && event.data.type === 'REQUEST_SETTINGS') {
         console.log('[App] Received REQUEST_SETTINGS from Service Worker');
+        // Без сброса sentReminders — SW управляет своими счётчиками самостоятельно
         const settings = {
           enabled: reminderEnabled,
           text: reminderText,
           reminderTimes: reminderTimes,
           timesPerDay: reminderTimesPerDay === 'custom' ? customTimesPerDay : reminderTimesPerDay,
-          notificationsSentToday: 0,
-          sentReminders: []
         };
         
         navigator.serviceWorker.ready.then(registration => {
@@ -860,7 +857,9 @@ const App = () => {
         const target = new Date(now);
         target.setHours(h, m, 0, 0);
         const diff = now - target;
-        if (diff >= 0 && diff < 60000) {
+        // Окно 5 минут — браузер может дросселировать фоновые таймеры,
+        // поэтому нельзя полагаться на точность ±60 секунд
+        if (diff >= 0 && diff < 300000) {
           const key = `habbits_page_notif_${today}_${time}`;
           if (!sessionStorage.getItem(key)) {
             sessionStorage.setItem(key, '1');
