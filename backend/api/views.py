@@ -1490,6 +1490,9 @@ class HabitViewSet(viewsets.ModelViewSet):
                 'streak_percentage': streak_percentage,
                 'done_history': done_history_str,
                 'start_date': habit.start_date.isoformat() if habit.start_date else None,
+                'use_target': habit.use_target,
+                'completion_target': habit.completion_target,
+                'quantity_target': habit.quantity_target,
             })
 
         return Response({
