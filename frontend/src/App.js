@@ -395,13 +395,14 @@ const App = () => {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.ready.then(registration => {
           if (registration.active) {
+            // Передаём только пользовательские настройки.
+            // Счётчики sentReminders/notificationsSentToday SW хранит сам
+            // (сброс при каждой отправке приводил к дублирующим уведомлениям).
             const swSettings = {
               enabled: data.enabled,
               text: data.text || 'Не забудьте отметить привычки!',
               reminderTimes: data.times || ['09:00'],
               timesPerDay: (data.times || ['09:00']).length,
-              notificationsSentToday: 0,
-              sentReminders: []
             };
             registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: swSettings });
           }
@@ -816,7 +817,9 @@ const App = () => {
     }
   }, [customTimesPerDay, reminderTimesPerDay]);
 
-  // Отправка полного объекта настроек в Service Worker
+  // Отправка пользовательских настроек в Service Worker.
+  // Счётчики sentReminders/notificationsSentToday НЕ сбрасываются —
+  // они управляются самим SW и живут в его IndexedDB.
   const sendSettingsToSW = (overrides = {}) => {
     if (!('serviceWorker' in navigator)) return;
     navigator.serviceWorker.ready.then(registration => {
@@ -826,13 +829,77 @@ const App = () => {
         text: reminderText,
         reminderTimes,
         timesPerDay: reminderTimesPerDay === 'custom' ? customTimesPerDay : reminderTimesPerDay,
-        notificationsSentToday: 0,
-        sentReminders: [],
         ...overrides,
       };
       registration.active.postMessage({ type: 'UPDATE_REMINDER_SETTINGS', settings: swSettings });
     });
   };
+
+  // ─── Keepalive + резервный таймер уведомлений ─────────────────────────────
+  // Браузер убивает idle SW через ~30 секунд. Этот эффект:
+  //   1. Каждые 25 секунд «пингует» SW, чтобы тот перезапустил свой setInterval.
+  //   2. Каждые 30 секунд сам проверяет время напоминаний (резерв, если SW мёртв).
+  //   3. При возврате на вкладку пересылает настройки в SW.
+  useEffect(() => {
+    if (!reminderEnabled || typeof window === 'undefined') return;
+
+    // Keepalive-пинг для SW
+    const pingInterval = setInterval(() => {
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'PING' });
+      }
+    }, 25000);
+
+    // Резервный in-page таймер (работает пока вкладка открыта)
+    const backupInterval = setInterval(() => {
+      if (!reminderEnabled || Notification.permission !== 'granted') return;
+      const now   = new Date();
+      const today = now.toDateString();
+      for (const time of reminderTimes) {
+        const [h, m] = time.split(':').map(Number);
+        const target = new Date(now);
+        target.setHours(h, m, 0, 0);
+        const diff = now - target;
+        if (diff >= 0 && diff < 60000) {
+          const key = `habbits_page_notif_${today}_${time}`;
+          if (!sessionStorage.getItem(key)) {
+            sessionStorage.setItem(key, '1');
+            // Пробуем через SW, иначе напрямую
+            navigator.serviceWorker?.ready.then(reg => {
+              if (reg.active) {
+                reg.active.postMessage({ type: 'SHOW_REMINDER_NOTIFICATION' });
+              } else {
+                new Notification('Habbits 🌱', {
+                  body: reminderText || 'Не забудьте отметить привычки!',
+                  icon: '/favicon.ico',
+                });
+              }
+            }).catch(() => {
+              new Notification('Habbits 🌱', {
+                body: reminderText || 'Не забудьте отметить привычки!',
+                icon: '/favicon.ico',
+              });
+            });
+          }
+        }
+      }
+    }, 30000);
+
+    // При возврате на вкладку — пересылаем настройки в SW (он мог умереть)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        sendSettingsToSW();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(pingInterval);
+      clearInterval(backupInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reminderEnabled, reminderTimes, reminderText]);
 
   const handleReminderTextChange = (text) => {
     setReminderText(text);

@@ -50,6 +50,18 @@ async function loadSettingsFromDB() {
   }
 }
 
+// ─── Управление интервалом ─────────────────────────────────────────────────────
+
+// Гарантирует, что интервал проверки запущен.
+// Вызывается при каждом входящем сообщении, т.к. браузер может убить SW
+// в любой момент, и тогда интервал пропадает.
+function ensureIntervalRunning() {
+  if (!checkIntervalId) {
+    console.log('[SW] Перезапускаем интервал проверки напоминаний');
+    checkIntervalId = setInterval(checkReminders, REMINDER_CHECK_INTERVAL);
+  }
+}
+
 // ─── Логика проверки напоминаний ──────────────────────────────────────────────
 
 function checkReminders() {
@@ -77,10 +89,10 @@ function checkReminders() {
     const reminderDate = new Date(now);
     reminderDate.setHours(hours, minutes, 0, 0);
 
-    const timeDiff = now - reminderDate; // миллисекунды (положительное = прошли, отрицательное = ещё не настало)
+    const timeDiff = now - reminderDate; // положительное = прошли, отрицательное = ещё впереди
 
-    // Срабатываем в окне [0, REMINDER_CHECK_INTERVAL] — т.е. уже настало и не более 1 минуты назад
-    if (timeDiff >= 0 && timeDiff < REMINDER_CHECK_INTERVAL) {
+    // Срабатываем в окне [0, REMINDER_CHECK_INTERVAL*2] — небольшой запас на случай задержки
+    if (timeDiff >= 0 && timeDiff < REMINDER_CHECK_INTERVAL * 2) {
       const reminderKey = `${today}-${time}`;
       if (!(reminderSettings.sentReminders || []).includes(reminderKey)) {
         console.log('[SW] Отправляем уведомление для:', time);
@@ -99,22 +111,19 @@ function checkReminders() {
 // ─── Отправка уведомления ─────────────────────────────────────────────────────
 
 function sendNotification(isTest = false) {
-  const body = isTest
-    ? (reminderSettings?.text || 'Не забудьте отметить привычки!')
-    : (reminderSettings?.text || 'Не забудьте отметить привычки!');
-
-  const tag = isTest
+  const body = reminderSettings?.text || 'Не забудьте отметить привычки!';
+  const tag  = isTest
     ? `habit-test-${Date.now()}`
     : `habit-reminder-${Date.now()}`;
 
   return self.registration.showNotification('Habbits 🌱', {
     body,
-    icon:              '/favicon.ico',
-    badge:             '/favicon-96x96.png',
+    icon:               '/favicon.ico',
+    badge:              '/favicon-96x96.png',
     tag,
     requireInteraction: false,
-    silent:            false,
-    vibrate:           [200, 100, 200],
+    silent:             false,
+    vibrate:            [200, 100, 200],
   });
 }
 
@@ -148,6 +157,8 @@ async function initSW() {
   // Запускаем интервал проверки
   if (checkIntervalId) clearInterval(checkIntervalId);
   checkIntervalId = setInterval(checkReminders, REMINDER_CHECK_INTERVAL);
+  // Сразу проверяем, вдруг уже пора
+  checkReminders();
 }
 
 // ─── Обработка сообщений от клиента ─────────────────────────────────────────
@@ -156,12 +167,58 @@ self.addEventListener('message', async (event) => {
   const { type, settings } = event.data || {};
 
   if (type === 'UPDATE_REMINDER_SETTINGS' || type === 'SETTINGS_RESPONSE') {
-    reminderSettings = settings;
-    // Сохраняем в IndexedDB для выживания перезапуска SW
-    await saveSettingsToDB(settings);
-    console.log('[SW] Настройки обновлены:', settings);
+    // Если SW был убит браузером и перезапущен, reminderSettings = null.
+    // Пробуем загрузить сохранённые данные отслеживания из IndexedDB,
+    // чтобы не потерять sentReminders и не слать дубликаты.
+    let preserved = {};
+    if (!reminderSettings) {
+      const saved = await loadSettingsFromDB();
+      if (saved) {
+        preserved = {
+          sentReminders:         saved.sentReminders         || [],
+          notificationsSentToday: saved.notificationsSentToday || 0,
+          lastNotificationDate:  saved.lastNotificationDate  || null,
+        };
+      }
+    } else {
+      preserved = {
+        sentReminders:         reminderSettings.sentReminders         || [],
+        notificationsSentToday: reminderSettings.notificationsSentToday || 0,
+        lastNotificationDate:  reminderSettings.lastNotificationDate  || null,
+      };
+    }
+
+    // Мёрджим: настройки пользователя из App перезаписывают только «преференции»,
+    // внутренние счётчики отслеживания — сохраняются.
+    reminderSettings = { ...preserved, ...settings };
+    await saveSettingsToDB(reminderSettings);
+    console.log('[SW] Настройки обновлены:', reminderSettings);
+
+    // Гарантируем что интервал работает (SW мог быть перезапущен без activate)
+    ensureIntervalRunning();
+    // Сразу проверяем — вдруг уже наступило время
+    checkReminders();
+
   } else if (type === 'TEST_NOTIFICATION') {
+    // Загрузить настройки из DB если нужно
+    if (!reminderSettings) {
+      reminderSettings = await loadSettingsFromDB();
+    }
     await sendNotification(true);
+
+  } else if (type === 'SHOW_REMINDER_NOTIFICATION') {
+    // Резервный вызов из страницы (когда SW не отвечает на setInterval)
+    if (!reminderSettings) {
+      reminderSettings = await loadSettingsFromDB();
+    }
+    await sendNotification(false);
+
+  } else if (type === 'PING') {
+    // Keepalive-пинг от страницы — убеждаемся, что интервал запущен
+    if (!reminderSettings) {
+      reminderSettings = await loadSettingsFromDB();
+    }
+    ensureIntervalRunning();
   }
 });
 
