@@ -1036,6 +1036,12 @@ const Charts = ({
     const [slideDirection, setSlideDirection] = useState(null);
     const swipeStartRef = useRef(null);
     const swipeActiveRef = useRef(false);
+    const [rangeLimits, setRangeLimits] = useState({
+        day: 7,
+        week: 5,
+        month: 12,
+        year: 5
+    });
     const [columnOffset, setColumnOffset] = useState(0);
     const [columnAnim, setColumnAnim] = useState(null);   // 'expand' | 'shrink' | null
     const [barAnimActive, setBarAnimActive] = useState(false);
@@ -1079,9 +1085,46 @@ const Charts = ({
     const fetchStatistics = useCallback(async () => {
         setLoading(true);
         try {
+            const limit = rangeLimits[period] || 7;
+            const refDate = new Date(chartDate);
+            let start_date = '';
+            let end_date = '';
+
+            if (period === 'day') {
+                const dayOfWeek = refDate.getDay();
+                const diffToSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+                const sunday = new Date(refDate);
+                sunday.setDate(refDate.getDate() + diffToSunday);
+                const monday = new Date(sunday);
+                monday.setDate(sunday.getDate() - (limit - 1));
+                end_date = sunday.toISOString().split('T')[0];
+                start_date = monday.toISOString().split('T')[0];
+            } else if (period === 'week') {
+                const dayOfWeek = refDate.getDay();
+                const diffToSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+                const sunday = new Date(refDate);
+                sunday.setDate(refDate.getDate() + diffToSunday);
+                const start = new Date(sunday);
+                start.setDate(sunday.getDate() - (limit * 7 - 1));
+                end_date = sunday.toISOString().split('T')[0];
+                start_date = start.toISOString().split('T')[0];
+            } else if (period === 'month') {
+                const end = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0);
+                const start = new Date(end.getFullYear(), end.getMonth() - (limit - 1), 1);
+                end_date = end.toISOString().split('T')[0];
+                start_date = start.toISOString().split('T')[0];
+            } else if (period === 'year') {
+                const end = new Date(refDate.getFullYear(), 11, 31);
+                const start = new Date(end.getFullYear() - (limit - 1), 0, 1);
+                end_date = end.toISOString().split('T')[0];
+                start_date = start.toISOString().split('T')[0];
+            }
+
             const json = await storageService.getDailyStatistics(storageMode, {
                 period,
                 date: chartDate,
+                start_date,
+                end_date,
                 category: selectedCategory || 'Все'
             }, {
                 credentials: 'include'
@@ -1220,7 +1263,7 @@ const Charts = ({
         } finally {
             setLoading(false);
         }
-    }, [period, chartDate, selectedCategory, t, language, storageMode]);
+    }, [period, chartDate, selectedCategory, t, language, storageMode, rangeLimits]);
 
     useEffect(() => {
         fetchStatistics();
@@ -1329,19 +1372,13 @@ const Charts = ({
     };
     const handleMouseLeave = () => { mouseStartRef.current = null; };
 
-    // ─── Видимые данные (slicing для + / − кнопок) ───────────────────────────
+    // ─── Видимые данные (теперь отображаем все запрошенные данные) ───────────
     const visibleChartData = useMemo(
-        () => chartData.slice(columnOffset),
-        [chartData, columnOffset]
+        () => chartData,
+        [chartData]
     );
 
-    // Сбрасываем смещение при смене периода или загрузке новых данных
-    useEffect(() => {
-        setColumnOffset(0);
-    }, [period, chartDate]);
-
     const triggerColumnAnimation = (dir, action) => {
-        // Оптимистичное обновление: меняем данные сразу, анимация играет поверх
         action();
         setColumnAnim(dir);
         setBarAnimActive(true);
@@ -1352,14 +1389,22 @@ const Charts = ({
     };
 
     const handleAddColumn = () => {
-        if (columnOffset > 0) {
-            triggerColumnAnimation('expand', () => setColumnOffset(o => o - 1));
-        }
+        triggerColumnAnimation('expand', () => {
+            setRangeLimits(prev => ({
+                ...prev,
+                [period]: (prev[period] || 7) + 1
+            }));
+        });
     };
 
     const handleRemoveColumn = () => {
-        if (visibleChartData.length > 1) {
-            triggerColumnAnimation('shrink', () => setColumnOffset(o => o + 1));
+        if ((rangeLimits[period] || 7) > 1) {
+            triggerColumnAnimation('shrink', () => {
+                setRangeLimits(prev => ({
+                    ...prev,
+                    [period]: Math.max(1, (prev[period] || 7) - 1)
+                }));
+            });
         }
     };
 
@@ -1718,7 +1763,7 @@ const Charts = ({
                                 <button
                                     className="chart-expand-btn plus"
                                     onClick={handleAddColumn}
-                                    disabled={columnOffset === 0}
+                                    disabled={false}
                                     aria-label={language === 'ru' ? 'Добавить столбец' : 'Add column'}
                                     title={language === 'ru' ? 'Показать ещё один период' : 'Show one more period'}
                                 >+</button>
