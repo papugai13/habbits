@@ -4,8 +4,8 @@ export default function HabitCounts({ weeklyCount, weeklyAward, habit, isLastQua
   const completionPercent = habit.completion_target ? Math.min(100, ((habit.monthly_total || 0) / habit.completion_target) * 100) : 0;
   const quantityPercent = habit.quantity_target ? Math.min(100, ((habit.monthly_overflow || 0) / habit.quantity_target) * 100) : 0;
 
-  const displayCompletion = `${habit.monthly_total || 0}/${habit.completion_target || 0}`;
-  const displayQuantity = `${habit.monthly_overflow || 0}/${habit.quantity_target || 0}`;
+  const displayCompletion = `${habit.monthly_total || 0}:${habit.completion_target || 0}`;
+  const displayQuantity = `${habit.monthly_overflow || 0}:${habit.quantity_target || 0}`;
 
   return (
     <div className="habit-counts-wrapper" aria-label={`Счетчики для привычки ${habit.name}`}>
