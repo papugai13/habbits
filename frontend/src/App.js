@@ -1514,11 +1514,14 @@ const App = () => {
                         )}
                         {weeklyAward && (
                           <span className="name-streak">
-                            {' '}{weeklyCount === 3 ? '⚡' : 
-                                 weeklyCount === 4 ? '⚡⚡' : 
-                                 weeklyCount === 5 ? '⭐' : 
-                                 weeklyCount === 6 ? '⭐⭐' : 
-                                 weeklyAward}
+                            {' '}
+                            <span className="name-streak-emojis">
+                              {weeklyCount === 3 ? '⚡' : 
+                               weeklyCount === 4 ? '⚡⚡' : 
+                               weeklyCount === 5 ? '⭐' : 
+                               weeklyCount === 6 ? '⭐⭐' : 
+                               weeklyAward}
+                            </span>
                             {((weeklyAward === '👑' && habit.crown_streak > 1) || (weeklyAward !== '👑' && habit.weekly_award_streak > 1)) && (
                               ` x${weeklyAward === '👑' ? habit.crown_streak : habit.weekly_award_streak}`
                             )}

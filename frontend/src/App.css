@@ -783,6 +783,11 @@ body {
   margin-left: 2px;
 }
 
+.name-streak-emojis {
+  letter-spacing: -3px;
+  display: inline-block;
+}
+
 .dark-theme .name-streak {
   color: #34D399;
 }
@@ -1091,17 +1096,20 @@ body {
   font-size: 8px; /* Emojis smaller than digit */
   line-height: 1;
   z-index: 3;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .award-left {
-  margin-right: 0px;
+  left: 2px;
 }
 
 .award-right {
-  margin-left: 0px;
+  right: 2px;
 }
 
 /* === КОРОНА === */
