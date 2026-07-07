@@ -427,13 +427,23 @@ class HabitViewSet(viewsets.ModelViewSet):
             start_date = reference_date - timedelta(days=days_since_monday)
             end_date = start_date + timedelta(days=6)
             
-            # Monthly range anchored to the start of the week
-            start_of_month = date(start_date.year, start_date.month, 1)
-            if start_date.month == 12:
-                next_month = date(start_date.year + 1, 1, 1)
+            # Monthly range anchored to the end of the week (current/new month)
+            start_of_month = date(end_date.year, end_date.month, 1)
+            if end_date.month == 12:
+                next_month = date(end_date.year + 1, 1, 1)
             else:
-                next_month = date(start_date.year, start_date.month + 1, 1)
+                next_month = date(end_date.year, end_date.month + 1, 1)
             end_of_month = next_month - timedelta(days=1)
+            
+            # Check if this week spans across a month boundary
+            is_transition_week = start_date.month != end_date.month
+            
+            if is_transition_week:
+                prev_start_of_month = date(start_date.year, start_date.month, 1)
+                prev_end_of_month = start_of_month - timedelta(days=1)
+            else:
+                prev_start_of_month = None
+                prev_end_of_month = None
             
             result = []
             for habit in habits:
@@ -599,6 +609,34 @@ class HabitViewSet(viewsets.ModelViewSet):
                     
                     habit_data['monthly_overflow'] = monthly_overflow
                     habit_data['monthly_total'] = monthly_total
+
+                    # Calculate previous month stats if transition week
+                    if is_transition_week:
+                        prev_monthly_overflow = 0
+                        if has_quantity_tracking:
+                            prev_monthly_overflow = Date.objects.filter(
+                                user=user_profile,
+                                habit=habit,
+                                habit_date__range=[prev_start_of_month, prev_end_of_month],
+                                is_done=True,
+                                quantity__gte=1
+                            ).aggregate(
+                                total=Sum('quantity')
+                            )['total'] or 0
+                        
+                        prev_monthly_total = Date.objects.filter(
+                            user=user_profile,
+                            habit=habit,
+                            habit_date__range=[prev_start_of_month, prev_end_of_month],
+                            is_done=True,
+                            is_restored=False
+                        ).count()
+                        
+                        habit_data['prev_monthly_overflow'] = prev_monthly_overflow
+                        habit_data['prev_monthly_total'] = prev_monthly_total
+                        habit_data['is_transition_week'] = True
+                    else:
+                        habit_data['is_transition_week'] = False
 
                     weekly_completions = Date.objects.filter(
                         user=user_profile,

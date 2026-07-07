@@ -5897,3 +5897,18 @@ html.dark-theme, body.dark-theme {
   }
 }
 
+.transition-month-col {
+  min-width: 50px !important;
+  max-width: 50px !important;
+  width: 50px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-right: 1px dashed var(--border-color, #E5E7EB) !important;
+  box-sizing: border-box !important;
+}
+
+.dark-theme .transition-month-col {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+

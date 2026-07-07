@@ -1310,8 +1310,21 @@ const App = () => {
               const monthName = columnDate.toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { month: 'short', timeZone: 'UTC' });
               const cleanMonthName = language === 'ru' ? monthName.replace('.', '') : monthName;
 
+              const prevMonthDate = new Date(columnDate);
+              prevMonthDate.setUTCDate(prevMonthDate.getUTCDate() - 1);
+              const prevMonthNum = prevMonthDate.getUTCMonth() + 1;
+              const prevMonthName = prevMonthDate.toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { month: 'short', timeZone: 'UTC' }).replace('.', '');
+
               return (
                 <React.Fragment key={day}>
+                  {isMonthStart && (
+                    <div className="grid-col day-col transition-month-col" style={{ opacity: 0.85 }}>
+                      <div className="day-completion-count">&nbsp;</div>
+                      <div className="day-name" style={{ color: '#10B981', fontWeight: 'bold' }}>{language === 'ru' ? 'МЕС' : 'MON'}</div>
+                      <div className="day-number" style={{ color: '#10B981', fontWeight: 'bold' }}>{prevMonthNum}</div>
+                      <div className="day-month">{prevMonthName}</div>
+                    </div>
+                  )}
                   <div className={`grid-col day-col ${isTodayCol ? (highlightWeekToday ? 'today highlight' : 'today') : ''} ${isMonthStart ? 'month-start' : ''}`}>
                     <div className="day-completion-count">{completedCount}/{totalHabits}</div>
                     <div className="day-name">{day}</div>
@@ -1324,7 +1337,16 @@ const App = () => {
           </div>
           <div className="days-placeholder-end header-counts-container">
             <div className={`header-count-badge weekly ${currentWeekDate === getMondayString() ? 'current-week' : ''}`}>{language === 'ru' ? 'НЕД' : t('week').toUpperCase()} {getWeekNumber(currentWeekDate)}</div>
-            <div className="header-count-badge monthly">{language === 'ru' ? 'МЕС' : t('month').substring(0, 3).toUpperCase()} {new Date(currentWeekDate).getMonth() + 1}</div>
+            <div className="header-count-badge monthly">
+              {language === 'ru' ? 'МЕС' : t('month').substring(0, 3).toUpperCase()}{' '}
+              {(() => {
+                const [cwYear, cwMonth, cwDay] = currentWeekDate.split('-').map(Number);
+                const monDate = new Date(Date.UTC(cwYear, cwMonth - 1, cwDay));
+                const sunDate = new Date(monDate);
+                sunDate.setUTCDate(sunDate.getUTCDate() + 6);
+                return sunDate.getUTCMonth() + 1;
+              })()}
+            </div>
             <div className="header-count-badge target">{language === 'ru' ? 'ЦЕЛЬ' : 'TGT'}</div>
           </div>
         </div>
@@ -1398,9 +1420,16 @@ const App = () => {
                         const isMonthStart = index > 0 && slotDate.getUTCDate() === 1;
 
                         return (
-                          <div key={slotDateStr} className={`grid-col day-completion-col ${isMonthStart ? 'month-start' : ''}`}>
-                            <span className="day-completion-count">{dayCompletedCount}/{habits.length}</span>
-                          </div>
+                          <React.Fragment key={slotDateStr}>
+                            {isMonthStart && (
+                              <div className="grid-col day-completion-col transition-month-col" style={{ opacity: 0.5 }}>
+                                <span className="day-completion-count">-</span>
+                              </div>
+                            )}
+                            <div className={`grid-col day-completion-col ${isMonthStart ? 'month-start' : ''}`}>
+                              <span className="day-completion-count">{dayCompletedCount}/{habits.length}</span>
+                            </div>
+                          </React.Fragment>
                         );
                       })}
                     </div>
@@ -1580,10 +1609,67 @@ const App = () => {
                             </button>
                           );
 
+                          const prevCompletionPercent = habit.completion_target ? Math.min(100, ((habit.prev_monthly_total || 0) / habit.completion_target) * 100) : 0;
+                          const prevQuantityPercent = habit.quantity_target ? Math.min(100, ((habit.prev_monthly_overflow || 0) / habit.quantity_target) * 100) : 0;
+                          const prevDisplayCompletion = `${habit.prev_monthly_total || 0}:${habit.completion_target || 0}`;
+                          const prevDisplayQuantity = `${habit.prev_monthly_overflow || 0}:${habit.quantity_target || 0}`;
+
                           return (
-                            <div key={slotDateStr} className={`grid-col ${isMonthStart ? 'month-start' : ''}`}>
-                              {checkBoxBtn}
-                            </div>
+                            <React.Fragment key={slotDateStr}>
+                              {isMonthStart && (
+                                <div className="grid-col transition-month-col" style={{ 
+                                  display: 'flex', 
+                                  flexDirection: 'column', 
+                                  gap: '3px', 
+                                  opacity: 0.95
+                                }}>
+                                  {habit.use_target ? (
+                                    <div 
+                                      className="habit-count monthly progress-bar green" 
+                                      style={{ '--progress-percent': `${prevCompletionPercent}%`, margin: 0 }}
+                                      role="progressbar"
+                                      aria-valuenow={habit.prev_monthly_total || 0}
+                                      aria-valuemin="0"
+                                      aria-valuemax={habit.completion_target || 0}
+                                    >
+                                      <span className="progress-text-under">{prevDisplayCompletion}</span>
+                                      <div className="progress-fill" style={{ width: `${prevCompletionPercent}%` }}>
+                                        <span className="progress-text-over">{prevDisplayCompletion}</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="habit-count monthly" style={{ margin: 0 }}>
+                                      {habit.prev_monthly_total || 0}
+                                    </div>
+                                  )}
+
+                                  {!isLastQuantityLess1 && (
+                                    habit.use_target ? (
+                                      <div 
+                                        className="habit-count-overflow monthly progress-bar purple" 
+                                        style={{ '--progress-percent': `${prevQuantityPercent}%`, margin: 0 }}
+                                        role="progressbar"
+                                        aria-valuenow={habit.prev_monthly_overflow || 0}
+                                        aria-valuemin="0"
+                                        aria-valuemax={habit.quantity_target || 0}
+                                      >
+                                        <span className="progress-text-under">{prevDisplayQuantity}</span>
+                                        <div className="progress-fill" style={{ width: `${prevQuantityPercent}%` }}>
+                                          <span className="progress-text-over">{prevDisplayQuantity}</span>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="habit-count-overflow monthly" style={{ margin: 0 }}>
+                                        {habit.prev_monthly_overflow || 0}
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              )}
+                              <div className={`grid-col ${isMonthStart ? 'month-start' : ''}`}>
+                                {checkBoxBtn}
+                              </div>
+                            </React.Fragment>
                           );
                         })}
                       </div>
