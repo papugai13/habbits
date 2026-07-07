@@ -1292,17 +1292,13 @@ const App = () => {
         <div className="days-header">
           <div className="days-cols">
             {WEEK_DAYS.map((day, index) => {
-              const baseDate = new Date(currentWeekDate);
-              const dayOfWeek = baseDate.getDay();
-              const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-              const diff = index - currentDayIndex;
-
-              const columnDate = new Date(baseDate);
-              columnDate.setDate(baseDate.getDate() + diff);
-              const columnDateStr = columnDate.toLocaleDateString('en-CA');
+              const [cwYear, cwMonth, cwDay] = currentWeekDate.split('-').map(Number);
+              const columnDate = new Date(Date.UTC(cwYear, cwMonth - 1, cwDay));
+              columnDate.setUTCDate(columnDate.getUTCDate() + index);
+              const columnDateStr = columnDate.toISOString().split('T')[0];
 
               const isTodayCol = columnDateStr === todayStr;
-              const isMonthStart = index > 0 && columnDate.getDate() === 1;
+              const isMonthStart = index > 0 && columnDate.getUTCDate() === 1;
 
               // Count completed (non-restored) habits for this day
               const completedCount = filteredHabits.reduce((count, habit) => {
@@ -1311,7 +1307,7 @@ const App = () => {
               }, 0);
               const totalHabits = filteredHabits.length;
 
-              const monthName = columnDate.toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { month: 'short' });
+              const monthName = columnDate.toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { month: 'short', timeZone: 'UTC' });
               const cleanMonthName = language === 'ru' ? monthName.replace('.', '') : monthName;
 
               return (
@@ -1319,7 +1315,7 @@ const App = () => {
                   <div className={`grid-col day-col ${isTodayCol ? (highlightWeekToday ? 'today highlight' : 'today') : ''} ${isMonthStart ? 'month-start' : ''}`}>
                     <div className="day-completion-count">{completedCount}/{totalHabits}</div>
                     <div className="day-name">{day}</div>
-                    <div className="day-number">{columnDate.getDate()}</div>
+                    <div className="day-number">{columnDate.getUTCDate()}</div>
                     <div className="day-month">{cleanMonthName}</div>
                   </div>
                 </React.Fragment>
@@ -1341,6 +1337,7 @@ const App = () => {
           const habits = groupedHabits[categoryKey] || [];
           if (!habits.length) return null;
           const isCollapsed = !!collapsedCategories[categoryKey];
+          const [cwYear, cwMonth, cwDay] = currentWeekDate.split('-').map(Number);
 
           // Count habits with at least one completion (not restored) this week
 
@@ -1356,14 +1353,9 @@ const App = () => {
             const statuses = habit.statuses || [];
             let completions = 0;
             WEEK_DAYS.forEach((_, index) => {
-              const baseDate = new Date(currentWeekDate);
-              const dayOfWeek = baseDate.getDay();
-              const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-              const diff = index - currentDayIndex;
-
-              const slotDate = new Date(baseDate);
-              slotDate.setDate(baseDate.getDate() + diff);
-              const slotDateStr = slotDate.toLocaleDateString('en-CA');
+              const slotDate = new Date(Date.UTC(cwYear, cwMonth - 1, cwDay));
+              slotDate.setUTCDate(slotDate.getUTCDate() + index);
+              const slotDateStr = slotDate.toISOString().split('T')[0];
 
               const status = statuses.find(s => s && s.date === slotDateStr);
               if (status && status.is_done && !status.is_restored) {
@@ -1394,14 +1386,9 @@ const App = () => {
                   <div className="habit-row-content category-header-bottom">
                     <div className="habit-checks">
                       {WEEK_DAYS.map((_, index) => {
-                        const baseDate = new Date(currentWeekDate);
-                        const dayOfWeek = baseDate.getDay();
-                        const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                        const diff = index - currentDayIndex;
-
-                        const slotDate = new Date(baseDate);
-                        slotDate.setDate(baseDate.getDate() + diff);
-                        const slotDateStr = slotDate.toLocaleDateString('en-CA');
+                        const slotDate = new Date(Date.UTC(cwYear, cwMonth - 1, cwDay));
+                        slotDate.setUTCDate(slotDate.getUTCDate() + index);
+                        const slotDateStr = slotDate.toISOString().split('T')[0];
 
                         const dayCompletedCount = habits.reduce((count, habit) => {
                           const status = habit.statuses?.find(s => s && s.date === slotDateStr);
@@ -1461,13 +1448,12 @@ const App = () => {
                   streakOnToday = 0;
                 }
 
+                const [cwYear, cwMonth, cwDay] = currentWeekDate.split('-').map(Number);
+
                 WEEK_DAYS.forEach((_, idx) => {
-                  const baseDate = new Date(currentWeekDate);
-                  const dayOfWeek = baseDate.getDay();
-                  const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                  const slotDate = new Date(baseDate);
-                  slotDate.setDate(baseDate.getDate() + (idx - currentDayIndex));
-                  const slotDateStr = slotDate.toLocaleDateString('en-CA');
+                  const slotDate = new Date(Date.UTC(cwYear, cwMonth - 1, cwDay));
+                  slotDate.setUTCDate(slotDate.getUTCDate() + idx);
+                  const slotDateStr = slotDate.toISOString().split('T')[0];
 
                   if (slotDateStr < todayStr) {
                     const status = statuses.find(s => s && s.date === slotDateStr);
@@ -1492,12 +1478,9 @@ const App = () => {
 
                 const dots = new Array(7).fill('');
                 WEEK_DAYS.forEach((_, index) => {
-                  const baseDate = new Date(currentWeekDate);
-                  const dayOfWeek = baseDate.getDay();
-                  const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                  const slotDate = new Date(baseDate);
-                  slotDate.setDate(baseDate.getDate() + (index - currentDayIndex));
-                  const slotDateStr = slotDate.toLocaleDateString('en-CA');
+                  const slotDate = new Date(Date.UTC(cwYear, cwMonth - 1, cwDay));
+                  slotDate.setUTCDate(slotDate.getUTCDate() + index);
+                  const slotDateStr = slotDate.toISOString().split('T')[0];
                   
                   const status = statuses.find(s => s && s.date === slotDateStr);
                   const isDoneAtAll = status ? status.is_done : false;
@@ -1544,14 +1527,9 @@ const App = () => {
                     <div className="habit-row-content">
                       <div className="habit-checks">
                         {WEEK_DAYS.map((_, index) => {
-                          const baseDate = new Date(currentWeekDate);
-                          const dayOfWeek = baseDate.getDay();
-                          const currentDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                          const diff = index - currentDayIndex;
-
-                          const slotDate = new Date(baseDate);
-                          slotDate.setDate(baseDate.getDate() + diff);
-                          const slotDateStr = slotDate.toLocaleDateString('en-CA');
+                          const slotDate = new Date(Date.UTC(cwYear, cwMonth - 1, cwDay));
+                          slotDate.setUTCDate(slotDate.getUTCDate() + index);
+                          const slotDateStr = slotDate.toISOString().split('T')[0];
 
                           const status = statuses.find(s => s && s.date === slotDateStr);
                           const isDone = status ? status.is_done : false;
@@ -1567,7 +1545,7 @@ const App = () => {
                           const isBeforeCreation = habit.start_date && slotDateStr < habit.start_date;
                           const isDisabled = isFuture;
                           const showDotClass = dots[index];
-                          const isMonthStart = index > 0 && slotDate.getDate() === 1;
+                          const isMonthStart = index > 0 && slotDate.getUTCDate() === 1;
 
                           const checkBoxBtn = (
                             <button
