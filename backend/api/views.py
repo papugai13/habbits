@@ -908,47 +908,68 @@ class HabitViewSet(viewsets.ModelViewSet):
                 9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
             }
 
-            if period == 'day' or (not period and not request.query_params.get('start_date')):
-                # Calendar week (Monday to Sunday) containing the specified date
-                days_since_monday = today.weekday()
-                start_date = today - timedelta(days=days_since_monday)
-                end_date = start_date + timedelta(days=6)
-                label = f"{start_date.strftime('%d.%m')} - {end_date.strftime('%d.%m')}"
-            elif period == 'week':
-                # Weeks of the month: start from Monday of the week containing the 1st
-                first_of_month = date(today.year, today.month, 1)
-                days_since_monday = first_of_month.weekday()
-                start_date = first_of_month - timedelta(days=days_since_monday)
-                if today.month == 12:
-                    next_month = date(today.year + 1, 1, 1)
+            req_start_date = request.query_params.get('start_date')
+            req_end_date = request.query_params.get('end_date')
+            use_explicit_dates = False
+
+            if req_start_date and req_end_date:
+                try:
+                    start_date = datetime.strptime(req_start_date, '%Y-%m-%d').date()
+                    end_date = datetime.strptime(req_end_date, '%Y-%m-%d').date()
+                    use_explicit_dates = True
+                    if period == 'day' or not period:
+                        label = f"{start_date.strftime('%d.%m')} - {end_date.strftime('%d.%m')}"
+                    elif period == 'week':
+                        label = f"Недели: {MONTHS_RU.get(today.month, 'Январь')} {today.year}"
+                    elif period == 'month':
+                        label = str(today.year)
+                    elif period == 'year':
+                        label = f"{start_date.year} - {end_date.year}"
+                except ValueError:
+                    pass
+
+            if not use_explicit_dates:
+                if period == 'day' or (not period and not request.query_params.get('start_date')):
+                    # Calendar week (Monday to Sunday) containing the specified date
+                    days_since_monday = today.weekday()
+                    start_date = today - timedelta(days=days_since_monday)
+                    end_date = start_date + timedelta(days=6)
+                    label = f"{start_date.strftime('%d.%m')} - {end_date.strftime('%d.%m')}"
+                elif period == 'week':
+                    # Weeks of the month: start from Monday of the week containing the 1st
+                    first_of_month = date(today.year, today.month, 1)
+                    days_since_monday = first_of_month.weekday()
+                    start_date = first_of_month - timedelta(days=days_since_monday)
+                    if today.month == 12:
+                        next_month = date(today.year + 1, 1, 1)
+                    else:
+                        next_month = date(today.year, today.month + 1, 1)
+                    end_date = next_month - timedelta(days=1)
+                    label = f"Недели: {MONTHS_RU[today.month]} {today.year}"
+                elif period == 'month':
+                    # Show monthly bars for the full current year
+                    start_date = date(today.year, 1, 1)
+                    end_date = date(today.year, 12, 31)
+                    label = str(today.year)
+                elif period == 'year':
+                    # For yearly period, we always show last 5 years relative to the selected year
+                    start_date = date(today.year - 4, 1, 1)
+                    end_date = date(today.year, 12, 31)
+                    label = f"{start_date.year} - {end_date.year}"
                 else:
-                    next_month = date(today.year, today.month + 1, 1)
-                end_date = next_month - timedelta(days=1)
-                label = f"Недели: {MONTHS_RU[today.month]} {today.year}"
-            elif period == 'month':
-                # Show monthly bars for the full current year
-                start_date = date(today.year, 1, 1)
-                end_date = date(today.year, 12, 31)
-                label = str(today.year)
-            elif period == 'year':
-                # For yearly period, we always show last 5 years relative to the selected year
-                start_date = date(today.year - 4, 1, 1)
-                end_date = date(today.year, 12, 31)
-                label = f"{start_date.year} - {end_date.year}"
-            else:
-                # Используем параметры start_date и end_date
-                start_date_str = request.query_params.get('start_date')
-                end_date_str = request.query_params.get('end_date')
-                
-                if start_date_str:
-                    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-                else:
-                    start_date = today - timedelta(days=6)
-                
-                if end_date_str:
-                    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-                else:
-                    end_date = today
+                    # Используем параметры start_date и end_date
+                    start_date_str = request.query_params.get('start_date')
+                    end_date_str = request.query_params.get('end_date')
+                    
+                    if start_date_str:
+                        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                    else:
+                        start_date = today - timedelta(days=6)
+                    
+                    if end_date_str:
+                        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                    else:
+                        end_date = today
 
             # Получаем все привычки пользователя или одну конкретную
             habit_id = request.query_params.get('habit_id')

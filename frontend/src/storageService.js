@@ -631,7 +631,7 @@ const storageService = {
   },
 
   getDailyStatistics: async (mode, params, options = {}) => {
-    const { period, date, category } = params;
+    const { period, date, category, start_date, end_date } = params;
     if (mode === 'cloud') {
       const query = new URLSearchParams(params).toString();
       const response = await fetch(`/api/v1/habits/daily_statistics/?${query}`, options);
@@ -658,80 +658,187 @@ const storageService = {
       }
 
       const stats = [];
-      const now = new Date();
-      let startOfPeriod;
       
-      if (period === 'week') {
-        const d = new Date(date || now);
-        const day = d.getDay() === 0 ? 6 : d.getDay() - 1;
-        startOfPeriod = new Date(d);
-        startOfPeriod.setDate(d.getDate() - day);
-      } else if (period === 'month') {
-        const d = new Date(date || now);
-        startOfPeriod = new Date(d.getFullYear(), 0, 1);
-      } else {
-        startOfPeriod = new Date(new Date().getFullYear(), 0, 1);
-      }
-      
-      startOfPeriod.setHours(0, 0, 0, 0);
-      
-      if (period === 'week') {
-        for (let i = 0; i < 7; i++) {
-          const current = new Date(startOfPeriod);
-          current.setDate(startOfPeriod.getDate() + i);
-          const dateStr = toLocalDateString(current);
-          const dayStatuses = statuses.filter(s => s.date === dateStr && s.is_done && filteredHabits.some(h => String(h.id) === String(s.habit)));
-          const habitCount = filteredHabits.filter(h => !h.start_date || h.start_date <= dateStr).length;
-          const completedCount = dayStatuses.length;
-          stats.push({
-            date: dateStr,
-            label: current.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
-            habit_count: habitCount,
-            completed_count: completedCount,
-            completed_days: completedCount > 0 ? 1 : 0,
-            restored_days: 0,
-            extra_quantity: 0
-          });
+      if (start_date && end_date) {
+        const start = new Date(start_date);
+        start.setHours(0,0,0,0);
+        const end = new Date(end_date);
+        end.setHours(23,59,59,999);
+
+        if (period === 'day' || !period) {
+          let current = new Date(start);
+          while (current <= end) {
+            const dateStr = toLocalDateString(current);
+            const dayStatuses = statuses.filter(s => s.date === dateStr && s.is_done && filteredHabits.some(h => String(h.id) === String(s.habit)));
+            const habitCount = filteredHabits.filter(h => !h.start_date || h.start_date <= dateStr).length;
+            const completedCount = dayStatuses.length;
+            const completedDays = dayStatuses.filter(s => !s.is_restored).length;
+            const restoredDays = dayStatuses.filter(s => s.is_restored).length;
+            const extraQuantity = dayStatuses.filter(s => s.quantity != null).reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+            stats.push({
+              date: dateStr,
+              label: String(current.getDate()),
+              days_in_period: 1,
+              habit_count: habitCount,
+              completed_count: completedCount + extraQuantity,
+              completed_days: completedDays,
+              restored_days: restoredDays,
+              extra_quantity: extraQuantity
+            });
+            current.setDate(current.getDate() + 1);
+          }
+        } else if (period === 'week') {
+          let current = new Date(start);
+          while (current <= end) {
+            const periodEnd = new Date(current);
+            periodEnd.setDate(current.getDate() + 6);
+            const startStr = toLocalDateString(current);
+            const endStr = toLocalDateString(periodEnd);
+            const rangeStatuses = statuses.filter(s => s.date >= startStr && s.date <= endStr && s.is_done && filteredHabits.some(h => String(h.id) === String(s.habit)));
+            const habitCount = filteredHabits.filter(h => !h.start_date || h.start_date <= endStr).length;
+            const completedCount = rangeStatuses.length;
+            const completedDays = rangeStatuses.filter(s => !s.is_restored).length;
+            const restoredDays = rangeStatuses.filter(s => s.is_restored).length;
+            const extraQuantity = rangeStatuses.filter(s => s.quantity != null).reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+            stats.push({
+              date: startStr,
+              label: `${current.getDate()}-${periodEnd.getDate()}`,
+              days_in_period: 7,
+              habit_count: habitCount,
+              completed_count: completedCount + extraQuantity,
+              completed_days: completedDays,
+              restored_days: restoredDays,
+              extra_quantity: extraQuantity
+            });
+            current.setDate(current.getDate() + 7);
+          }
+        } else if (period === 'month') {
+          let current = new Date(start.getFullYear(), start.getMonth(), 1);
+          while (current <= end) {
+            const periodStart = new Date(current.getFullYear(), current.getMonth(), 1);
+            const periodEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+            const startStr = toLocalDateString(periodStart);
+            const endStr = toLocalDateString(periodEnd);
+            const rangeStatuses = statuses.filter(s => s.date >= startStr && s.date <= endStr && s.is_done && filteredHabits.some(h => String(h.id) === String(s.habit)));
+            const habitCount = filteredHabits.filter(h => !h.start_date || h.start_date <= endStr).length;
+            const completedCount = rangeStatuses.length;
+            const completedDays = rangeStatuses.filter(s => !s.is_restored).length;
+            const restoredDays = rangeStatuses.filter(s => s.is_restored).length;
+            const extraQuantity = rangeStatuses.filter(s => s.quantity != null).reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+            stats.push({
+              date: startStr,
+              label: periodStart.toLocaleDateString('ru-RU', { month: 'short' }),
+              days_in_period: periodEnd.getDate(),
+              habit_count: habitCount,
+              completed_count: completedCount + extraQuantity,
+              completed_days: completedDays,
+              restored_days: restoredDays,
+              extra_quantity: extraQuantity
+            });
+            current.setMonth(current.getMonth() + 1);
+          }
+        } else if (period === 'year') {
+          let current = new Date(start.getFullYear(), 0, 1);
+          while (current <= end) {
+            const periodStart = new Date(current.getFullYear(), 0, 1);
+            const periodEnd = new Date(current.getFullYear(), 11, 31);
+            const startStr = toLocalDateString(periodStart);
+            const endStr = toLocalDateString(periodEnd);
+            const rangeStatuses = statuses.filter(s => s.date >= startStr && s.date <= endStr && s.is_done && filteredHabits.some(h => String(h.id) === String(s.habit)));
+            const habitCount = filteredHabits.filter(h => !h.start_date || h.start_date <= endStr).length;
+            const completedCount = rangeStatuses.length;
+            const completedDays = rangeStatuses.filter(s => !s.is_restored).length;
+            const restoredDays = rangeStatuses.filter(s => s.is_restored).length;
+            const extraQuantity = rangeStatuses.filter(s => s.quantity != null).reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+            stats.push({
+              date: startStr,
+              label: String(current.getFullYear()),
+              days_in_period: 365,
+              habit_count: habitCount,
+              completed_count: completedCount + extraQuantity,
+              completed_days: completedDays,
+              restored_days: restoredDays,
+              extra_quantity: extraQuantity
+            });
+            current.setFullYear(current.getFullYear() + 1);
+          }
         }
-      } else if (period === 'month') {
-        const year = startOfPeriod.getFullYear();
-        for (let month = 0; month < 12; month++) {
-          const periodStart = new Date(year, month, 1);
-          const periodEnd = new Date(year, month + 1, 0);
-          const monthKey = periodStart.toLocaleDateString('ru-RU', { month: 'short' });
-          const startStr = toLocalDateString(periodStart);
-          const endStr = toLocalDateString(periodEnd);
-          const monthStatuses = statuses.filter(s => s.date >= startStr && s.date <= endStr && s.is_done && filteredHabits.some(h => String(h.id) === String(s.habit)));
-          const habitCount = filteredHabits.filter(h => !h.start_date || h.start_date <= endStr).length;
-          const completedCount = monthStatuses.length;
-          stats.push({
-            date: startStr,
-            label: monthKey,
-            habit_count: habitCount,
-            completed_count: completedCount,
-            completed_days: completedCount > 0 ? 1 : 0,
-            restored_days: 0,
-            extra_quantity: 0
-          });
-        }
       } else {
-        for (let i = 0; i < 366; i++) {
-          const current = new Date(startOfPeriod);
-          current.setDate(startOfPeriod.getDate() + i);
-          if (current.getFullYear() !== startOfPeriod.getFullYear()) break;
-          const dateStr = toLocalDateString(current);
-          const dayStatuses = statuses.filter(s => s.date === dateStr && s.is_done && filteredHabits.some(h => String(h.id) === String(s.habit)));
-          const habitCount = filteredHabits.filter(h => !h.start_date || h.start_date <= dateStr).length;
-          const completedCount = dayStatuses.length;
-          stats.push({
-            date: dateStr,
-            label: current.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
-            habit_count: habitCount,
-            completed_count: completedCount,
-            completed_days: completedCount > 0 ? 1 : 0,
-            restored_days: 0,
-            extra_quantity: 0
-          });
+        const now = new Date();
+        let startOfPeriod;
+        
+        if (period === 'week') {
+          const d = new Date(date || now);
+          const day = d.getDay() === 0 ? 6 : d.getDay() - 1;
+          startOfPeriod = new Date(d);
+          startOfPeriod.setDate(d.getDate() - day);
+        } else if (period === 'month') {
+          const d = new Date(date || now);
+          startOfPeriod = new Date(d.getFullYear(), 0, 1);
+        } else {
+          startOfPeriod = new Date(new Date().getFullYear(), 0, 1);
+        }
+        
+        startOfPeriod.setHours(0, 0, 0, 0);
+        
+        if (period === 'week') {
+          for (let i = 0; i < 7; i++) {
+            const current = new Date(startOfPeriod);
+            current.setDate(startOfPeriod.getDate() + i);
+            const dateStr = toLocalDateString(current);
+            const dayStatuses = statuses.filter(s => s.date === dateStr && s.is_done && filteredHabits.some(h => String(h.id) === String(s.habit)));
+            const habitCount = filteredHabits.filter(h => !h.start_date || h.start_date <= dateStr).length;
+            const completedCount = dayStatuses.length;
+            stats.push({
+              date: dateStr,
+              label: current.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+              habit_count: habitCount,
+              completed_count: completedCount,
+              completed_days: completedCount > 0 ? 1 : 0,
+              restored_days: 0,
+              extra_quantity: 0
+            });
+          }
+        } else if (period === 'month') {
+          const year = startOfPeriod.getFullYear();
+          for (let month = 0; month < 12; month++) {
+            const periodStart = new Date(year, month, 1);
+            const periodEnd = new Date(year, month + 1, 0);
+            const monthKey = periodStart.toLocaleDateString('ru-RU', { month: 'short' });
+            const startStr = toLocalDateString(periodStart);
+            const endStr = toLocalDateString(periodEnd);
+            const monthStatuses = statuses.filter(s => s.date >= startStr && s.date <= endStr && s.is_done && filteredHabits.some(h => String(h.id) === String(s.habit)));
+            const habitCount = filteredHabits.filter(h => !h.start_date || h.start_date <= endStr).length;
+            const completedCount = monthStatuses.length;
+            stats.push({
+              date: startStr,
+              label: monthKey,
+              habit_count: habitCount,
+              completed_count: completedCount,
+              completed_days: completedCount > 0 ? 1 : 0,
+              restored_days: 0,
+              extra_quantity: 0
+            });
+          }
+        } else {
+          for (let i = 0; i < 366; i++) {
+            const current = new Date(startOfPeriod);
+            current.setDate(startOfPeriod.getDate() + i);
+            if (current.getFullYear() !== startOfPeriod.getFullYear()) break;
+            const dateStr = toLocalDateString(current);
+            const dayStatuses = statuses.filter(s => s.date === dateStr && s.is_done && filteredHabits.some(h => String(h.id) === String(s.habit)));
+            const habitCount = filteredHabits.filter(h => !h.start_date || h.start_date <= dateStr).length;
+            const completedCount = dayStatuses.length;
+            stats.push({
+              date: dateStr,
+              label: current.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+              habit_count: habitCount,
+              completed_count: completedCount,
+              completed_days: completedCount > 0 ? 1 : 0,
+              restored_days: 0,
+              extra_quantity: 0
+            });
+          }
         }
       }
       
