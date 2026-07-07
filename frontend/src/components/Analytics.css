@@ -4,7 +4,7 @@
 }
 
 .analytics-month-block .trend.negative {
-    color: #ef4444;
+    color: #f97316;
     font-weight: 700;
 }
 
@@ -407,7 +407,7 @@ body.dark-theme .month-mini-select option {
 }
 
 .trend-positive { color: #22c55e; }
-.trend-negative { color: #ef4444; }
+.trend-negative { color: #f97316; }
 .trend-neutral { color: #999; }
 
 body.dark-theme .analytics-table-wrapper {
@@ -521,7 +521,7 @@ body.dark-theme .analytics-chart-wrapper {
 }
 
 .trend.negative {
-    color: #ef4444;
+    color: #f97316;
 }
 
 .analytics-loading {
