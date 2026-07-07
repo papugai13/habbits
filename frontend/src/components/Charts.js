@@ -313,13 +313,8 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     }, [period, currentWeekDate, selectedCategory, language, storageMode]);
 
     const filteredData = useMemo(() => {
-        return data.filter(item => {
-            // For quantity mode: only show habits with quantity data
-            if (viewType === 'quantity') return (item.countExtra || 0) > 0;
-            // For habits mode: show ALL habits (even with 0 streak days)
-            return true;
-        });
-    }, [data, viewType]);
+        return data;
+    }, [data]);
 
     const chartHeight = useMemo(() => Math.max(200, filteredData.length * 45), [filteredData.length]);
 
@@ -332,8 +327,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     };
 
     const maxValue = filteredData.reduce((m, d) => {
-        const value = viewType === 'habits' ? (d.count_capped || 0) : (d.countExtra || 0);
-        return Math.max(m, value);
+        return Math.max(m, d.count_capped || 0, d.countExtra || 0);
     }, 0);
 
     const effectiveMax = useMemo(() => {
@@ -341,12 +335,12 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
     }, [maxValue]);
 
     const CustomStreakLabel = (props) => {
-        const { x, y, width, value, index } = props;
+        const { x, y, width, value, index, isQuantity } = props;
         const item = filteredData[index];
         if (!item || !value || value <= 0) return null;
 
         // Show count and percentage of dark-green days out of total possible
-        const labelText = value > 0 ? `${value} ${t('daysShort') || 'д.'}` : '';
+        const labelText = value > 0 ? `${value}${isQuantity ? '' : ` ${t('daysShort') || 'д.'}`}` : '';
 
         if (!labelText) return null;
 
@@ -400,12 +394,20 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                                     tickLine={false}
                                 />
                                 <Bar 
-                                    dataKey={viewType === 'habits' ? 'count_capped' : 'countExtra'} 
-                                    fill={viewType === 'habits' ? "#059669" : "#8B5CF6"} 
+                                    dataKey="count_capped" 
+                                    fill="#059669" 
                                     radius={[0, 4, 4, 0]}
                                     isAnimationActive={false}
                                 >
-                                    <LabelList dataKey={viewType === 'habits' ? 'count_capped' : 'countExtra'} content={(props) => <CustomStreakLabel {...props} />} />
+                                    <LabelList dataKey="count_capped" content={(props) => <CustomStreakLabel {...props} isQuantity={false} />} />
+                                </Bar>
+                                <Bar 
+                                    dataKey="countExtra" 
+                                    fill="#8B5CF6" 
+                                    radius={[0, 4, 4, 0]}
+                                    isAnimationActive={false}
+                                >
+                                    <LabelList dataKey="countExtra" content={(props) => <CustomStreakLabel {...props} isQuantity={true} />} />
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
@@ -1476,22 +1478,7 @@ const Charts = ({
                     <button className="nav-arrow-btn" onClick={goToNext} aria-label={language === 'ru' ? 'Следующий период' : 'Next period'}>→</button>
                 </div>
 
-                <div className="selectors-container">
-                    <div className="view-selector">
-                        <button
-                            className={`view-btn habits ${viewType === 'habits' ? 'active' : ''}`}
-                            onClick={() => setViewType('habits')}
-                        >
-                            {t('completed')}
-                        </button>
-                        <button
-                            className={`view-btn quantity ${viewType === 'quantity' ? 'active' : ''}`}
-                            onClick={() => setViewType('quantity')}
-                        >
-                            {t('quantity')}
-                        </button>
-                    </div>
-                </div>
+                {/* viewType selector removed to show both habits and quantity together */}
 
                 <div className="charts-category-row">
                     <div className="period-selector">
@@ -1622,8 +1609,6 @@ const Charts = ({
                                             }]}
                                             nice={true}
                                         />
-                                        {viewType === 'habits' ? (
-                                            <>
                                                 <Bar
                                                     dataKey="countCapped"
                                                     stackId="a"
@@ -1674,50 +1659,28 @@ const Charts = ({
                                                         content={(props) => <PercentageBadgeVertical {...props} fSize={isMobile ? 10 : 12} period={period} />}
                                                     />
                                                 </Bar>
-                                            </>
-                                        ) : (
-                                            <Bar
-                                                dataKey="countExtra"
-                                                fill="#8B5CF6"
-                                                radius={[8, 8, 0, 0]}
-                                                isAnimationActive={barAnimActive}
-                                                name={t('quantity')}
-                                                shape={<CustomBarShape />}
-                                            >
-                                                <LabelList
+                                                <Bar
                                                     dataKey="countExtra"
-                                                    content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={barLabelSize} />}
-                                                />
-                                                {period === 'day' && (
+                                                    stackId="b"
+                                                    fill="#8B5CF6"
+                                                    radius={[8, 8, 0, 0]}
+                                                    isAnimationActive={barAnimActive}
+                                                    name={t('quantity')}
+                                                    shape={<CustomBarShape />}
+                                                >
                                                     <LabelList
-                                                        dataKey="dayMonth"
-                                                        position="top"
-                                                        content={(props) => {
-                                                            const { x, y, value, index, width } = props;
-                                                            if (!value || x == null || y == null) return null;
-                                                            const chartTop = 8;
-                                                            const cx = x + width / 2;
-                                                            return (
-                                                                <text x={cx} y={chartTop} textAnchor="middle" fill={isDark ? "#E0E0E0" : "#666"} fontSize={isMobile ? 10 : 11} fontWeight={500}>
-                                                                    {value}
-                                                                </text>
-                                                            );
-                                                        }}
+                                                        dataKey="countExtra"
+                                                        content={(props) => <CustomBarLabel {...props} color="#FFF" baseSize={barLabelSize} />}
                                                     />
-                                                )}
-                                                <LabelList
-                                                    dataKey="completionFraction"
-                                                    position="top"
-                                                    content={(props) => <PercentageBadgeVertical {...props} fSize={isMobile ? 10 : 12} period={period} />}
-                                                />
-                                            </Bar>
-                                        )}
+                                                    <LabelList
+                                                        dataKey="completionFraction"
+                                                        position="top"
+                                                        content={(props) => <PercentageBadgeVertical {...props} fSize={isMobile ? 10 : 12} period={period} />}
+                                                    />
+                                                </Bar>
                                         {/* Зелёная пунктирная линия по вершинам столбцов */}
                                         <Line
-                                            dataKey={viewType === 'habits'
-                                                ? (d => (d.countCapped || 0) + (d.countRestored || 0))
-                                                : 'countExtra'
-                                            }
+                                            dataKey={d => (d.countCapped || 0) + (d.countRestored || 0)}
                                             type="monotone"
                                             stroke="#22c55e"
                                             strokeWidth={isMobile ? 1.5 : 2}
@@ -1784,21 +1747,19 @@ const Charts = ({
                     />
                 </div>
 
-                {(viewType === 'habits' || viewType === 'quantity') && (
-                    <div key={`${period}-${chartDate}-${selectedCategory}-${viewType}`} className="report-entrance-active">
-                        <HabitsComparisonChart
-                            period={period}
-                            viewType={viewType}
-                            currentWeekDate={chartDate}
-                            selectedCategory={selectedCategory}
-                            theme={theme}
-                            t={t}
-                            language={language}
-                            chartData={chartData}
-                            storageMode={storageMode}
-                        />
-                    </div>
-                )}
+                <div key={`${period}-${chartDate}-${selectedCategory}`} className="report-entrance-active">
+                    <HabitsComparisonChart
+                        period={period}
+                        viewType={viewType}
+                        currentWeekDate={chartDate}
+                        selectedCategory={selectedCategory}
+                        theme={theme}
+                        t={t}
+                        language={language}
+                        chartData={chartData}
+                        storageMode={storageMode}
+                    />
+                </div>
             </>
         )}
         </div>
