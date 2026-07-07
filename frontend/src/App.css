@@ -535,8 +535,8 @@ body {
 .habit-row {
   display: flex;
   flex-direction: column;
-  margin-bottom: 32px;
-  /* Увеличено расстояние между привычками */
+  margin-bottom: 18px;
+  /* Уменьшено расстояние между привычками */
   gap: 8px;
   position: relative;
   overflow: visible !important; /* Allow the separator line piece to extend vertically */
@@ -1423,7 +1423,11 @@ body {
   }
 
   .habit-row {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
+  }
+
+  .days-header {
+    margin-bottom: 12px;
   }
 
   /* Show/Hide logic */
@@ -1729,7 +1733,7 @@ body {
   align-items: center;
   padding: 10px 0;
   gap: 10px;
-  margin-bottom: 32px; /* Synchronized with habit-row margin-bottom */
+  margin-bottom: 18px; /* Synchronized with habit-row margin-bottom */
   position: sticky;
   top: 0; 
   background-color: #FFFFFF;
