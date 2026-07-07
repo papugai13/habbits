@@ -1395,8 +1395,10 @@ const App = () => {
                           return (status && status.is_done && !status.is_restored) ? count + 1 : count;
                         }, 0);
 
+                        const isMonthStart = index > 0 && slotDate.getUTCDate() === 1;
+
                         return (
-                          <div key={slotDateStr} className="grid-col day-completion-col">
+                          <div key={slotDateStr} className={`grid-col day-completion-col ${isMonthStart ? 'month-start' : ''}`}>
                             <span className="day-completion-count">{dayCompletedCount}/{habits.length}</span>
                           </div>
                         );
