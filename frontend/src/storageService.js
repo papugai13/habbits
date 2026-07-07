@@ -29,26 +29,25 @@ const toLocalDateString = (dateInput) => {
 };
 
 const isStreakActiveOnDate = (habitId, checkDateStr, statuses, habitStartDateStr) => {
-  const checkDate = new Date(checkDateStr);
-  let startDate = new Date(checkDate);
-  startDate.setDate(checkDate.getDate() - 45);
+  const [cy, cm, cd] = checkDateStr.split('-').map(Number);
+  const checkDate = new Date(Date.UTC(cy, cm - 1, cd));
+  let startDate = new Date(checkDate.getTime());
+  startDate.setUTCDate(checkDate.getUTCDate() - 45);
 
   if (habitStartDateStr) {
-    const habitStartDate = new Date(habitStartDateStr);
+    const [sy, sm, sd] = habitStartDateStr.split('-').map(Number);
+    const habitStartDate = new Date(Date.UTC(sy, sm - 1, sd));
     if (habitStartDate > startDate) {
       startDate = habitStartDate;
     }
   }
 
   const datesInRange = [];
-  const curr = new Date(startDate);
-  const checkDateNormalized = new Date(checkDate);
-  curr.setHours(0, 0, 0, 0);
-  checkDateNormalized.setHours(0, 0, 0, 0);
+  const curr = new Date(startDate.getTime());
 
-  while (curr <= checkDateNormalized) {
+  while (curr <= checkDate) {
     datesInRange.push(toLocalDateString(curr));
-    curr.setDate(curr.getDate() + 1);
+    curr.setUTCDate(curr.getUTCDate() + 1);
   }
 
   let streakActive = false;
