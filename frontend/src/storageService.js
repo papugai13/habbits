@@ -530,7 +530,7 @@ const storageService = {
   // --- COMPARISON / CHARTS ---
 
   getComparison: async (mode, params, options = {}) => {
-    const { period, date, category } = params;
+    const { period, date, category, habit_id } = params;
     if (mode === 'cloud') {
       const query = new URLSearchParams(params).toString();
       const response = await fetch(`/api/v1/habits/habit_comparison/?${query}`, options);
@@ -543,7 +543,9 @@ const storageService = {
 
       // Filter habits by category if needed
       let filteredHabits = habits.filter(h => !h.is_archived);
-      if (category && category !== 'Все') {
+      if (habit_id && habit_id !== 'all') {
+        filteredHabits = filteredHabits.filter(h => String(h.id) === String(habit_id));
+      } else if (category && category !== 'Все') {
         const catObj = categories.find(c => c.name === category);
         if (catObj) {
           filteredHabits = filteredHabits.filter(h => h.category === catObj.id);
@@ -631,7 +633,7 @@ const storageService = {
   },
 
   getDailyStatistics: async (mode, params, options = {}) => {
-    const { period, date, category, start_date, end_date } = params;
+    const { period, date, category, start_date, end_date, habit_id } = params;
     if (mode === 'cloud') {
       const query = new URLSearchParams(params).toString();
       const response = await fetch(`/api/v1/habits/daily_statistics/?${query}`, options);
@@ -643,7 +645,9 @@ const storageService = {
       const statuses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.STATUSES) || '[]');
       
       let filteredHabits = habits.filter(h => !h.is_archived);
-      if (category && category !== 'Все') {
+      if (habit_id && habit_id !== 'all') {
+        filteredHabits = filteredHabits.filter(h => String(h.id) === String(habit_id));
+      } else if (category && category !== 'Все') {
         if (category === 'Без категории') {
           filteredHabits = filteredHabits.filter(h => !h.category);
         } else {

@@ -262,7 +262,7 @@ const PercentageBadgeVertical = ({ x, y, width, height, value, badgeW, badgeH, f
     );
 };
 
-const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCategory, theme, t, language, chartData: mainChartData, storageMode }) => {
+const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCategory, selectedHabitId, theme, t, language, chartData: mainChartData, storageMode }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const scrollRef = useRef(null);
@@ -287,7 +287,8 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                 const result = await storageService.getComparison(storageMode, {
                     period,
                     date: dateStr,
-                    category: selectedCategory || 'Все'
+                    category: selectedCategory || 'Все',
+                    habit_id: selectedHabitId
                 }, {
                     headers: { 'Accept-Language': language },
                     credentials: 'include'
@@ -310,7 +311,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
         };
 
         fetchHabitComparison();
-    }, [period, currentWeekDate, selectedCategory, language, storageMode]);
+    }, [period, currentWeekDate, selectedCategory, selectedHabitId, language, storageMode]);
 
     const filteredData = useMemo(() => {
         return data;
@@ -813,7 +814,7 @@ const DAY_HEADERS = {
     en: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 };
 
-const CalendarReport = ({ theme, t, language, storageMode, selectedCategory }) => {
+const CalendarReport = ({ theme, t, language, storageMode, selectedCategory, selectedHabitId }) => {
     const [calYear, setCalYear] = useState(new Date().getFullYear());
     const [dayData, setDayData] = useState({});
     const [loading, setLoading] = useState(true);
@@ -837,7 +838,8 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory }) =
                     {
                         start_date: `${calYear}-01-01`,
                         end_date: `${calYear}-12-31`,
-                        category: selectedCategory || 'Все'
+                        category: selectedCategory || 'Все',
+                        habit_id: selectedHabitId
                     },
                     { credentials: 'include' }
                 );
@@ -857,7 +859,7 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory }) =
             }
         };
         fetchCalendarData();
-    }, [calYear, selectedCategory, storageMode]);
+    }, [calYear, selectedCategory, selectedHabitId, storageMode]);
 
     const renderMonth = useCallback((monthIdx) => {
         const firstDay = new Date(calYear, monthIdx, 1).getDay();
@@ -1001,15 +1003,32 @@ const Charts = ({
     const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
     const categoryDropdownRef = useRef(null);
 
+    const [selectedHabitId, setSelectedHabitId] = useState('all');
+    const [isHabitDropdownOpen, setIsHabitDropdownOpen] = useState(false);
+    const habitDropdownRef = useRef(null);
+
     const selectedCategoryName = useMemo(() => {
         if (selectedCategory === 'all' || selectedCategory === 'Все') return t('allCategories') || 'Все категории';
         return selectedCategory === 'Без категории' ? t('noCategory') : selectedCategory;
     }, [selectedCategory, t]);
 
+    const selectedHabitName = useMemo(() => {
+        if (selectedHabitId === 'all') return t('allHabits') || 'Все привычки';
+        const habit = habitsData.find(h => h.id.toString() === selectedHabitId.toString());
+        return habit ? habit.name : (t('allHabits') || 'Все привычки');
+    }, [selectedHabitId, habitsData, t]);
+
+    useEffect(() => {
+        setSelectedHabitId('all');
+    }, [selectedCategory]);
+
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
                 setIsCategoryDropdownOpen(false);
+            }
+            if (habitDropdownRef.current && !habitDropdownRef.current.contains(event.target)) {
+                setIsHabitDropdownOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -1127,7 +1146,8 @@ const Charts = ({
                 date: chartDate,
                 start_date,
                 end_date,
-                category: selectedCategory || 'Все'
+                category: selectedCategory || 'Все',
+                habit_id: selectedHabitId
             }, {
                 credentials: 'include'
             });
@@ -1265,7 +1285,7 @@ const Charts = ({
         } finally {
             setLoading(false);
         }
-    }, [period, chartDate, selectedCategory, t, language, storageMode, rangeLimits]);
+    }, [period, chartDate, selectedCategory, selectedHabitId, t, language, storageMode, rangeLimits]);
 
     useEffect(() => {
         fetchStatistics();
@@ -1540,19 +1560,62 @@ const Charts = ({
                             )}
                         </div>
                     )}
+
+                    {habitsData && habitsData.length > 0 && (
+                        <div className="analytics-habit-selector analytics-category-selector" ref={habitDropdownRef} style={{ zIndex: isHabitDropdownOpen ? 1010 : 1000, margin: 0 }}>
+                            <div 
+                                className={`custom-dropdown-header ${isHabitDropdownOpen ? 'open' : ''}`}
+                                onClick={() => setIsHabitDropdownOpen(!isHabitDropdownOpen)}
+                            >
+                                <span>{selectedHabitName}</span>
+                                <div className="dropdown-arrow-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                            {isHabitDropdownOpen && (
+                                <div className="custom-dropdown-list">
+                                    <div 
+                                        key="all"
+                                        className={`dropdown-item ${selectedHabitId === 'all' ? 'active' : ''}`}
+                                        onClick={() => {
+                                            setSelectedHabitId('all');
+                                            setIsHabitDropdownOpen(false);
+                                        }}
+                                    >
+                                        {t('allHabits') || 'Все привычки'}
+                                    </div>
+                                    {habitsData.map(habit => (
+                                        <div 
+                                            key={habit.id} 
+                                            className={`dropdown-item ${selectedHabitId.toString() === habit.id.toString() ? 'active' : ''}`}
+                                            onClick={() => {
+                                                setSelectedHabitId(habit.id);
+                                                setIsHabitDropdownOpen(false);
+                                            }}
+                                        >
+                                            {habit.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
                 </>
                 )}
             </div>
 
             {reportView === 'calendar' ? (
-                <div key={selectedCategory} className="report-entrance-active">
+                <div key={`${selectedCategory}-${selectedHabitId}`} className="report-entrance-active">
                     <CalendarReport
                         theme={theme}
                         t={t}
                         language={language}
                         storageMode={storageMode}
                         selectedCategory={selectedCategory}
+                        selectedHabitId={selectedHabitId}
                     />
                 </div>
             ) : (
@@ -1747,12 +1810,13 @@ const Charts = ({
                     />
                 </div>
 
-                <div key={`${period}-${chartDate}-${selectedCategory}`} className="report-entrance-active">
+                <div key={`${period}-${chartDate}-${selectedCategory}-${selectedHabitId}`} className="report-entrance-active">
                     <HabitsComparisonChart
                         period={period}
                         viewType={viewType}
                         currentWeekDate={chartDate}
                         selectedCategory={selectedCategory}
+                        selectedHabitId={selectedHabitId}
                         theme={theme}
                         t={t}
                         language={language}
