@@ -224,21 +224,20 @@ body.dark-theme .dropdown-item:hover {
 
 .analytics-header-controls {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
     gap: 16px;
     width: 100%;
-    flex-wrap: wrap;
 }
 
 .analytics-habit-selector {
-    flex: 1 1 280px;
-    max-width: 420px;
+    width: 100%;
+    max-width: none;
 }
 
 .analytics-view-selector {
-    flex: 1 1 240px;
-    max-width: 320px;
+    width: 100%;
+    max-width: none;
     display: inline-flex;
     gap: 8px;
     align-items: center;
@@ -257,6 +256,7 @@ body.dark-theme .dropdown-item:hover {
     color: #4b5563;
     height: 100%;
     display: flex;
+    flex: 1;
     align-items: center;
     justify-content: center;
     border-radius: 10px;

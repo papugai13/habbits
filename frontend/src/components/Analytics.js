@@ -104,10 +104,15 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
     }, [selectedCategory, t]);
 
     const selectedHabitName = useMemo(() => {
-        if (selectedHabitId === 'all') return t('allHabits') || 'Все привычки';
+        if (selectedHabitId === 'all') {
+            if (selectedCategory !== 'all' && selectedCategory !== 'Все') {
+                return `${t('allHabits') || 'Все привычки'} (${selectedCategoryName})`;
+            }
+            return t('allHabits') || 'Все привычки';
+        }
         const habit = habits.find(h => h.id.toString() === selectedHabitId.toString());
-        return habit ? habit.name : t('allHabits') || 'Все привычки';
-    }, [selectedHabitId, habits, t]);
+        return habit ? habit.name : (selectedCategory !== 'all' && selectedCategory !== 'Все' ? `${t('allHabits') || 'Все привычки'} (${selectedCategoryName})` : t('allHabits') || 'Все привычки');
+    }, [selectedHabitId, habits, selectedCategory, selectedCategoryName, t]);
 
     const filteredHabitsForSelector = useMemo(() => {
         if (selectedCategory === 'all' || selectedCategory === 'Все') {
@@ -331,6 +336,32 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
                             {t('quantity') || 'Количество'}
                         </button>
                     </div>
+                    <div className="analytics-habit-selector analytics-category-selector" ref={categoryDropdownRef} style={{ zIndex: isCategoryDropdownOpen ? 1010 : 1000 }}>
+                        <div 
+                            className={`custom-dropdown-header ${isCategoryDropdownOpen ? 'open' : ''}`}
+                            onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                        >
+                            <span>{selectedCategoryName}</span>
+                            <div className="dropdown-arrow-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        {isCategoryDropdownOpen && (
+                            <div className="custom-dropdown-list">
+                                {categories.map(cat => (
+                                    <div 
+                                        key={cat.id} 
+                                        className={`dropdown-item ${selectedCategory === cat.name ? 'active' : ''}`}
+                                        onClick={() => handleCategoryChange(cat.name)}
+                                    >
+                                        {cat.name === 'Все' ? (t('allCategories') || 'Все категории') : cat.name}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     <div className="analytics-habit-selector" ref={dropdownRef} style={{ zIndex: isDropdownOpen ? 1010 : 1000 }}>
                         <div 
                             className={`custom-dropdown-header ${isDropdownOpen ? 'open' : ''}`}
@@ -353,7 +384,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
                                         setIsDropdownOpen(false);
                                     }}
                                 >
-                                    {t('allHabits') || 'Все привычки'}
+                                    {selectedCategory !== 'all' && selectedCategory !== 'Все' ? `${t('allHabits') || 'Все привычки'} (${selectedCategoryName})` : (t('allHabits') || 'Все привычки')}
                                 </div>
                                 {filteredHabitsForSelector.map(habit => (
                                     <div 
@@ -365,32 +396,6 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
                                         }}
                                     >
                                         {habit.name}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                    <div className="analytics-habit-selector analytics-category-selector" ref={categoryDropdownRef} style={{ zIndex: isCategoryDropdownOpen ? 1010 : 1000 }}>
-                        <div 
-                            className={`custom-dropdown-header ${isCategoryDropdownOpen ? 'open' : ''}`}
-                            onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                        >
-                            <span>{selectedCategoryName}</span>
-                            <div className="dropdown-arrow-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="6 9 12 15 18 9"></polyline>
-                                </svg>
-                            </div>
-                        </div>
-                        {isCategoryDropdownOpen && (
-                            <div className="custom-dropdown-list">
-                                {categories.map(cat => (
-                                    <div 
-                                        key={cat.id} 
-                                        className={`dropdown-item ${selectedCategory === cat.name ? 'active' : ''}`}
-                                        onClick={() => handleCategoryChange(cat.name)}
-                                    >
-                                        {cat.name === 'Все' ? (t('allCategories') || 'Все категории') : cat.name}
                                     </div>
                                 ))}
                             </div>
