@@ -1014,7 +1014,7 @@ class HabitViewSet(viewsets.ModelViewSet):
             category_name = request.query_params.get('category')
             
             habits = Habit.objects.filter(user=user_profile)
-            if habit_id:
+            if habit_id and habit_id != 'all':
                 habits = habits.filter(id=habit_id)
             if category_name and category_name != 'Все':
                 if category_name == 'Без категории':
@@ -1492,8 +1492,11 @@ class HabitViewSet(viewsets.ModelViewSet):
             label = "За неделю"
 
         category_name = request.query_params.get('category')
+        habit_id = request.query_params.get('habit_id')
         habits = Habit.objects.filter(user=user_profile, is_archived=False)
-        if category_name and category_name != 'Все':
+        if habit_id and habit_id != 'all':
+            habits = habits.filter(id=habit_id)
+        elif category_name and category_name != 'Все':
             if category_name == 'Без категории':
                 habits = habits.filter(category__isnull=True)
             else:
