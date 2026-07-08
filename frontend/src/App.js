@@ -1307,6 +1307,30 @@ const App = () => {
               }, 0);
               const totalHabits = filteredHabits.length;
 
+              // Count how many categories were fully completed on this day
+              const completedCategoriesCount = (() => {
+                const allGrouped = pageHabitsData.reduce((acc, habit) => {
+                  const categoryKey = habit.category_name || 'Без категории';
+                  if (!acc[categoryKey]) acc[categoryKey] = [];
+                  acc[categoryKey].push(habit);
+                  return acc;
+                }, {});
+
+                let count = 0;
+                Object.keys(allGrouped).forEach(catKey => {
+                  const catHabits = allGrouped[catKey];
+                  if (catHabits.length === 0) return;
+                  const allDone = catHabits.every(habit => {
+                    const status = habit.statuses?.find(s => s && s.date === columnDateStr);
+                    return status && status.is_done && !status.is_restored;
+                  });
+                  if (allDone) {
+                    count++;
+                  }
+                });
+                return count;
+              })();
+
               const monthName = columnDate.toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { month: 'short', timeZone: 'UTC' });
               const cleanMonthName = language === 'ru' ? monthName.replace('.', '') : monthName;
 
@@ -1326,6 +1350,12 @@ const App = () => {
                     </div>
                   )}
                   <div className={`grid-col day-col ${isTodayCol ? (highlightWeekToday ? 'today highlight' : 'today') : ''} ${isMonthStart ? 'month-start' : ''}`}>
+                    {completedCategoriesCount > 0 && (
+                      <div className="completed-categories-badge">
+                        <span className="badge-check">✅</span>
+                        <span className="badge-count">x{completedCategoriesCount}</span>
+                      </div>
+                    )}
                     <div className="day-completion-count">{completedCount}/{totalHabits}</div>
                     <div className="day-name">{day}</div>
                     <div className="day-number">{columnDate.getUTCDate()}</div>
@@ -1426,7 +1456,10 @@ const App = () => {
                                 <span className="day-completion-count">-</span>
                               </div>
                             )}
-                            <div className={`grid-col day-completion-col ${isMonthStart ? 'month-start' : ''}`}>
+                            <div className={`grid-col day-completion-col ${slotDateStr === todayStr ? 'today' : ''} ${isMonthStart ? 'month-start' : ''}`}>
+                              {dayCompletedCount === habits.length && habits.length > 0 && (
+                                <span className="category-day-checkmark">✅</span>
+                              )}
                               <span className="day-completion-count">{dayCompletedCount}/{habits.length}</span>
                             </div>
                           </React.Fragment>

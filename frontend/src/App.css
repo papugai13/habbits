@@ -5912,3 +5912,71 @@ html.dark-theme, body.dark-theme {
   border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
+/* Completed categories badge in top header */
+.completed-categories-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 1px 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.dark-theme .completed-categories-badge {
+  background-color: #ffffff;
+  border-color: #4b5563;
+  color: #111827;
+}
+
+/* Category day completion column checkmarks and layout */
+.day-completion-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 48px;
+  padding: 2px 0;
+  box-sizing: border-box;
+}
+
+.category-day-checkmark {
+  font-size: 13px;
+  line-height: 1.1;
+  margin-bottom: 2px;
+  animation: popIn 0.3s ease;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Border outline for today's column in category headers */
+.day-completion-col.today {
+  border: 2px solid #10B981 !important;
+  border-radius: 6px;
+  background-color: rgba(16, 185, 129, 0.08);
+}
+
+.dark-theme .day-completion-col.today {
+  border: 2px solid #34D399 !important;
+  background-color: rgba(52, 211, 153, 0.12);
+}
+
+/* Adjustments to today's header column to look beautiful and premium */
+.day-col.today {
+  border: 2.5px solid #10B981 !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+}
+
+.dark-theme .day-col.today {
+  border: 2.5px solid #34D399 !important;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.3);
+}
+
