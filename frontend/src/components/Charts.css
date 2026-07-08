@@ -1494,18 +1494,45 @@
 
 @media (max-width: 768px) {
     .category-comparison-section {
-        padding: 15px;
-        margin-top: 20px;
-    }
-
-    .category-comparison-table th,
-    .category-comparison-table td {
         padding: 10px;
-        font-size: 13px;
+        margin-top: 15px;
     }
 
-    .cat-progress-cell {
-        width: 25%;
+    .category-comparison-table th {
+        padding: 8px 4px;
+        font-size: 11px;
+    }
+
+    .category-comparison-table td {
+        padding: 10px 4px !important;
+        font-size: 12px;
+    }
+
+    .cat-name-cell {
+        font-size: 12px;
+        gap: 4px;
+    }
+
+    .cat-habit-name-cell {
+        padding-left: 18px !important;
+        font-size: 11px;
+    }
+
+    .cat-progress-container {
+        min-width: 0 !important;
+        gap: 4px !important;
+    }
+
+    .cat-progress-bar-bg {
+        display: none !important;
+    }
+
+    .cat-progress-number {
+        font-size: 0.85rem !important;
+    }
+
+    .cat-progress-percent {
+        font-size: 0.72rem !important;
     }
 }
 

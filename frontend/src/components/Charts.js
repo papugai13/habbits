@@ -715,9 +715,9 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                             </div>
                                         </td>
                                         <td className="cat-value-cell cat-value-quantity">
-                                            {stat.extra > 0 ? (
+                                            {stat.targetExtra > 0 ? (
                                                 <div className="cat-progress-container">
-                                                    <span className="cat-progress-number cat-quantity-number">{stat.extra}</span>
+                                                    <span className="cat-progress-number cat-quantity-number">{stat.extra || 0}</span>
                                                     <div className="cat-progress-bar-bg cat-progress-bar-bg--purple">
                                                         <div className="cat-progress-bar-fill cat-progress-bar-fill--purple" style={{ width: `${progressWidthExtra}%` }}></div>
                                                     </div>
@@ -766,9 +766,9 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                                     </div>
                                                 </td>
                                                 <td className="cat-value-cell cat-value-quantity">
-                                                    {(habit.countExtra || 0) > 0 ? (
+                                                    {hTargetExtra > 0 ? (
                                                         <div className="cat-progress-container">
-                                                            <span className="cat-progress-number cat-quantity-number">{habit.countExtra}</span>
+                                                            <span className="cat-progress-number cat-quantity-number">{habit.countExtra || 0}</span>
                                                             <div className="cat-progress-bar-bg cat-progress-bar-bg--purple">
                                                                 <div className="cat-progress-bar-fill cat-progress-bar-fill--purple" style={{ width: `${hExtraWidth}%` }}></div>
                                                             </div>
