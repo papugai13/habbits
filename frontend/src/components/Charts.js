@@ -428,13 +428,17 @@ const getScaledTarget = (habit, type, period, dateStr) => {
     const isUseTarget = habit.use_target;
     if (!isUseTarget) return 0;
 
-    const rawTarget = type === 'quantity' ? habit.quantity_target : habit.completion_target;
-    if (!rawTarget) return 0;
-
     const dateObj = new Date(dateStr);
     const year = dateObj.getFullYear();
     const month = dateObj.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    let rawTarget = type === 'quantity' ? habit.quantity_target : habit.completion_target;
+    if (type === 'completion' && rawTarget === 0) {
+        rawTarget = daysInMonth;
+    }
+
+    if (!rawTarget) return 0;
 
     if (period === 'day') {
         if (type === 'completion') return 1;
@@ -578,7 +582,7 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
             stats[cat].habits += 1;
 
             const daysInPeriod = getDaysInPeriod(period, currentWeekDate);
-            const hTargetTotal = item.use_target && item.completion_target
+            const hTargetTotal = item.use_target && (item.completion_target !== null && item.completion_target !== undefined)
                 ? getScaledTarget(item, 'completion', period, currentWeekDate)
                 : daysInPeriod;
             const hTargetExtra = item.use_target && item.quantity_target
@@ -732,7 +736,7 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                     {isExpanded && habits.map((habit, hIdx) => {
                                         const daysInPeriod = getDaysInPeriod(period, currentWeekDate);
 
-                                        const hTargetTotal = habit.use_target && habit.completion_target
+                                        const hTargetTotal = habit.use_target && (habit.completion_target !== null && habit.completion_target !== undefined)
                                             ? getScaledTarget(habit, 'completion', period, currentWeekDate)
                                             : daysInPeriod;
                                         const hProgressWidth = Math.min(100, ((habit.countCapped || 0) / hTargetTotal) * 100);

@@ -1,13 +1,23 @@
 import React from 'react';
 
-export default function HabitCounts({ weeklyCount, weeklyAward, habit, isLastQuantityLess1 }) {
-  const isCompletionTargetMet = habit.use_target && habit.completion_target > 0 && (habit.monthly_total >= habit.completion_target);
+export default function HabitCounts({ weeklyCount, weeklyAward, habit, isLastQuantityLess1, currentWeekDate }) {
+  const daysInCurrentMonth = (() => {
+    if (!currentWeekDate) return new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+    const [year, month, day] = currentWeekDate.split('-').map(Number);
+    const sunday = new Date(Date.UTC(year, month - 1, day));
+    sunday.setUTCDate(sunday.getUTCDate() + 6);
+    return new Date(sunday.getUTCFullYear(), sunday.getUTCMonth() + 1, 0).getDate();
+  })();
+
+  const completionTargetVal = habit.completion_target === 0 ? daysInCurrentMonth : (habit.completion_target || 0);
+
+  const isCompletionTargetMet = habit.use_target && completionTargetVal > 0 && (habit.monthly_total >= completionTargetVal);
   const isQuantityTargetMet = habit.use_target && habit.quantity_target > 0 && (habit.monthly_overflow >= habit.quantity_target);
 
-  const completionPercent = habit.completion_target ? Math.min(100, ((habit.monthly_total || 0) / habit.completion_target) * 100) : 0;
+  const completionPercent = completionTargetVal ? Math.min(100, ((habit.monthly_total || 0) / completionTargetVal) * 100) : 0;
   const quantityPercent = habit.quantity_target ? Math.min(100, ((habit.monthly_overflow || 0) / habit.quantity_target) * 100) : 0;
 
-  const displayCompletion = `${habit.monthly_total || 0}:${habit.completion_target || 0}${isCompletionTargetMet ? '🎯' : ''}`;
+  const displayCompletion = `${habit.monthly_total || 0}:${completionTargetVal}${isCompletionTargetMet ? '🎯' : ''}`;
   const displayQuantity = `${habit.monthly_overflow || 0}:${habit.quantity_target || 0}${isQuantityTargetMet ? '🎯' : ''}`;
 
   return (
@@ -42,7 +52,7 @@ export default function HabitCounts({ weeklyCount, weeklyAward, habit, isLastQua
               role="progressbar"
               aria-valuenow={habit.monthly_total || 0}
               aria-valuemin="0"
-              aria-valuemax={habit.completion_target || 0}
+              aria-valuemax={completionTargetVal}
               aria-label={`Прогресс выполнения за месяц: ${displayCompletion}`}
             >
               <span className="progress-text-under">{displayCompletion}</span>
