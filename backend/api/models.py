@@ -95,6 +95,13 @@ class Category(models.Model):
         verbose_name="В архиве",
     )
 
+    created_at = models.DateField(
+        auto_now_add=True,
+        verbose_name="Дата создания",
+        null=True,
+        blank=True,
+    )
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = unique_slugify(self, slugify(self.name))
@@ -154,6 +161,13 @@ class Habit(models.Model):
     is_archived = models.BooleanField(
         default=False,
         verbose_name="В архиве",
+    )
+
+    created_at = models.DateField(
+        auto_now_add=True,
+        verbose_name="Дата создания",
+        null=True,
+        blank=True,
     )
 
     TARGET_TYPE_CHOICES = [

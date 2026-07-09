@@ -725,9 +725,12 @@ class HabitViewSet(viewsets.ModelViewSet):
                 total_completions = 0
                 total_quantity = 0
                 for habit in habits:
-                    dates = Date.objects.filter(habit=habit, is_done=True)
-                    habit_completions = dates.filter(is_restored=False).count()
-                    habit_quantity = dates.aggregate(
+                    # Правило 2: учитываем только записи начиная с start_date привычки
+                    dates_qs = Date.objects.filter(habit=habit, is_done=True)
+                    if habit.start_date:
+                        dates_qs = dates_qs.filter(habit_date__gte=habit.start_date)
+                    habit_completions = dates_qs.filter(is_restored=False).count()
+                    habit_quantity = dates_qs.aggregate(
                         total=Sum(Case(When(quantity__isnull=True, then=Value(1)), default=F('quantity'), output_field=IntegerField()))
                     )['total'] or 0
                     total_completions += habit_completions
@@ -1013,7 +1016,7 @@ class HabitViewSet(viewsets.ModelViewSet):
             habit_id = request.query_params.get('habit_id')
             category_name = request.query_params.get('category')
             
-            habits = Habit.objects.filter(user=user_profile)
+            habits = Habit.objects.filter(user=user_profile, is_archived=False)
             if habit_id and habit_id != 'all':
                 habits = habits.filter(id=habit_id)
             if category_name and category_name != 'Все':
@@ -1408,7 +1411,24 @@ class HabitViewSet(viewsets.ModelViewSet):
                     is_restored=False
                 )
                 
-                max_possible = active_habits * days_in_month
+                # Правило 2: max_possible считаем только дни после старта привычки
+                # Правило 1: архивированные уже исключены (habits = is_archived=False)
+                max_possible = 0
+                for h in habits:
+                    # Определяем дату старта привычки
+                    h_start = h.start_date or h.created_at
+                    if h_start is None:
+                        # Если вообще нет даты — берём самую раннюю отметку
+                        earliest = Date.objects.filter(habit=h, is_done=True).aggregate(Min('habit_date'))['habit_date__min']
+                        h_start = earliest or m_start
+                    # Привычка существовала в этом месяце?
+                    if h_start > m_end:
+                        continue  # Привычка ещё не существовала в этом месяце
+                    # Еффективный старт в месяце
+                    effective_start = max(h_start, m_start)
+                    days_active = (m_end - effective_start).days + 1
+                    if days_active > 0:
+                        max_possible += days_active
                 percentage = 0
                 if max_possible > 0:
                     percentage = min(round((month_dates.count() / max_possible) * 100), 100)
@@ -1505,10 +1525,17 @@ class HabitViewSet(viewsets.ModelViewSet):
         statistics = []
 
         for habit in habits:
+            # Правило 2: считаем только с даты старта привычки
+            # Правило 1: архивированные уже исключены (is_archived=False)
+            h_start = habit.start_date or habit.created_at
+            date_filter_start = start_date
+            if h_start and h_start > start_date:
+                date_filter_start = h_start
+
             day_dates = Date.objects.filter(
                 user=user_profile,
                 habit=habit,
-                habit_date__range=[start_date, end_date],
+                habit_date__range=[date_filter_start, end_date],
                 is_done=True
             )
             
