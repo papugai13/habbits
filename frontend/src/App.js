@@ -8,6 +8,7 @@ import DrumPicker from './components/DrumPicker';
 import translations from './translations';
 import storageService from './storageService';
 import HabitCounts from './components/HabitCounts';
+import HandshakeMeme from './components/HandshakeMeme';
 
 
 const getMondayString = (dateInput = new Date()) => {
@@ -84,6 +85,7 @@ const App = () => {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
+  const [showHandshakeMeme, setShowHandshakeMeme] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
   const [expandedCategoryId, setExpandedCategoryId] = useState(null);
@@ -1858,6 +1860,7 @@ const App = () => {
       setNewCategoryName('');
       setShowAddCategory(false);
       setShowCreateCategoryModal(false);
+      setShowHandshakeMeme(true); // 🤜🤛 Easter egg!
       await fetchCategories();
       if (showEditModal && editingHabit) {
         setEditingHabit({ ...editingHabit, category: newCat.id.toString() });
@@ -2534,6 +2537,7 @@ const App = () => {
       setNewHabitUseTarget(false);
       setNewHabitEntireMonth(true);
       setShowCreateModal(false);
+      setShowHandshakeMeme(true); // 🤜🤛 Easter egg!
 
       // Refresh habits list
       await fetchHabits();
@@ -4814,6 +4818,11 @@ const App = () => {
           />
           <div className="lightbox-hint-text">{t('swipeDownToClose')}</div>        </div>
 
+      )}
+
+      {/* Easter egg: 67 handshake мем при создании привычки/категории */}
+      {showHandshakeMeme && (
+        <HandshakeMeme onDone={() => setShowHandshakeMeme(false)} />
       )}
 
     </div>
