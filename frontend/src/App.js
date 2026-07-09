@@ -1644,8 +1644,10 @@ const App = () => {
 
                           const prevCompletionPercent = habit.completion_target ? Math.min(100, ((habit.prev_monthly_total || 0) / habit.completion_target) * 100) : 0;
                           const prevQuantityPercent = habit.quantity_target ? Math.min(100, ((habit.prev_monthly_overflow || 0) / habit.quantity_target) * 100) : 0;
-                          const prevDisplayCompletion = `${habit.prev_monthly_total || 0}:${habit.completion_target || 0}`;
-                          const prevDisplayQuantity = `${habit.prev_monthly_overflow || 0}:${habit.quantity_target || 0}`;
+                          const isPrevCompletionTargetMet = habit.use_target && habit.completion_target > 0 && ((habit.prev_monthly_total || 0) >= habit.completion_target);
+                          const isPrevQuantityTargetMet = habit.use_target && habit.quantity_target > 0 && ((habit.prev_monthly_overflow || 0) >= habit.quantity_target);
+                          const prevDisplayCompletion = `${habit.prev_monthly_total || 0}:${habit.completion_target || 0}${isPrevCompletionTargetMet ? '🎯' : ''}`;
+                          const prevDisplayQuantity = `${habit.prev_monthly_overflow || 0}:${habit.quantity_target || 0}${isPrevQuantityTargetMet ? '🎯' : ''}`;
 
                           return (
                             <React.Fragment key={slotDateStr}>
