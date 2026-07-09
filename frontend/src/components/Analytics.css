@@ -399,6 +399,19 @@ body.dark-theme .month-mini-select option {
     font-weight: 600;
 }
 
+.col-quantity-val {
+    width: 60px;
+    text-align: right !important;
+    font-size: 14px;
+    font-weight: 700;
+    color: #a855f7 !important;
+}
+
+body.dark-theme .col-quantity-val {
+    color: #c084fc !important;
+}
+
+
 .footer-label {
     text-align: right !important;
     color: #666 !important;

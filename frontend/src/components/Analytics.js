@@ -10,14 +10,11 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
     const [habits, setHabits] = useState([]);
     const [selectedHabitId, setSelectedHabitId] = useState('all');
     const [selectedCategory, setSelectedCategory] = useState('all');
-    const [viewType, setViewType] = useState('habits');
     const [loading, setLoading] = useState(true);
     const chartWrapperRef = useRef(null);
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
-    const [isMetricDropdownOpen, setIsMetricDropdownOpen] = useState(false);
-    const metricDropdownRef = useRef(null);
     const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
     const categoryDropdownRef = useRef(null);
 
@@ -41,9 +38,6 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsDropdownOpen(false);
-            }
-            if (metricDropdownRef.current && !metricDropdownRef.current.contains(event.target)) {
-                setIsMetricDropdownOpen(false);
             }
             if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
                 setIsCategoryDropdownOpen(false);
@@ -130,14 +124,9 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
         setIsCategoryDropdownOpen(false);
     };
 
-    const chartDataKey = useMemo(() => {
-        if (viewType === 'quantity') return 'quantity';
+    const greenChartKey = useMemo(() => {
         return selectedHabitId === 'all' ? 'days_done' : 'value';
-    }, [selectedHabitId, viewType]);
-
-    const chartColor = useMemo(() => {
-        return viewType === 'quantity' ? '#a855f7' : '#22c55e';
-    }, [viewType]);
+    }, [selectedHabitId]);
 
     const chartWidth = useMemo(() => {
         if (!data.weeks || data.weeks.length === 0) return 0;
@@ -156,11 +145,17 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
         return transitions;
     }, [data.weeks]);
 
-    const yAxisMax = useMemo(() => {
+    const yAxisMaxLeft = useMemo(() => {
         if (!data.weeks || data.weeks.length === 0) return 1;
-        const maxValue = Math.max(...data.weeks.map(w => Number(w[chartDataKey]) || 0));
+        const maxValue = Math.max(...data.weeks.map(w => Number(w[greenChartKey]) || 0));
         return Math.max(1, Math.ceil(maxValue));
-    }, [data.weeks, chartDataKey]);
+    }, [data.weeks, greenChartKey]);
+
+    const yAxisMaxRight = useMemo(() => {
+        if (!data.weeks || data.weeks.length === 0) return 1;
+        const maxValue = Math.max(...data.weeks.map(w => Number(w.quantity) || 0));
+        return Math.max(1, Math.ceil(maxValue));
+    }, [data.weeks]);
 
     // Process data for tables
     const tableData = useMemo(() => {
@@ -203,7 +198,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
             const percentage = totalDays > 0 ? Math.min(Math.round((daysDone / totalDays) * 100), 100) : 0;
             const quantity = week.quantity || 0;
             
-            const currentVal = viewType === 'quantity' ? quantity : percentage;
+            const currentVal = percentage;
             let trend = null;
             if (prevWeekVal !== null) {
                 trend = currentVal - prevWeekVal;
@@ -237,15 +232,12 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
         });
 
         return months;
-    }, [data.weeks, language, viewType]);
+    }, [data.weeks, language]);
 
 
     const getMonthTrend = (mKey, currentTableData) => {
         const idx = currentTableData.findIndex(m => m.month_key === mKey);
         if (idx > 0) {
-            if (viewType === 'quantity') {
-                return currentTableData[idx].totals.quantity - currentTableData[idx-1].totals.quantity;
-            }
             return currentTableData[idx].totals.percentage - currentTableData[idx-1].totals.percentage;
         }
         return null;
@@ -273,7 +265,8 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
                 month: mBlock.month,
                 name: mBlock.month_name,
                 left: leftPos,
-                value: viewType === 'quantity' ? mBlock.totals.quantity : mBlock.totals.percentage,
+                value: mBlock.totals.percentage,
+                quantity: mBlock.totals.quantity,
                 trend: trend
             });
 
@@ -281,7 +274,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
         });
 
         return blocks;
-    }, [data.weeks, tableData, chartWidth, viewType]);
+    }, [data.weeks, tableData, chartWidth]);
 
     if (loading) {
         return (
@@ -322,20 +315,6 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
             <div className="analytics-header">
                 <h2 className="analytics-title">{t('analytics') || 'Аналитика'}</h2>
                 <div className="analytics-header-controls">
-                    <div className="analytics-view-selector">
-                        <button
-                            className={`view-btn habits ${viewType === 'habits' ? 'active' : ''}`}
-                            onClick={() => setViewType('habits')}
-                        >
-                            {t('completed') || 'Выполнено'}
-                        </button>
-                        <button
-                            className={`view-btn quantity ${viewType === 'quantity' ? 'active' : ''}`}
-                            onClick={() => setViewType('quantity')}
-                        >
-                            {t('quantity') || 'Количество'}
-                        </button>
-                    </div>
                     <div className="analytics-habit-selector analytics-category-selector" ref={categoryDropdownRef} style={{ zIndex: isCategoryDropdownOpen ? 1010 : 1000 }}>
                         <div 
                             className={`custom-dropdown-header ${isCategoryDropdownOpen ? 'open' : ''}`}
@@ -411,7 +390,7 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
                         <div key={monthBlock.month_key} className="analytics-table-wrapper">
                             <div className="analytics-table-header-select">
                                 <span className="habit-label">{t(MONTH_KEYS[monthBlock.month - 1])} {monthBlock.year}</span>
-                                {trend !== null && renderTrend(trend, viewType !== 'quantity')}
+                                {trend !== null && renderTrend(trend, true)}
                             </div>
                             <table className="analytics-table">
                                 <tbody>
@@ -420,12 +399,15 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
                                             <td className="col-week">{w.week_label}</td>
                                             <td className="col-date">{w.date_range}</td>
                                             <td className="col-fraction">
-                                                {viewType === 'quantity' ? w.quantity : `${w.days_done}/${w.total_days}`}
+                                                {`${w.days_done}/${w.total_days}`}
                                             </td>
                                             <td className="col-percentage">
-                                                {viewType === 'quantity' ? '' : `${w.percentage}%`}
+                                                {`${w.percentage}%`}
                                             </td>
-                                            <td className="col-trend">{renderTrend(w.trend, viewType !== 'quantity')}</td>
+                                            <td className="col-trend">{renderTrend(w.trend, true)}</td>
+                                            <td className="col-quantity-val">
+                                                {w.quantity}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -433,12 +415,15 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
                                     <tr>
                                         <td colSpan="2" className="footer-label">{t('total') || 'итого:'}</td>
                                         <td className="col-fraction">
-                                            {viewType === 'quantity' ? monthBlock.totals.quantity : `${monthBlock.totals.days_done}/${monthBlock.totals.total_days}`}
+                                            {`${monthBlock.totals.days_done}/${monthBlock.totals.total_days}`}
                                         </td>
                                         <td className="col-percentage">
-                                            {viewType === 'quantity' ? '' : `${monthBlock.totals.percentage}%`}
+                                            {`${monthBlock.totals.percentage}%`}
                                         </td>
-                                        <td className="col-trend">{renderTrend(trend, viewType !== 'quantity')}</td>
+                                        <td className="col-trend">{renderTrend(trend, true)}</td>
+                                        <td className="col-quantity-val">
+                                            {monthBlock.totals.quantity}
+                                        </td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -450,11 +435,15 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
             <div className="analytics-chart-wrapper" ref={chartWrapperRef}>
                 <div className="analytics-chart-inner" style={{ width: chartWidth, height: 250 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data.weeks} margin={{ top: 20, right: paddingRight, left: 0, bottom: 0 }}>
+                        <AreaChart data={data.weeks} margin={{ top: 20, right: paddingRight + 20, left: 0, bottom: 0 }}>
                             <defs>
-                                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={chartColor} stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor={chartColor} stopOpacity={0}/>
+                                <linearGradient id="colorGreen" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2}/>
+                                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorPurple" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.2}/>
+                                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "#404040" : "#f0f0f0"} />
@@ -470,12 +459,23 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
                                 dy={10}
                             />
                             <YAxis 
-                                domain={[0, yAxisMax]} 
-                                tickCount={Math.min(8, yAxisMax + 1)}
+                                yAxisId="left"
+                                domain={[0, yAxisMaxLeft]} 
+                                tickCount={Math.min(8, yAxisMaxLeft + 1)}
                                 tick={{ fill: isDark ? '#999' : '#666', fontSize: 12, fontWeight: 600 }}
                                 axisLine={false}
                                 tickLine={false}
                                 dx={-10}
+                            />
+                            <YAxis 
+                                yAxisId="right"
+                                orientation="right"
+                                domain={[0, yAxisMaxRight]} 
+                                tickCount={Math.min(8, yAxisMaxRight + 1)}
+                                tick={{ fill: isDark ? '#a855f7' : '#8b5cf6', fontSize: 12, fontWeight: 600 }}
+                                axisLine={false}
+                                tickLine={false}
+                                dx={10}
                             />
                             
                             {monthTransitions.map((weekLabel, index) => (
@@ -488,14 +488,27 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
                             ))}
 
                             <Area 
+                                yAxisId="left"
                                 type="monotone" 
-                                dataKey={chartDataKey} 
-                                stroke={chartColor} 
-                                strokeWidth={4}
+                                dataKey={greenChartKey} 
+                                stroke="#22c55e" 
+                                strokeWidth={3}
                                 fillOpacity={1} 
-                                fill="url(#colorValue)"
-                                dot={{ fill: chartColor, r: 4, strokeWidth: 2, stroke: isDark ? '#2a2a2a' : '#fff' }}
-                                activeDot={{ r: 6, stroke: chartColor, strokeWidth: 2, fill: isDark ? '#2a2a2a' : '#fff' }}
+                                fill="url(#colorGreen)"
+                                dot={{ fill: '#22c55e', r: 3.5, strokeWidth: 1.5, stroke: isDark ? '#2a2a2a' : '#fff' }}
+                                activeDot={{ r: 5.5, stroke: '#22c55e', strokeWidth: 1.5, fill: isDark ? '#2a2a2a' : '#fff' }}
+                                isAnimationActive={true}
+                            />
+                            <Area 
+                                yAxisId="right"
+                                type="monotone" 
+                                dataKey="quantity" 
+                                stroke="#a855f7" 
+                                strokeWidth={3}
+                                fillOpacity={1} 
+                                fill="url(#colorPurple)"
+                                dot={{ fill: '#a855f7', r: 3.5, strokeWidth: 1.5, stroke: isDark ? '#2a2a2a' : '#fff' }}
+                                activeDot={{ r: 5.5, stroke: '#a855f7', strokeWidth: 1.5, fill: isDark ? '#2a2a2a' : '#fff' }}
                                 isAnimationActive={true}
                             />
                         </AreaChart>
@@ -511,12 +524,15 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
                         >
                             <div className="analytics-month-name">{t(MONTH_KEYS[block.month - 1])}</div>
                             <div className="analytics-month-stats">
-                                <span className="percent">
-                                    {block.value}{viewType === 'quantity' ? '' : '%'}
+                                <span className="percent" style={{ color: '#22c55e' }}>
+                                    {block.value}%
+                                </span>
+                                <span className="quantity-val" style={{ color: '#a855f7', marginLeft: '6px', fontWeight: 600 }}>
+                                    {block.quantity}
                                 </span>
                                 {block.trend !== null && block.trend !== 0 && (
-                                    <span className={`trend ${block.trend > 0 ? 'positive' : 'negative'}`}>
-                                        {block.trend > 0 ? '+' : ''}{block.trend}{viewType === 'quantity' ? '' : '%'}{block.trend > 0 ? '↑' : '↓'}
+                                    <span className={`trend ${block.trend > 0 ? 'positive' : 'negative'}`} style={{ marginLeft: '6px' }}>
+                                        {block.trend > 0 ? '+' : ''}{block.trend}%{block.trend > 0 ? '↑' : '↓'}
                                     </span>
                                 )}
                             </div>
