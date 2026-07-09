@@ -76,6 +76,8 @@ const App = () => {
   const [newHabitUseTarget, setNewHabitUseTarget] = useState(false);
   const [newHabitCompletionTarget, setNewHabitCompletionTarget] = useState('');
   const [newHabitQuantityTarget, setNewHabitQuantityTarget] = useState('');
+  const [newHabitEntireMonth, setNewHabitEntireMonth] = useState(true);
+  const [editingHabitEntireMonth, setEditingHabitEntireMonth] = useState(true);
   const [createError, setCreateError] = useState('');
   // Categories state
   const [categories, setCategories] = useState([{ id: 'all', name: 'Все' }]);
@@ -1646,12 +1648,17 @@ const App = () => {
                             </button>
                           );
 
-                          const prevCompletionPercent = habit.completion_target ? Math.min(100, ((habit.prev_monthly_total || 0) / habit.completion_target) * 100) : 0;
-                          const prevQuantityPercent = habit.quantity_target ? Math.min(100, ((habit.prev_monthly_overflow || 0) / habit.quantity_target) * 100) : 0;
-                          const isPrevCompletionTargetMet = habit.use_target && habit.completion_target > 0 && ((habit.prev_monthly_total || 0) >= habit.completion_target);
-                          const isPrevQuantityTargetMet = habit.use_target && habit.quantity_target > 0 && ((habit.prev_monthly_overflow || 0) >= habit.quantity_target);
-                          const prevDisplayCompletion = `${habit.prev_monthly_total || 0}:${habit.completion_target || 0}${isPrevCompletionTargetMet ? '🎯' : ''}`;
-                          const prevDisplayQuantity = `${habit.prev_monthly_overflow || 0}:${habit.quantity_target || 0}${isPrevQuantityTargetMet ? '🎯' : ''}`;
+                          const daysInPrevMonth = (() => {
+                             return new Date(Date.UTC(slotDate.getUTCFullYear(), slotDate.getUTCMonth(), 0)).getUTCDate();
+                           })();
+                           const targetValPrev = habit.completion_target === 0 ? daysInPrevMonth : (habit.completion_target || 0);
+
+                           const prevCompletionPercent = targetValPrev ? Math.min(100, ((habit.prev_monthly_total || 0) / targetValPrev) * 100) : 0;
+                           const prevQuantityPercent = habit.quantity_target ? Math.min(100, ((habit.prev_monthly_overflow || 0) / habit.quantity_target) * 100) : 0;
+                           const isPrevCompletionTargetMet = habit.use_target && targetValPrev > 0 && ((habit.prev_monthly_total || 0) >= targetValPrev);
+                           const isPrevQuantityTargetMet = habit.use_target && habit.quantity_target > 0 && ((habit.prev_monthly_overflow || 0) >= habit.quantity_target);
+                           const prevDisplayCompletion = `${habit.prev_monthly_total || 0}:${targetValPrev}${isPrevCompletionTargetMet ? '🎯' : ''}`;
+                           const prevDisplayQuantity = `${habit.prev_monthly_overflow || 0}:${habit.quantity_target || 0}${isPrevQuantityTargetMet ? '🎯' : ''}`;
 
                           return (
                             <React.Fragment key={slotDateStr}>
@@ -1669,7 +1676,7 @@ const App = () => {
                                       role="progressbar"
                                       aria-valuenow={habit.prev_monthly_total || 0}
                                       aria-valuemin="0"
-                                      aria-valuemax={habit.completion_target || 0}
+                                      aria-valuemax={targetValPrev}
                                     >
                                       <span className="progress-text-under">{prevDisplayCompletion}</span>
                                       <div className="progress-fill" style={{ width: `${prevCompletionPercent}%` }}>
@@ -1717,6 +1724,7 @@ const App = () => {
                         weeklyAward={weeklyAward} 
                         habit={habit} 
                         isLastQuantityLess1={isLastQuantityLess1} 
+                        currentWeekDate={currentWeekDate}
                       />
                     </div>
                   </div>
@@ -2505,7 +2513,7 @@ const App = () => {
         category: newHabitCategory === "" ? null : newHabitCategory,
         target_type: newHabitTargetType,
         use_target: newHabitUseTarget,
-        completion_target: newHabitUseTarget ? (newHabitCompletionTarget !== '' ? parseInt(newHabitCompletionTarget, 10) : getDaysInCurrentMonth()) : null,
+        completion_target: newHabitUseTarget ? (newHabitEntireMonth ? 0 : (newHabitCompletionTarget !== '' ? parseInt(newHabitCompletionTarget, 10) : getDaysInCurrentMonth())) : null,
         quantity_target: newHabitUseTarget && newHabitQuantityTarget !== '' ? parseInt(newHabitQuantityTarget, 10) : null
       };
       if (newHabitStartDate) {
@@ -2521,6 +2529,10 @@ const App = () => {
 
       // Reset form and close modal
       setNewHabitName('');
+      setNewHabitCompletionTarget('');
+      setNewHabitQuantityTarget('');
+      setNewHabitUseTarget(false);
+      setNewHabitEntireMonth(true);
       setShowCreateModal(false);
 
       // Refresh habits list
@@ -2711,7 +2723,7 @@ const App = () => {
         target_type: editingHabit.target_type,
         start_date: editingHabit.start_date ? editingHabit.start_date : null,
         use_target: editingHabit.use_target,
-        completion_target: editingHabit.use_target ? (editingHabit.completion_target !== '' && editingHabit.completion_target !== null ? parseInt(editingHabit.completion_target, 10) : getDaysInCurrentMonth()) : null,
+        completion_target: editingHabit.use_target ? (editingHabitEntireMonth ? 0 : (editingHabit.completion_target !== '' && editingHabit.completion_target !== null ? parseInt(editingHabit.completion_target, 10) : getDaysInCurrentMonth())) : null,
         quantity_target: editingHabit.use_target && editingHabit.quantity_target !== '' && editingHabit.quantity_target !== null ? parseInt(editingHabit.quantity_target, 10) : null
       }, {
         headers: {
@@ -3497,6 +3509,7 @@ const App = () => {
                           className="manage-btn edit-btn"
                           onClick={() => {
                             setEditingHabit({ ...habit });
+                            setEditingHabitEntireMonth(habit.completion_target === 0);
                             setCreateError('');
                             setShowAddCategory(false);
                             setNewCategoryName('');
@@ -3961,27 +3974,54 @@ const App = () => {
 
               {newHabitUseTarget && (
                 <>
-                  <div className="form-group">
-                    <label className="form-label">{language === 'ru' ? 'Зеленая цель (дней в месяц)' : 'Green target (days per month)'}</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={newHabitCompletionTarget !== '' ? newHabitCompletionTarget : getDaysInCurrentMonth()}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const maxDays = getDaysInCurrentMonth();
-                        if (val === '' || parseInt(val) <= maxDays) {
-                          setNewHabitCompletionTarget(val);
-                        } else {
-                          setNewHabitCompletionTarget(maxDays.toString());
-                        }
-                      }}
-                      min="1"
-                      max={getDaysInCurrentMonth()}
-                    />
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label className="custom-checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={newHabitEntireMonth}
+                        onChange={(e) => {
+                          setNewHabitEntireMonth(e.target.checked);
+                          if (e.target.checked) {
+                            setNewHabitCompletionTarget('0');
+                          } else {
+                            setNewHabitCompletionTarget(getDaysInCurrentMonth().toString());
+                          }
+                        }}
+                      />
+                      <span className="checkbox-box">
+                        <svg className="checkbox-tick" viewBox="0 0 24 24" fill="none">
+                          <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </span>
+                      <span className="checkbox-label-text">
+                        {language === 'ru' ? 'Весь месяц' : 'Entire month'}
+                      </span>
+                    </label>
+
+                    {!newHabitEntireMonth && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label className="form-label green-target-label">{language === 'ru' ? 'Зеленая цель (дней в месяц)' : 'Green target (days per month)'}</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={newHabitCompletionTarget !== '' && newHabitCompletionTarget !== '0' ? newHabitCompletionTarget : getDaysInCurrentMonth()}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const maxDays = getDaysInCurrentMonth();
+                            if (val === '' || parseInt(val) <= maxDays) {
+                              setNewHabitCompletionTarget(val);
+                            } else {
+                              setNewHabitCompletionTarget(maxDays.toString());
+                            }
+                          }}
+                          min="1"
+                          max={getDaysInCurrentMonth()}
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{language === 'ru' ? 'Фиолетовая цель (количество в месяц)' : 'Purple target (quantity per month)'}</label>
+                    <label className="form-label purple-target-label">{language === 'ru' ? 'Фиолетовая цель (количество в месяц)' : 'Purple target (quantity per month)'}</label>
                     <input
                       type="number"
                       className="form-input"
@@ -4139,27 +4179,54 @@ const App = () => {
 
               {editingHabit.use_target && (
                 <>
-                  <div className="form-group">
-                    <label className="form-label">{language === 'ru' ? 'Зеленая цель (дней в месяц)' : 'Green target (days per month)'}</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={editingHabit.completion_target !== null && editingHabit.completion_target !== undefined ? editingHabit.completion_target : getDaysInCurrentMonth()}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const maxDays = getDaysInCurrentMonth();
-                        if (val === '' || parseInt(val) <= maxDays) {
-                          setEditingHabit({ ...editingHabit, completion_target: val });
-                        } else {
-                          setEditingHabit({ ...editingHabit, completion_target: maxDays.toString() });
-                        }
-                      }}
-                      min="1"
-                      max={getDaysInCurrentMonth()}
-                    />
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label className="custom-checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={editingHabitEntireMonth}
+                        onChange={(e) => {
+                          setEditingHabitEntireMonth(e.target.checked);
+                          if (e.target.checked) {
+                            setEditingHabit({ ...editingHabit, completion_target: 0 });
+                          } else {
+                            setEditingHabit({ ...editingHabit, completion_target: getDaysInCurrentMonth() });
+                          }
+                        }}
+                      />
+                      <span className="checkbox-box">
+                        <svg className="checkbox-tick" viewBox="0 0 24 24" fill="none">
+                          <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </span>
+                      <span className="checkbox-label-text">
+                        {language === 'ru' ? 'Весь месяц' : 'Entire month'}
+                      </span>
+                    </label>
+
+                    {!editingHabitEntireMonth && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label className="form-label green-target-label">{language === 'ru' ? 'Зеленая цель (дней в месяц)' : 'Green target (days per month)'}</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={editingHabit.completion_target !== null && editingHabit.completion_target !== undefined && editingHabit.completion_target !== 0 ? editingHabit.completion_target : getDaysInCurrentMonth()}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const maxDays = getDaysInCurrentMonth();
+                            if (val === '' || parseInt(val) <= maxDays) {
+                              setEditingHabit({ ...editingHabit, completion_target: val });
+                            } else {
+                              setEditingHabit({ ...editingHabit, completion_target: maxDays.toString() });
+                            }
+                          }}
+                          min="1"
+                          max={getDaysInCurrentMonth()}
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{language === 'ru' ? 'Фиолетовая цель (количество в месяц)' : 'Purple target (quantity per month)'}</label>
+                    <label className="form-label purple-target-label">{language === 'ru' ? 'Фиолетовая цель (количество в месяц)' : 'Purple target (quantity per month)'}</label>
                     <input
                       type="number"
                       className="form-input"

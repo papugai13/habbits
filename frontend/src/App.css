@@ -6018,3 +6018,19 @@ html.dark-theme, body.dark-theme {
   box-shadow: 0 0 10px rgba(52, 211, 153, 0.3);
 }
 
+/* Custom target labels colors */
+.form-group label.green-target-label {
+  color: #10B981;
+}
+.dark-theme .form-group label.green-target-label {
+  color: #34D399;
+}
+
+.form-group label.purple-target-label {
+  color: #8B5CF6;
+}
+.dark-theme .form-group label.purple-target-label {
+  color: #C4B5FD;
+}
+
+
