@@ -166,14 +166,68 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
     const tableData = useMemo(() => {
         if (!data.weeks || data.weeks.length === 0) return [];
         
+        const flatWeekParts = [];
+        data.weeks.forEach((week) => {
+            const startDate = new Date(week.week_start);
+            const endDate = new Date(week.week_end);
+            
+            const startMonth = startDate.getMonth();
+            const endMonth = endDate.getMonth();
+            
+            if (startMonth === endMonth) {
+                flatWeekParts.push({
+                    week_label: week.week_label,
+                    month: startMonth + 1,
+                    year: startDate.getFullYear(),
+                    date_range: `${startDate.getDate()}-${endDate.getDate()}`,
+                    days_done: Math.min(week.days_done || 0, week.total_days || 7),
+                    total_days: week.total_days || 7,
+                    quantity: week.quantity || 0,
+                });
+            } else {
+                // Split week across months
+                const lastDayOfPart1 = new Date(startDate.getFullYear(), startMonth + 1, 0);
+                const daysInPart1 = lastDayOfPart1.getDate() - startDate.getDate() + 1;
+                const daysInPart2 = 7 - daysInPart1;
+                
+                const totalDays = week.total_days || 7;
+                const daysDone = Math.min(week.days_done || 0, totalDays);
+                const quantity = week.quantity || 0;
+                
+                const daysDonePart1 = Math.min(daysInPart1, Math.round(daysDone * (daysInPart1 / 7)));
+                const daysDonePart2 = Math.min(daysInPart2, daysDone - daysDonePart1);
+                
+                const quantityPart1 = Math.round(quantity * (daysInPart1 / 7));
+                const quantityPart2 = quantity - quantityPart1;
+                
+                flatWeekParts.push({
+                    week_label: week.week_label,
+                    month: startMonth + 1,
+                    year: startDate.getFullYear(),
+                    date_range: `${startDate.getDate()}-${lastDayOfPart1.getDate()}`,
+                    days_done: daysDonePart1,
+                    total_days: daysInPart1,
+                    quantity: quantityPart1,
+                });
+                
+                flatWeekParts.push({
+                    week_label: week.week_label,
+                    month: endMonth + 1,
+                    year: endDate.getFullYear(),
+                    date_range: `1-${endDate.getDate()}`,
+                    days_done: daysDonePart2,
+                    total_days: daysInPart2,
+                    quantity: quantityPart2,
+                });
+            }
+        });
+
         const months = [];
         let currentMonthBlock = null;
         let prevWeekVal = null;
         
-        data.weeks.forEach((week) => {
-            const startDate = new Date(week.week_start);
-            const thursday = new Date(startDate.getTime() + 3 * 24 * 60 * 60 * 1000);
-            const monthKey = `${thursday.getFullYear()}-${thursday.getMonth() + 1}`;
+        flatWeekParts.forEach((part) => {
+            const monthKey = `${part.year}-${part.month}`;
 
             if (!currentMonthBlock || currentMonthBlock.month_key !== monthKey) {
                 if (currentMonthBlock) {
@@ -181,9 +235,8 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
                 }
                 currentMonthBlock = {
                     month_key: monthKey,
-                    month: thursday.getMonth() + 1,
-                    year: thursday.getFullYear(),
-                    month_name: week.month_name,
+                    month: part.month,
+                    year: part.year,
                     weeks: [],
                     totals: {
                         days_done: 0,
@@ -195,15 +248,8 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
                 };
             }
             
-            const endDate = new Date(week.week_end);
-            const dateRange = `${startDate.getDate()}-${endDate.getDate()}`;
-            
-            const totalDays = week.total_days || 7;
-            const daysDone = Math.min(week.days_done || 0, totalDays);
-            const percentage = totalDays > 0 ? Math.min(Math.round((daysDone / totalDays) * 100), 100) : 0;
-            const quantity = week.quantity || 0;
-            
-            const currentVal = viewType === 'quantity' ? quantity : percentage;
+            const percentage = part.total_days > 0 ? Math.min(Math.round((part.days_done / part.total_days) * 100), 100) : 0;
+            const currentVal = viewType === 'quantity' ? part.quantity : percentage;
             let trend = null;
             if (prevWeekVal !== null) {
                 trend = currentVal - prevWeekVal;
@@ -211,18 +257,18 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
             prevWeekVal = currentVal;
             
             currentMonthBlock.weeks.push({
-                week_label: week.week_label.replace('н', language === 'ru' ? 'неделя ' : 'week '),
-                date_range: dateRange,
-                days_done: daysDone,
-                total_days: totalDays,
+                week_label: part.week_label.replace('н', language === 'ru' ? 'неделя ' : 'week '),
+                date_range: part.date_range,
+                days_done: part.days_done,
+                total_days: part.total_days,
                 percentage: percentage,
-                quantity: quantity,
+                quantity: part.quantity,
                 trend: trend
             });
             
-            currentMonthBlock.totals.days_done += daysDone;
-            currentMonthBlock.totals.total_days += totalDays;
-            currentMonthBlock.totals.quantity += quantity;
+            currentMonthBlock.totals.days_done += part.days_done;
+            currentMonthBlock.totals.total_days += part.total_days;
+            currentMonthBlock.totals.quantity += part.quantity;
         });
         
         if (currentMonthBlock) {
@@ -256,32 +302,58 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
         if (!data.weeks || data.weeks.length === 0 || tableData.length === 0) return [];
         const blocks = [];
 
-        // Helper to get index range of weeks for a month
-        let weekStartIndex = 0;
-        tableData.forEach((mBlock) => {
-            const numWeeks = mBlock.weeks.length;
-            const weekEndIndex = weekStartIndex + numWeeks - 1;
-            const centerIdx = weekStartIndex + (weekEndIndex - weekStartIndex) / 2;
+        // Group the original data.weeks by month key (year-month) using Thursday to match getAnalyticsChart backend grouping
+        const monthGroupRanges = [];
+        let currentMonthKey = null;
+        let currentRange = null;
 
-            // Real width available for weeks is chartWidth - paddingLeft - paddingRight
+        data.weeks.forEach((week, idx) => {
+            const startDate = new Date(week.week_start);
+            const thursday = new Date(startDate.getTime() + 3 * 24 * 60 * 60 * 1000);
+            const monthKey = `${thursday.getFullYear()}-${thursday.getMonth() + 1}`;
+
+            if (monthKey !== currentMonthKey) {
+                if (currentRange) {
+                    monthGroupRanges.push(currentRange);
+                }
+                currentMonthKey = monthKey;
+                currentRange = {
+                    monthKey,
+                    month: thursday.getMonth() + 1,
+                    year: thursday.getFullYear(),
+                    startIndex: idx,
+                    endIndex: idx
+                };
+            } else {
+                currentRange.endIndex = idx;
+            }
+        });
+        if (currentRange) {
+            monthGroupRanges.push(currentRange);
+        }
+
+        // Now calculate leftPos for each month block
+        monthGroupRanges.forEach((range) => {
+            const centerIdx = range.startIndex + (range.endIndex - range.startIndex) / 2;
             const actualWeekWidth = (chartWidth - paddingLeft - paddingRight) / data.weeks.length;
             const leftPos = paddingLeft + (centerIdx * actualWeekWidth) + actualWeekWidth / 2;
 
-            const trend = getMonthTrend(mBlock.month_key, tableData);
-
-            blocks.push({
-                month: mBlock.month,
-                name: mBlock.month_name,
-                left: leftPos,
-                value: viewType === 'quantity' ? mBlock.totals.quantity : mBlock.totals.percentage,
-                trend: trend
-            });
-
-            weekStartIndex += numWeeks;
+            // Find matching table data block for stats
+            const mBlock = tableData.find(m => m.month_key === range.monthKey);
+            if (mBlock) {
+                const trend = getMonthTrend(mBlock.month_key, tableData);
+                blocks.push({
+                    month: mBlock.month,
+                    name: t(MONTH_KEYS[mBlock.month - 1]),
+                    left: leftPos,
+                    value: viewType === 'quantity' ? mBlock.totals.quantity : mBlock.totals.percentage,
+                    trend: trend
+                });
+            }
         });
 
         return blocks;
-    }, [data.weeks, tableData, chartWidth, viewType]);
+    }, [data.weeks, tableData, chartWidth, viewType, t]);
 
     if (loading) {
         return (
