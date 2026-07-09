@@ -3033,6 +3033,16 @@ body {
   margin-bottom: 12px;
 }
 
+/* Лейбл ЗАМЕТКА — светло-зелёный, переопределяем фиолетовый */
+.quantity-modal .note-label-row {
+  justify-content: center;
+}
+.quantity-modal .note-label-row label {
+  color: #10b981;
+  text-align: center;
+  flex: unset;
+}
+
 /* Container for Picker and Presets */
 .quantity-selector-container {
   display: flex;
@@ -3906,6 +3916,11 @@ html.dark-theme, body.dark-theme {
 
 .dark-theme .quantity-modal .form-group label {
   color: #8B5CF6;
+}
+
+/* Тёмная тема: лейбл ЗАМЕТКА — светло-зелёный */
+.dark-theme .quantity-modal .note-label-row label {
+  color: #34d399;
 }
 
 .dark-theme .form-input,
