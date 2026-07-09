@@ -158,27 +158,25 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
     }, [data.weeks]);
 
     // Process data for tables
+    // Process data for tables
     const tableData = useMemo(() => {
         if (!data.weeks || data.weeks.length === 0) return [];
         
         const months = [];
         let currentMonthBlock = null;
-        let prevWeekVal = null;
+        let prevRowVal = null;
         
-        data.weeks.forEach((week) => {
-            const startDate = new Date(week.week_start);
-            const thursday = new Date(startDate.getTime() + 3 * 24 * 60 * 60 * 1000);
-            const monthKey = `${thursday.getFullYear()}-${thursday.getMonth() + 1}`;
-
+        const addWeekPartToMonth = (part, year, month, monthName) => {
+            const monthKey = `${year}-${month}`;
             if (!currentMonthBlock || currentMonthBlock.month_key !== monthKey) {
                 if (currentMonthBlock) {
                     months.push(currentMonthBlock);
                 }
                 currentMonthBlock = {
                     month_key: monthKey,
-                    month: thursday.getMonth() + 1,
-                    year: thursday.getFullYear(),
-                    month_name: week.month_name,
+                    month: month,
+                    year: year,
+                    month_name: monthName,
                     weeks: [],
                     totals: {
                         days_done: 0,
@@ -190,34 +188,102 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
                 };
             }
             
-            const endDate = new Date(week.week_end);
-            const dateRange = `${startDate.getDate()}-${endDate.getDate()}`;
+            currentMonthBlock.weeks.push(part);
+            currentMonthBlock.totals.days_done += part.days_done;
+            currentMonthBlock.totals.total_days += part.total_days;
+            currentMonthBlock.totals.quantity += part.quantity;
+        };
+
+        data.weeks.forEach((week) => {
+            const [sy, sm, sd] = week.week_start.split('-').map(Number);
+            const startDate = new Date(sy, sm - 1, sd);
+            
+            const [ey, em, ed] = week.week_end.split('-').map(Number);
+            const endDate = new Date(ey, em - 1, ed);
             
             const totalDays = week.total_days || 7;
             const daysDone = Math.min(week.days_done || 0, totalDays);
-            const percentage = totalDays > 0 ? Math.min(Math.round((daysDone / totalDays) * 100), 100) : 0;
             const quantity = week.quantity || 0;
             
-            const currentVal = percentage;
-            let trend = null;
-            if (prevWeekVal !== null) {
-                trend = currentVal - prevWeekVal;
+            const label = week.week_label.replace('н', language === 'ru' ? 'неделя ' : 'week ');
+            
+            if (startDate.getMonth() !== endDate.getMonth()) {
+                // Crosses month boundary!
+                const getDaysInMonth = (y, m) => new Date(y, m, 0).getDate();
+                const lastDayOfFirstMonth = getDaysInMonth(startDate.getFullYear(), startDate.getMonth() + 1);
+                const daysInFirstMonth = lastDayOfFirstMonth - startDate.getDate() + 1;
+                
+                // 1. Part 1 (First Month)
+                const part1TotalDays = Math.round(totalDays * (daysInFirstMonth / 7));
+                const part1DaysDone = Math.round(daysDone * (daysInFirstMonth / 7));
+                const part1Quantity = Math.round(quantity * (daysInFirstMonth / 7));
+                const part1Percentage = part1TotalDays > 0 ? Math.min(Math.round((part1DaysDone / part1TotalDays) * 100), 100) : 0;
+                
+                let part1Trend = null;
+                if (prevRowVal !== null) {
+                    part1Trend = part1Percentage - prevRowVal;
+                }
+                prevRowVal = part1Percentage;
+                
+                const part1 = {
+                    week_label: label,
+                    date_range: `${startDate.getDate()}-${lastDayOfFirstMonth}`,
+                    days_done: part1DaysDone,
+                    total_days: part1TotalDays,
+                    percentage: part1Percentage,
+                    quantity: part1Quantity,
+                    trend: part1Trend
+                };
+                
+                // 2. Part 2 (Second Month)
+                const part2TotalDays = totalDays - part1TotalDays;
+                const part2DaysDone = daysDone - part1DaysDone;
+                const part2Quantity = quantity - part1Quantity;
+                const part2Percentage = part2TotalDays > 0 ? Math.min(Math.round((part2DaysDone / part2TotalDays) * 100), 100) : 0;
+                
+                let part2Trend = null;
+                if (prevRowVal !== null) {
+                    part2Trend = part2Percentage - prevRowVal;
+                }
+                prevRowVal = part2Percentage;
+                
+                const part2 = {
+                    week_label: label,
+                    date_range: `1-${endDate.getDate()}`,
+                    days_done: part2DaysDone,
+                    total_days: part2TotalDays,
+                    percentage: part2Percentage,
+                    quantity: part2Quantity,
+                    trend: part2Trend
+                };
+                
+                addWeekPartToMonth(part1, startDate.getFullYear(), startDate.getMonth() + 1, week.month_name);
+                addWeekPartToMonth(part2, endDate.getFullYear(), endDate.getMonth() + 1, week.month_name);
+            } else {
+                // Non-crossing week
+                const percentage = totalDays > 0 ? Math.min(Math.round((daysDone / totalDays) * 100), 100) : 0;
+                let trend = null;
+                if (prevRowVal !== null) {
+                    trend = percentage - prevRowVal;
+                }
+                prevRowVal = percentage;
+                
+                const dateRange = startDate.getDate() === endDate.getDate()
+                    ? `${startDate.getDate()}`
+                    : `${startDate.getDate()}-${endDate.getDate()}`;
+                
+                const part = {
+                    week_label: label,
+                    date_range: dateRange,
+                    days_done: daysDone,
+                    total_days: totalDays,
+                    percentage: percentage,
+                    quantity: quantity,
+                    trend: trend
+                };
+                
+                addWeekPartToMonth(part, startDate.getFullYear(), startDate.getMonth() + 1, week.month_name);
             }
-            prevWeekVal = currentVal;
-            
-            currentMonthBlock.weeks.push({
-                week_label: week.week_label.replace('н', language === 'ru' ? 'неделя ' : 'week '),
-                date_range: dateRange,
-                days_done: daysDone,
-                total_days: totalDays,
-                percentage: percentage,
-                quantity: quantity,
-                trend: trend
-            });
-            
-            currentMonthBlock.totals.days_done += daysDone;
-            currentMonthBlock.totals.total_days += totalDays;
-            currentMonthBlock.totals.quantity += quantity;
         });
         
         if (currentMonthBlock) {
@@ -248,29 +314,48 @@ const Analytics = ({ getCookie, theme, t, language, storageMode, categories = []
         if (!data.weeks || data.weeks.length === 0 || tableData.length === 0) return [];
         const blocks = [];
 
-        // Helper to get index range of weeks for a month
-        let weekStartIndex = 0;
-        tableData.forEach((mBlock) => {
-            const numWeeks = mBlock.weeks.length;
-            const weekEndIndex = weekStartIndex + numWeeks - 1;
-            const centerIdx = weekStartIndex + (weekEndIndex - weekStartIndex) / 2;
+        // Group the week indices by monthKey (using Thursday of each week to match the chart's reference lines)
+        const groups = {};
+        data.weeks.forEach((week, index) => {
+            const [sy, sm, sd] = week.week_start.split('-').map(Number);
+            const startDate = new Date(sy, sm - 1, sd);
+            const thursday = new Date(startDate.getTime() + 3 * 24 * 60 * 60 * 1000);
+            const monthKey = `${thursday.getFullYear()}-${thursday.getMonth() + 1}`;
+            
+            if (!groups[monthKey]) {
+                groups[monthKey] = {
+                    month: thursday.getMonth() + 1,
+                    year: thursday.getFullYear(),
+                    indices: []
+                };
+            }
+            groups[monthKey].indices.push(index);
+        });
+
+        // Now calculate positions based on the grouped indices
+        Object.keys(groups).forEach((monthKey) => {
+            const group = groups[monthKey];
+            const indices = group.indices;
+            const firstIdx = indices[0];
+            const lastIdx = indices[indices.length - 1];
+            const centerIdx = firstIdx + (lastIdx - firstIdx) / 2;
 
             // Real width available for weeks is chartWidth - paddingLeft - paddingRight
             const actualWeekWidth = (chartWidth - paddingLeft - paddingRight) / data.weeks.length;
             const leftPos = paddingLeft + (centerIdx * actualWeekWidth) + actualWeekWidth / 2;
 
-            const trend = getMonthTrend(mBlock.month_key, tableData);
+            const mBlock = tableData.find(m => m.month_key === monthKey);
+            const percentage = mBlock ? mBlock.totals.percentage : 0;
+            const quantity = mBlock ? mBlock.totals.quantity : 0;
+            const trend = getMonthTrend(monthKey, tableData);
 
             blocks.push({
-                month: mBlock.month,
-                name: mBlock.month_name,
+                month: group.month,
                 left: leftPos,
-                value: mBlock.totals.percentage,
-                quantity: mBlock.totals.quantity,
+                value: percentage,
+                quantity: quantity,
                 trend: trend
             });
-
-            weekStartIndex += numWeeks;
         });
 
         return blocks;
