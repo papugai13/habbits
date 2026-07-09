@@ -818,6 +818,24 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory, sel
     const [calYear, setCalYear] = useState(new Date().getFullYear());
     const [dayData, setDayData] = useState({});
     const [loading, setLoading] = useState(true);
+    const [collapsedQuarters, setCollapsedQuarters] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('habbits_collapsedQuarters') || '{}');
+        } catch {
+            return {};
+        }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('habbits_collapsedQuarters', JSON.stringify(collapsedQuarters));
+    }, [collapsedQuarters]);
+
+    const toggleQuarter = (qIdx) => {
+        setCollapsedQuarters(prev => ({
+            ...prev,
+            [qIdx]: !prev[qIdx]
+        }));
+    };
 
     const isDark = theme === 'dark' || (theme === 'auto' && document.body.classList.contains('dark-theme'));
     const todayStr = useMemo(() => {
@@ -958,15 +976,26 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory, sel
                     <p>{t('loading') || 'Загрузка...'}</p>
                 </div>
             ) : (
-                <div className="cal-quarters">
-                    {QUARTERS.map((monthIdxs, qIdx) => (
-                        <div key={qIdx} className="cal-quarter">
-                            <div className="cal-quarter-title">{quarterNames[qIdx]}</div>
-                            <div className="cal-quarter-months">
-                                {monthIdxs.map(mIdx => renderMonth(mIdx))}
+                 <div className="cal-quarters">
+                    {QUARTERS.map((monthIdxs, qIdx) => {
+                        const isCollapsed = !!collapsedQuarters[qIdx];
+                        return (
+                            <div key={qIdx} className={`cal-quarter ${isCollapsed ? 'collapsed' : ''}`}>
+                                <div 
+                                    className="cal-quarter-title" 
+                                    onClick={() => toggleQuarter(qIdx)}
+                                >
+                                    <span>{quarterNames[qIdx]}</span>
+                                    <span className={`collapse-icon ${isCollapsed ? 'collapsed' : ''}`}>▼</span>
+                                </div>
+                                {!isCollapsed && (
+                                    <div className="cal-quarter-months">
+                                        {monthIdxs.map(mIdx => renderMonth(mIdx))}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>
