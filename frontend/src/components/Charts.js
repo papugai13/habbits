@@ -240,7 +240,7 @@ const PercentageBadge = ({ x, y, width, height, value, badgeW, badgeH, fSize, pe
     );
 };
 
-const PercentageBadgeVertical = ({ x, y, width, height, value, badgeW, badgeH, fSize, period }) => {
+const PercentageBadgeVertical = ({ x, y, width, height, value, badgeW, badgeH, fSize, period, color }) => {
     if (!value || value === '0/0') return null;
     const fs = fSize || 16;
     const cx = x + width / 2;
@@ -250,7 +250,7 @@ const PercentageBadgeVertical = ({ x, y, width, height, value, badgeW, badgeH, f
         <text
             x={cx}
             y={cy}
-            fill="#22c55e"
+            fill={color || "#22c55e"}
             textAnchor="middle"
             dominantBaseline="middle"
             fontSize={fs}
@@ -658,19 +658,16 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                             
                             const catTargetTotal = stat.targetTotal || 1;
                             const progressWidth = Math.min(100, (stat.total / catTargetTotal) * 100);
-                            const catTotalPercent = Math.round((stat.total / catTargetTotal) * 100);
-                            const totalFraction = `${stat.total}/${catTargetTotal} (${catTotalPercent}%)`;
+                            const totalFraction = `${stat.total}/${catTargetTotal}`;
 
                             let progressWidthExtra = 0;
                             let extraFraction = '';
                             if (stat.targetExtra > 0) {
                                 progressWidthExtra = Math.min(100, (stat.extra / stat.targetExtra) * 100);
-                                const catExtraPercent = Math.round((stat.extra / stat.targetExtra) * 100);
-                                extraFraction = `${stat.extra}/${stat.targetExtra} (${catExtraPercent}%)`;
+                                extraFraction = `${stat.extra}/${stat.targetExtra}`;
                             } else {
                                 progressWidthExtra = (stat.extra / maxExtra) * 100;
-                                const catExtraPercentRelative = Math.round((stat.extra / maxExtra) * 100);
-                                extraFraction = `${stat.extra}/${maxExtra} (${catExtraPercentRelative}%)`;
+                                extraFraction = `${stat.extra}/${maxExtra}`;
                             }
 
                             const isExpanded = expandedCategories.has(stat.name);
@@ -740,8 +737,7 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                             ? getScaledTarget(habit, 'completion', period, currentWeekDate)
                                             : daysInPeriod;
                                         const hProgressWidth = Math.min(100, ((habit.countCapped || 0) / hTargetTotal) * 100);
-                                        const hTotalPercent = Math.round(((habit.countCapped || 0) / hTargetTotal) * 100);
-                                        const hTotalFraction = `${habit.countCapped || 0}/${hTargetTotal} (${hTotalPercent}%)`;
+                                        const hTotalFraction = `${habit.countCapped || 0}/${hTargetTotal}`;
 
                                         const hTargetExtra = habit.use_target && habit.quantity_target
                                             ? getScaledTarget(habit, 'quantity', period, currentWeekDate)
@@ -751,12 +747,10 @@ const CategoryComparisonTable = ({ period, currentWeekDate, theme, t, language, 
                                         let hExtraFraction = '';
                                         if (hTargetExtra > 0) {
                                             hExtraWidth = Math.min(100, ((habit.countExtra || 0) / hTargetExtra) * 100);
-                                            const hExtraPercent = Math.round(((habit.countExtra || 0) / hTargetExtra) * 100);
-                                            hExtraFraction = `${habit.countExtra || 0}/${hTargetExtra} (${hExtraPercent}%)`;
+                                            hExtraFraction = `${habit.countExtra || 0}/${hTargetExtra}`;
                                         } else {
                                             hExtraWidth = ((habit.countExtra || 0) / maxHabitExtra) * 100;
-                                            const hExtraPercentRelative = Math.round(((habit.countExtra || 0) / maxHabitExtra) * 100);
-                                            hExtraFraction = `${habit.countExtra || 0}/${maxHabitExtra} (${hExtraPercentRelative}%)`;
+                                            hExtraFraction = `${habit.countExtra || 0}/${maxHabitExtra}`;
                                         }
                                         return (
                                             <tr key={`h-${hIdx}`} className="cat-habit-row">
@@ -1671,7 +1665,7 @@ const Charts = ({
                     >
                         <div className="main-chart-scroll-wrapper" onScroll={handleMainScroll} ref={mainScrollRef}>
                             <div className="main-chart-inner" style={{ 
-                                width: `${Math.max(visibleChartData.length * (isMobile ? 50 : 70), 400)}px`,
+                                width: `${Math.max(visibleChartData.length * (isMobile ? 65 : 85), isMobile ? 220 : 350)}px`,
                                 transition: 'width 0.35s cubic-bezier(0.25,0.46,0.45,0.94)'
                             }}>
                                 <ResponsiveContainer width="100%" height="100%" style={{ overflow: 'visible' }}>
@@ -1750,9 +1744,9 @@ const Charts = ({
                                                         />
                                                     )}
                                                     <LabelList
-                                                        dataKey="percentage"
+                                                        dataKey="completionFraction"
                                                         position="top"
-                                                        content={(props) => <PercentageBadgeVertical {...props} fSize={isMobile ? 10 : 12} period={period} />}
+                                                        content={(props) => <PercentageBadgeVertical {...props} fSize={isMobile ? 10 : 12} period={period} color="#059669" />}
                                                     />
                                                 </Bar>
                                                 <Bar
@@ -1771,7 +1765,7 @@ const Charts = ({
                                                     <LabelList
                                                         dataKey="completionFraction"
                                                         position="top"
-                                                        content={(props) => <PercentageBadgeVertical {...props} fSize={isMobile ? 10 : 12} period={period} />}
+                                                        content={(props) => <PercentageBadgeVertical {...props} fSize={isMobile ? 10 : 12} period={period} color="#8B5CF6" />}
                                                     />
                                                 </Bar>
                                         {/* Зелёная пунктирная линия по вершинам столбцов */}
