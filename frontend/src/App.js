@@ -346,13 +346,16 @@ const App = () => {
     const prevStr = prev.toLocaleDateString('en-CA');
     const nextStr = next.toLocaleDateString('en-CA');
 
-    if (!weekDataCacheRef.current[prevStr]) {
+    const prevCacheKey = `${storageMode}_${prevStr}`;
+    const nextCacheKey = `${storageMode}_${nextStr}`;
+
+    if (!weekDataCacheRef.current[prevCacheKey]) {
       fetchWeekHabits(prevStr);
     }
-    if (!weekDataCacheRef.current[nextStr]) {
+    if (!weekDataCacheRef.current[nextCacheKey]) {
       fetchWeekHabits(nextStr);
     }
-  }, [fetchWeekHabits]);
+  }, [fetchWeekHabits, storageMode]);
 
   const fetchHabits = React.useCallback(async (targetDate) => {
     const dateKey = targetDate || currentWeekDate;
@@ -959,8 +962,9 @@ const App = () => {
     // Apply page slide direction class first
 
     // If cached, show immediately, иначе загрузится параллельно
-    if (weekDataCacheRef.current[weekString]) {
-      setHabitsData(weekDataCacheRef.current[weekString]);
+    const cacheKey = `${storageMode}_${weekString}`;
+    if (weekDataCacheRef.current[cacheKey]) {
+      setHabitsData(weekDataCacheRef.current[cacheKey]);
     }
 
     setCurrentWeekDate(weekString);
@@ -2986,13 +2990,34 @@ const App = () => {
           {sortedCategories.map(category => {
             const displayName = category.name === 'Все' ? t('allCategories') :
               (category.name === 'Без категории' ? t('noCategory') : category.name);
+            
+            // Calculate progress percentage for this category
+            const categoryHabits = habitsData.filter(habit => {
+              if (category.name === 'Все') return true;
+              if (category.name === 'Без категории') return !habit.category_name;
+              return habit.category_name === category.name;
+            });
+            const totalCompletions = categoryHabits.reduce((sum, h) => {
+              return sum + (h.statuses ? h.statuses.filter(s => s && s.is_done && !s.is_restored).length : 0);
+            }, 0);
+            const maxCompletions = categoryHabits.length * 7;
+            const completionPercent = maxCompletions > 0 ? Math.round((totalCompletions / maxCompletions) * 100) : 0;
+
+            const isActive = selectedCategory === category.name;
+
             return (
               <button
                 key={category.id}
-                className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
+                className={`category-btn ${isActive ? 'active' : ''}`}
                 onClick={() => setSelectedCategory(category.name)}
+                role="progressbar"
+                aria-valuenow={totalCompletions}
+                aria-valuemin="0"
+                aria-valuemax={maxCompletions}
+                aria-label={`${displayName}: ${completionPercent}%`}
               >
-                {displayName}
+                <div className="progress-fill" style={{ width: `${completionPercent}%` }} />
+                <span className="category-btn-text">{displayName}</span>
               </button>
             );
           })}
