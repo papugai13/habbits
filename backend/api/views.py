@@ -1567,6 +1567,67 @@ class HabitViewSet(viewsets.ModelViewSet):
             done_history = list(day_dates.values_list('habit_date', flat=True))
             done_history_str = [d.isoformat() for d in done_history]
 
+            # ── All-time statistics ──────────────────────────────────────────────
+            # Определяем эффективную дату начала отсчёта
+            first_done_date = Date.objects.filter(
+                user=user_profile, habit=habit, is_done=True
+            ).order_by('habit_date').values_list('habit_date', flat=True).first()
+
+            effective_start = habit.start_date or first_done_date
+
+            if effective_start:
+                today_dt = date.today()
+                alltime_days_total = max(0, (today_dt - effective_start).days + 1)
+                alltime_days_done = Date.objects.filter(
+                    user=user_profile,
+                    habit=habit,
+                    habit_date__range=[effective_start, today_dt],
+                    is_done=True,
+                    is_restored=False
+                ).count()
+
+                # Загружаем все даты выполнения одним запросом
+                all_done_set = set(
+                    Date.objects.filter(
+                        user=user_profile,
+                        habit=habit,
+                        habit_date__gte=effective_start,
+                        is_done=True,
+                        is_restored=False
+                    ).values_list('habit_date', flat=True)
+                )
+
+                alltime_lightning = 0        # 3/7
+                alltime_double_lightning = 0 # 4/7
+                alltime_star = 0             # 5/7
+                alltime_double_star = 0      # 6/7
+                alltime_crown = 0            # 7/7
+
+                # Начинаем с понедельника недели effective_start
+                week_iter = effective_start - timedelta(days=effective_start.weekday())
+                while week_iter <= today_dt:
+                    week_end_iter = week_iter + timedelta(days=6)
+                    wc = sum(1 for d in all_done_set if week_iter <= d <= week_end_iter)
+                    if wc == 3:
+                        alltime_lightning += 1
+                    elif wc == 4:
+                        alltime_double_lightning += 1
+                    elif wc == 5:
+                        alltime_star += 1
+                    elif wc == 6:
+                        alltime_double_star += 1
+                    elif wc >= 7:
+                        alltime_crown += 1
+                    week_iter += timedelta(days=7)
+            else:
+                alltime_days_total = 0
+                alltime_days_done = 0
+                alltime_lightning = 0
+                alltime_double_lightning = 0
+                alltime_star = 0
+                alltime_double_star = 0
+                alltime_crown = 0
+
             # Show all active habits
             statistics.append({
                 'id': habit.id,
@@ -1582,6 +1643,14 @@ class HabitViewSet(viewsets.ModelViewSet):
                 'use_target': habit.use_target,
                 'completion_target': habit.completion_target,
                 'quantity_target': habit.quantity_target,
+                # All-time stats
+                'alltime_days_done': alltime_days_done,
+                'alltime_days_total': alltime_days_total,
+                'alltime_lightning': alltime_lightning,
+                'alltime_double_lightning': alltime_double_lightning,
+                'alltime_star': alltime_star,
+                'alltime_double_star': alltime_double_star,
+                'alltime_crown': alltime_crown,
             })
 
         return Response({
