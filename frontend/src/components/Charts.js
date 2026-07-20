@@ -816,6 +816,16 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory, sel
     const [calYear, setCalYear] = useState(new Date().getFullYear());
     const [dayData, setDayData] = useState({});
     const [loading, setLoading] = useState(true);
+
+    const maxQuantity = useMemo(() => {
+        let maxVal = 0;
+        Object.values(dayData).forEach(item => {
+            if (item.quantity > maxVal) {
+                maxVal = item.quantity;
+            }
+        });
+        return maxVal || 1;
+    }, [dayData]);
     const [collapsedQuarters, setCollapsedQuarters] = useState(() => {
         try {
             return JSON.parse(localStorage.getItem('habbits_collapsedQuarters') || '{}');
@@ -910,17 +920,9 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory, sel
                         const isToday = dateStr === todayStr;
                         const isDone = completed > 0 && !isFuture;
 
+                        const hasHabits = habitCount > 0;
                         const ratio = habitCount > 0 ? completed / habitCount : 0;
-
-                        const cellStyle = {};
-                        if (isDone) {
-                            cellStyle.backgroundColor = isDark
-                                ? '#059669'
-                                : '#22c55e';
-                        }
-
-                        const showNumber = isDone && completed > 0;
-                        const displayNumber = quantity > 0 ? quantity : completed;
+                        const quantityRatio = maxQuantity > 0 ? quantity / maxQuantity : 0;
 
                         return (
                             <div
@@ -929,11 +931,11 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory, sel
                                     'cal-day',
                                     isDone ? 'done' : '',
                                     isFuture ? 'future' : '',
-                                    isToday ? 'today' : ''
+                                    isToday ? 'today' : '',
+                                    hasHabits ? 'has-habits' : ''
                                 ].filter(Boolean).join(' ')}
-                                style={cellStyle}
                                 title={
-                                    isDone
+                                    hasHabits
                                         ? language === 'ru'
                                             ? `${dateStr}: выполнено ${completed} из ${habitCount}${quantity > 0 ? `, кол-во: ${quantity}` : ''}`
                                             : `${dateStr}: completed ${completed} of ${habitCount}${quantity > 0 ? `, qty: ${quantity}` : ''}`
@@ -941,8 +943,31 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory, sel
                                 }
                             >
                                 <span className="cal-day-num">{day}</span>
-                                {showNumber && (
-                                    <span className="cal-day-count">{displayNumber}</span>
+                                {hasHabits && (
+                                    <div className="cal-day-progress-bg">
+                                        <div className="cal-progress-col green-col">
+                                            <div
+                                                className="cal-progress-fill"
+                                                style={{ height: `${ratio * 100}%` }}
+                                            />
+                                            {completed > 0 && (
+                                                <div className="cal-progress-badge">
+                                                    {completed}/{habitCount}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="cal-progress-col purple-col">
+                                            <div
+                                                className="cal-progress-fill"
+                                                style={{ height: `${quantityRatio * 100}%` }}
+                                            />
+                                            {quantity > 0 && (
+                                                <div className="cal-progress-badge">
+                                                    {quantity}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         );
@@ -950,7 +975,7 @@ const CalendarReport = ({ theme, t, language, storageMode, selectedCategory, sel
                 </div>
             </div>
         );
-    }, [calYear, dayData, todayStr, isDark, language, monthNames, dayHeaders]);
+    }, [calYear, dayData, todayStr, language, monthNames, dayHeaders, maxQuantity]);
 
     return (
         <div className="cal-report-container">
