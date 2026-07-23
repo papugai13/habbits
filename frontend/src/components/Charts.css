@@ -1759,10 +1759,11 @@
 .cal-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
+    column-gap: 4px;
+    row-gap: 14px; /* Увеличено, чтобы даты сверху не перекрывали вышестоящие ячейки */
 }
 
-/* Day header: РџРЅ Р’С‚ РЎСЂ Р§С‚ РџС‚ РЎР± Р’СЃ */
+/* Day header: Пн Вт Ср Чт Пт Сб Вс */
 .cal-day-header {
     text-align: center;
     font-size: 9px;
@@ -1789,7 +1790,7 @@
     justify-content: center;
     cursor: default;
     transition: transform 0.12s, box-shadow 0.12s;
-    overflow: hidden;
+    overflow: visible; /* Разрешаем выход даты за пределы ячейки */
     box-sizing: border-box;
 }
 
@@ -1799,7 +1800,7 @@
 
 .cal-day:hover:not(.cal-day-empty) {
     transform: scale(1.12);
-    z-index: 2;
+    z-index: 10;
 }
 
 .cal-day-empty {
@@ -1813,39 +1814,40 @@
     font-weight: 600;
     color: rgba(40, 40, 40, 0.65);
     line-height: 1;
+    transition: all 0.2s ease;
+    z-index: 5;
 }
 
 .dark-theme .cal-day-num {
     color: rgba(210, 210, 210, 0.7);
 }
 
-.cal-day.done .cal-day-num {
-    color: rgba(255, 255, 255, 0.95);
+/* При наличии привычек поднимаем дату наверх */
+.cal-day.has-habits .cal-day-num {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
     font-weight: 700;
 }
 
-/* Purple count number */
-.cal-day-count {
-    font-size: 9px;
-    font-weight: 800;
-    color: #7c3aed;
-    line-height: 1;
-    margin-top: 2px;
-    letter-spacing: -0.5px;
+/* Если день выполнен (выполнено хотя бы 1 действие), красим дату в зеленый */
+.cal-day.done .cal-day-num {
+    color: #15803d;
 }
 
-.dark-theme .cal-day-count {
-    color: #d8b4fe;
-    text-shadow: 0 0 6px rgba(168, 85, 247, 0.5);
+.dark-theme .cal-day.done .cal-day-num {
+    color: #10b981;
 }
 
 /* Today ring */
 .cal-day.today {
-    box-shadow: 0 0 0 2.5px #16a34a, 0 0 8px rgba(22, 163, 74, 0.4);
+    box-shadow: 0 0 0 2px #16a34a, 0 0 6px rgba(22, 163, 74, 0.4);
 }
 
 .dark-theme .cal-day.today {
-    box-shadow: 0 0 0 2.5px #22c55e, 0 0 10px rgba(34, 197, 94, 0.55);
+    box-shadow: 0 0 0 2px #22c55e, 0 0 8px rgba(34, 197, 94, 0.55);
 }
 
 .cal-day.today:not(.done) {
@@ -1855,6 +1857,95 @@
 /* Future days - dimmed */
 .cal-day.future {
     opacity: 0.35;
+}
+
+/* Progress bars styling inside cell */
+.cal-day-progress-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    border-radius: 6px;
+    overflow: hidden;
+    gap: 1px;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.dark-theme .cal-day-progress-bg {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.cal-progress-col {
+    flex: 1;
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.dark-theme .cal-progress-col {
+    background: rgba(255, 255, 255, 0.015);
+}
+
+.cal-progress-fill {
+    width: 100%;
+    transition: height 0.3s ease;
+}
+
+/* Green (completion percentage) */
+.green-col .cal-progress-fill {
+    background: linear-gradient(180deg, #4ade80 0%, #22c55e 100%);
+}
+
+.dark-theme .green-col .cal-progress-fill {
+    background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+}
+
+/* Purple (quantity) */
+.purple-col .cal-progress-fill {
+    background: linear-gradient(180deg, #c084fc 0%, #a855f7 100%);
+}
+
+.dark-theme .purple-col .cal-progress-fill {
+    background: linear-gradient(180deg, #a78bfa 0%, #7c3aed 100%);
+}
+
+/* Compact badges (completion & quantity values) */
+.cal-progress-badge {
+    position: absolute;
+    top: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 7px;
+    font-weight: 800;
+    color: #ffffff;
+    padding: 1px 3px;
+    border-radius: 3px;
+    white-space: nowrap;
+    line-height: 1;
+    text-align: center;
+    pointer-events: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.green-col .cal-progress-badge {
+    background: #15803d;
+}
+
+.dark-theme .green-col .cal-progress-badge {
+    background: #065f46;
+}
+
+.purple-col .cal-progress-badge {
+    background: #7c3aed;
+}
+
+.dark-theme .purple-col .cal-progress-badge {
+    background: #5b21b6;
 }
 
 /* в”Ђв”Ђв”Ђ Responsive в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */
