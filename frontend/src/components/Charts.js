@@ -300,7 +300,9 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                     streakPercentage: item.streak_percentage || 0,
                     countExtra: item.extra_quantity || item.count_extra || 0,
                     count_capped: item.completed_days || 0,
-                    shortName: item.name.length > 12 ? item.name.substring(0, 10) + '..' : item.name
+                    shortName: item.name.length > 12 ? item.name.substring(0, 10) + '..' : item.name,
+                    total_days: item.total_days || 0,
+                    award_count: item.award_count || 0
                 }));
                 setData(mappedData);
             } catch (error) {
@@ -313,11 +315,10 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
         fetchHabitComparison();
     }, [period, currentWeekDate, selectedCategory, selectedHabitId, language, storageMode]);
 
-    const filteredData = useMemo(() => {
-        return data;
-    }, [data]);
-
+    const filteredData = useMemo(() => data, [data]);
     const chartHeight = useMemo(() => Math.max(200, filteredData.length * 45), [filteredData.length]);
+
+
 
     const handleScroll = (e) => {
         if (indicatorRef.current) {
@@ -327,24 +328,15 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
         }
     };
 
-    const maxValue = filteredData.reduce((m, d) => {
-        return Math.max(m, d.count_capped || 0, d.countExtra || 0);
-    }, 0);
-
-    const effectiveMax = useMemo(() => {
-        return Math.max(1, maxValue);
-    }, [maxValue]);
+    const maxValue = filteredData.reduce((m, d) => Math.max(m, d.count_capped || 0, d.countExtra || 0), 0);
+    const effectiveMax = useMemo(() => Math.max(1, maxValue), [maxValue]);
 
     const CustomStreakLabel = (props) => {
         const { x, y, width, value, index, isQuantity } = props;
         const item = filteredData[index];
         if (!item || !value || value <= 0) return null;
-
-        // Show count and percentage of dark-green days out of total possible
         const labelText = value > 0 ? `${value}${isQuantity ? '' : ` ${t('daysShort') || 'д.'}`}` : '';
-
         if (!labelText) return null;
-
         return (
             <text x={x + width + 5} y={y + 16} fill={isDark ? "#E0E0E0" : "#666"} fontSize={11} fontWeight="600">
                 {labelText}
@@ -352,12 +344,7 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
         );
     };
 
-    if (loading) return (
-        <div className="comparison-chart-loading">
-            <div className="mini-spinner"></div>
-            <p>{t('loadingStats')}</p>
-        </div>
-    );
+    if (loading) return <div className="comparison-chart-loading"><div className="mini-spinner"></div><p>{t('loadingStats')}</p></div>;
 
     if (data.length === 0) return (
         <div className="habits-comparison-section">
@@ -367,8 +354,12 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
         </div>
     );
 
-    const chartMinWidth = filteredData.length > 5 ? `${Math.max(filteredData.length * (isMobile ? 55 : 75), 100)}px` : '100%';
-    const showScroll = filteredData.length > 5;
+    // Форматирует дату старта для отображения
+    const formatStartDate = (dateStr) => {
+        if (!dateStr) return null;
+        const [y, m, d] = dateStr.split('-');
+        return `${d}.${m}.${y}`;
+    };
 
     return (
         <div className="habits-comparison-section">
@@ -378,36 +369,14 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                 <div className="comparison-scroll-wrapper" onScroll={handleScroll} ref={scrollRef}>
                     <div className="comparison-chart-inner">
                         <ResponsiveContainer width="100%" height={chartHeight} style={{ overflow: 'visible' }}>
-                            <BarChart
-                                layout="vertical"
-                                data={filteredData}
-                                margin={{ top: 5, right: 100, left: 10, bottom: 5 }}
-                                barSize={isMobile ? 22 : 26}
-                            >
+                            <BarChart layout="vertical" data={filteredData} margin={{ top: 5, right: 100, left: 10, bottom: 5 }} barSize={isMobile ? 22 : 26}>
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} />
                                 <XAxis type="number" hide domain={[0, effectiveMax]} />
-                                <YAxis 
-                                    dataKey="name" 
-                                    type="category" 
-                                    width={isMobile ? 90 : 130} 
-                                    tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 11 }}
-                                    axisLine={false}
-                                    tickLine={false}
-                                />
-                                <Bar 
-                                    dataKey="count_capped" 
-                                    fill="#059669" 
-                                    radius={[0, 4, 4, 0]}
-                                    isAnimationActive={false}
-                                >
+                                <YAxis dataKey="name" type="category" width={isMobile ? 90 : 130} tick={{ fill: isDark ? "#E0E0E0" : "#666", fontSize: 11 }} axisLine={false} tickLine={false} />
+                                <Bar dataKey="count_capped" fill="#059669" radius={[0, 4, 4, 0]} isAnimationActive={false}>
                                     <LabelList dataKey="count_capped" content={(props) => <CustomStreakLabel {...props} isQuantity={false} />} />
                                 </Bar>
-                                <Bar 
-                                    dataKey="countExtra" 
-                                    fill="#8B5CF6" 
-                                    radius={[0, 4, 4, 0]}
-                                    isAnimationActive={false}
-                                >
+                                <Bar dataKey="countExtra" fill="#8B5CF6" radius={[0, 4, 4, 0]} isAnimationActive={false}>
                                     <LabelList dataKey="countExtra" content={(props) => <CustomStreakLabel {...props} isQuantity={true} />} />
                                 </Bar>
                             </BarChart>
@@ -415,11 +384,65 @@ const HabitsComparisonChart = ({ period, viewType, currentWeekDate, selectedCate
                     </div>
                 </div>
             </div>
-            {showScroll && (
+            {filteredData.length > 5 && (
                 <div className="scroll-indicator-container">
                     <div className="scroll-indicator-bar" ref={indicatorRef}></div>
                 </div>
             )}
+
+            {/* ── Статистика за всё время по каждой привычке ── */}
+            <div className="habit-alltime-stats-list">
+                {filteredData.map((habit) => {
+                    const startDateFmt = formatStartDate(habit.start_date);
+                    const daysDone = habit.alltime_days_done ?? 0;
+                    const daysTotal = habit.alltime_days_total ?? 0;
+                    const lightning = habit.alltime_lightning ?? 0;
+                    const doubleLightning = habit.alltime_double_lightning ?? 0;
+                    const star = habit.alltime_star ?? 0;
+                    const doubleStar = habit.alltime_double_star ?? 0;
+                    const crown = habit.alltime_crown ?? 0;
+                    const hasAwards = lightning > 0 || doubleLightning > 0 || star > 0 || doubleStar > 0 || crown > 0;
+
+                    // Цель: масштабируем completion_target по числу месяцев с начала
+                    const hasGoal = habit.use_target && habit.completion_target > 0 && daysTotal > 0;
+                    const monthsTotal = daysTotal > 0 ? Math.max(1, Math.round(daysTotal / 30)) : 1;
+                    const goalTotal = hasGoal ? habit.completion_target * monthsTotal : 0;
+
+                    return (
+                        <div key={habit.id} className={`habit-alltime-row${isDark ? ' dark' : ''}`}>
+                            <div className="habit-alltime-name">{habit.name}</div>
+                            <div className="habit-alltime-badges">
+                                {startDateFmt && (
+                                    <div className="hat-badge hat-badge--start">
+                                        <span className="hat-badge-label">Дата старта</span>
+                                        <span className="hat-badge-value">{startDateFmt}</span>
+                                    </div>
+                                )}
+                                {daysTotal > 0 && (
+                                    <div className="hat-badge hat-badge--days">
+                                        <span className="hat-badge-value">{daysDone}/{daysTotal}</span>
+                                    </div>
+                                )}
+                                {hasAwards && (
+                                    <div className="hat-badge hat-badge--awards">
+                                        {lightning > 0 && <span className="hat-award">⚡<span className="hat-award-count">×{lightning}</span></span>}
+                                        {doubleLightning > 0 && <span className="hat-award">⚡⚡<span className="hat-award-count">×{doubleLightning}</span></span>}
+                                        {star > 0 && <span className="hat-award">⭐<span className="hat-award-count">×{star}</span></span>}
+                                        {doubleStar > 0 && <span className="hat-award">⭐⭐<span className="hat-award-count">×{doubleStar}</span></span>}
+                                        {crown > 0 && <span className="hat-award">👑<span className="hat-award-count">×{crown}</span></span>}
+                                    </div>
+                                )}
+                                {hasGoal && (
+                                    <div className="hat-badge hat-badge--goal">
+                                        <span className="hat-badge-label">Цель</span>
+                                        <span className="hat-badge-value">{daysDone}/{goalTotal}{daysDone >= goalTotal ? '🎯' : ''}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 };

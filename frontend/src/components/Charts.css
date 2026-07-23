@@ -2005,3 +2005,138 @@
         font-size: 7px;
     }
 }
+
+/* ─── Habit All-Time Stats (Отчет по привычкам) ─── */
+
+.habit-alltime-stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 12px;
+    border-top: 1px solid rgba(0,0,0,0.07);
+}
+
+.habit-alltime-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 4px 10px 4px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.habit-alltime-row.dark {
+    border-bottom-color: rgba(255,255,255,0.06);
+}
+
+.habit-alltime-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    line-height: 1.2;
+}
+
+.habit-alltime-row.dark .habit-alltime-name {
+    color: #e0e0e0;
+}
+
+.habit-alltime-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+/* Base badge */
+.hat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.hat-badge-label {
+    font-weight: 500;
+    opacity: 0.75;
+    font-size: 11px;
+}
+
+.hat-badge-value {
+    font-weight: 700;
+}
+
+/* Дата старта — синяя */
+.hat-badge--start {
+    background: #DBEAFE;
+    color: #1D4ED8;
+}
+
+.habit-alltime-row.dark .hat-badge--start {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93C5FD;
+}
+
+/* Прогресс дней — бирюзово-зелёная */
+.hat-badge--days {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+.habit-alltime-row.dark .hat-badge--days {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6EE7B7;
+}
+
+/* Награды — светло-жёлтая */
+.hat-badge--awards {
+    background: #FEF3C7;
+    color: #92400E;
+    gap: 6px;
+}
+
+.habit-alltime-row.dark .hat-badge--awards {
+    background: rgba(251, 191, 36, 0.15);
+    color: #FCD34D;
+}
+
+/* Отдельная иконка награды */
+.hat-award {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    font-size: 13px;
+}
+
+.hat-award-count {
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.85;
+}
+
+/* Цель — зелёная */
+.hat-badge--goal {
+    background: #DCFCE7;
+    color: #14532D;
+}
+
+.habit-alltime-row.dark .hat-badge--goal {
+    background: rgba(34, 197, 94, 0.15);
+    color: #86EFAC;
+}
+
+@media (max-width: 480px) {
+    .habit-alltime-name {
+        font-size: 12px;
+    }
+    .hat-badge {
+        font-size: 11px;
+        padding: 2px 8px;
+    }
+    .hat-award {
+        font-size: 12px;
+    }
+}
