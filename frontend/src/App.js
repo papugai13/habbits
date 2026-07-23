@@ -1633,13 +1633,13 @@ const App = () => {
                               }}
                               onMouseDown={() => {
                                 const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, habit.latest_comment_details?.comment, habit.latest_comment_details?.date, habit.latest_photo_details?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
+                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, habit.latest_comment_details?.date, habit.latest_photo_details?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
                               }}
                               onMouseUp={handleLongPressEnd}
                               onMouseLeave={handleLongPressEnd}
                               onTouchStart={() => {
                                 const weeklyTotalVal = statuses.reduce((sum, s) => sum + (s.is_done ? (s.quantity || 1) : 0), 0);
-                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, habit.latest_comment_details?.comment, habit.latest_comment_details?.date, habit.latest_photo_details?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
+                                !isDisabled && handleLongPressStart(habit.id, habit.name, slotDateStr, isDone, statusId, quantity, status?.comment, habit.latest_comment_details?.date, habit.latest_photo_details?.photo, weeklyTotalVal, habit.monthly_total, habit.weekly_overflow, habit.monthly_overflow, isRestored);
                               }}
                               onTouchMove={handleLongPressEnd}
                               onTouchEnd={handleLongPressEnd}
@@ -4526,50 +4526,85 @@ const App = () => {
 
                 {(() => {
                   const habit = habitsData.find(h => h.id === quantityModalData.habitId);
-                  // Предыдущая заметка — та, что сохранена в базе (не то, что сейчас введено)
                   const prevNoteText = habit?.latest_comment_details?.comment;
                   const prevNoteDate = habit?.latest_comment_details?.date;
-                  // Показываем предыдущую заметку только если она отличается от текущего ввода
-                  const showPrevNote = prevNoteText && prevNoteText !== commentValue;
-                  return showPrevNote ? (
-                    <div className="last-note-preview">
-                      <div className="last-note-preview-label">
-                        {prevNoteDate && new Date(prevNoteDate).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long' })}:
-                      </div>
-                      <div className="last-note-preview-text">
-                        {prevNoteText}
-                      </div>
-                    </div>
-                  ) : null;
-                })()}
+                  const showPrevNote = prevNoteText && prevNoteDate && prevNoteDate !== quantityModalData.dayDate;
 
-                <div className="form-group-row">
-                  <div className="form-group form-group-flex">
-                    <div className="note-label-row">
-                      <label htmlFor="comment-input">
-                        {t('comment')} — {new Date(quantityModalData.dayDate + 'T12:00:00').toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long' })}
-                      </label>
-                      {(commentValue || (() => { const h = habitsData.find(h => h.id === quantityModalData.habitId); return h?.latest_comment; })()) && (
-                        <button
-                          type="button"
-                          className="btn-reset-note"
-                          onClick={handleResetNote}
-                        >
-                          Сбросить заметку
-                        </button>
+                  // Вычисляем относительную дату для предыдущей заметки
+                  const getRelativeDateLabel = (dateStr) => {
+                    if (!dateStr) return '';
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const noteDate = new Date(dateStr + 'T00:00:00');
+                    noteDate.setHours(0, 0, 0, 0);
+                    const diffMs = today - noteDate;
+                    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+                    const formattedDate = noteDate.toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long' });
+                    if (diffDays === 0) return language === 'ru' ? `Сегодня, ${formattedDate}` : `Today, ${formattedDate}`;
+                    if (diffDays === 1) return language === 'ru' ? `Вчера, ${formattedDate}` : `Yesterday, ${formattedDate}`;
+                    if (diffDays === 2) return language === 'ru' ? `Позавчера, ${formattedDate}` : `2 days ago, ${formattedDate}`;
+                    if (language === 'ru') {
+                      // Русская склонение: 2-4 — «дня», 5+ — «дней»
+                      const mod10 = diffDays % 10;
+                      const mod100 = diffDays % 100;
+                      let suffix = 'дней';
+                      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) suffix = 'дня';
+                      return `${diffDays} ${suffix} назад, ${formattedDate}`;
+                    }
+                    return `${diffDays} days ago, ${formattedDate}`;
+                  };
+
+                  // Метка для «сегодняшней» заметки
+                  const todayFormattedDate = new Date(quantityModalData.dayDate + 'T12:00:00').toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long' });
+                  const todayLabel = language === 'ru' ? `Сегодня, ${todayFormattedDate}` : `Today, ${todayFormattedDate}`;
+
+                  return (
+                    <>
+                      <div className="notes-section-header">
+                        Заметки
+                      </div>
+
+                      {showPrevNote && (
+                        <div className="last-note-preview">
+                          <div className="last-note-preview-label">
+                            {getRelativeDateLabel(prevNoteDate)}
+                          </div>
+                          <div className="last-note-preview-text">
+                            {prevNoteText}
+                          </div>
+                        </div>
                       )}
-                    </div>
-                    <textarea
-                      id="comment-input"
-                      className="form-input"
-                      placeholder={t('commentPlaceholder')}
-                      value={commentValue}
-                      onChange={(e) => setCommentValue(e.target.value)}
-                      rows="4"
-                      style={{ minHeight: '120px', resize: 'vertical' }}
-                    ></textarea>
-                  </div>
-                </div>
+
+                      <div className="form-group-row">
+                        <div className="form-group form-group-flex">
+                          <div className="note-label-row">
+                            <label htmlFor="comment-input">
+                              {todayLabel}
+                            </label>
+                            {(commentValue || (() => { const h = habitsData.find(h => h.id === quantityModalData.habitId); return h?.latest_comment; })()) && (
+                              <button
+                                type="button"
+                                className="btn-reset-note"
+                                onClick={handleResetNote}
+                              >
+                                Сбросить заметку
+                              </button>
+                            )}
+                          </div>
+                          <textarea
+                            id="comment-input"
+                            className="form-input"
+                            placeholder={t('commentPlaceholder')}
+                            value={commentValue}
+                            onChange={(e) => setCommentValue(e.target.value)}
+                            rows="2"
+                            style={{ minHeight: '60px', resize: 'vertical' }}
+                          ></textarea>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
 
               <div className="form-actions">
